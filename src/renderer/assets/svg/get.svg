@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="18px" height="18px" viewBox="0 0 18 18" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 63.1 (92452) - https://sketch.com -->
+    <title>#Icon / 工具栏 / 获取参数</title>
+    <desc>Created with Sketch.</desc>
+    <g id="#Icon-/-工具栏-/-获取参数" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <path d="M17,7 L17,16 C17,16.5522847 16.5522847,17 16,17 L2,17 C1.44771525,17 1,16.5522847 1,16 L1,7 C1,6.44771525 1.44771525,6 2,6 L4,6 L4,7 L2,7 L2,10 L5,10 L5,11 L2,11 L2,13 L7,13 L7,15 L6,15 L6,14 L2,14 L2,16 L16,16 L16,14 L11,14 L11,10 L12,10 L12,13 L16,13 L16,7 L17,7 Z" id="路径" fill-opacity="0.75" fill="#FFFFFF" fill-rule="nonzero"></path>
+        <path d="M12,8 L17,4.5 L12,1 L12,3 L11,3 C7.50876198,3 5.75778539,5.01942295 5.75778539,7.01942295 C5.75778539,9.17510196 6.8385236,10.8107504 9,11.9263683 C8.00584132,10.9754561 7.50876198,9.73188864 7.50876198,8.19566593 L7.5146242,8.054924 C7.57752091,7.29120293 8.18181818,6 11,6 L12,6 L12,8 Z" id="路径" fill="#00DBCB"></path>
+    </g>
+</svg>

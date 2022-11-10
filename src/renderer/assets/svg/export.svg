@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="18px" height="18px" viewBox="0 0 18 18" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 63.1 (92452) - https://sketch.com -->
+    <title>#Icon / 工具栏 / 导出bin文件</title>
+    <desc>Created with Sketch.</desc>
+    <g id="#Icon-/-工具栏-/-导出bin文件" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <path d="M12,1 C12.5522847,1 13,1.44771525 13,2 L13,3 L12,3 L12,2 L2,2 L2,16 L12,16 L12,12 L13,12 L13,16 C13,16.5522847 12.5522847,17 12,17 L2,17 C1.44771525,17 1,16.5522847 1,16 L1,2 C1,1.44771525 1.44771525,1 2,1 L12,1 Z" id="路径" fill-opacity="0.75" fill="#FFFFFF" fill-rule="nonzero"></path>
+        <path d="M9.81872421,11 L4.81872421,7.5 L9.81872421,4 L9.81872421,6 L10.8187242,6 C14.3099622,6 16.5738478,7.69615742 17.2543908,9.55470314 C17.9965585,11.5815443 18.1846696,13.3720994 17.8187242,14.9263683 C17.516419,13.1206881 16.8497523,11.6329601 15.8187242,10.4631842 C15.1388242,9.69178849 13.8187242,9 10.8187242,9 L9.81872421,9 L9.81872421,11 Z" id="形状结合" fill="#00DBCB" transform="translate(11.409362, 9.463184) scale(-1, 1) translate(-11.409362, -9.463184) "></path>
+    </g>
+</svg>

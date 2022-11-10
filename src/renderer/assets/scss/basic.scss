@@ -1,0 +1,194 @@
+@import "./mixin.scss";
+// @import "./reset.scss";
+
+* {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  outline: none;
+  font-weight: 400;
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  @include scroll();
+    -moz-user-select: none;             /*火狐*/
+    -webkit-user-select: none;          /*webkit浏览器*/
+    -ms-user-select: none;              /*IE10*/
+    -khtml-user-select: none;           /*早期浏览器*/
+    user-select: none;
+}
+
+label {
+  font-weight: normal;
+}
+
+li,
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+a {
+  text-decoration: none;
+  // color: $primary;
+  cursor: pointer;
+}
+
+body,
+html {
+  height: 100%;
+  font-family: "PingFang Sc", "Microsoft Arial", "微软等线", "Microsoft YaHei",
+    "微软雅黑", "Helvetica Neue", Helvetica, "Segoe UI", Arial;
+  color: #000;
+  font-size: 14px;
+}
+
+.flex{
+    display: flex;
+    align-items: center;
+}
+
+// reset element-ui style
+
+.el-input__inner{
+  border:none;
+  color:$font-color;
+}
+.el-input__inner,
+.el-select-dropdown__item.is-disabled:hover {
+  background-color: $grey5;
+}
+.el-select-dropdown{
+    background-color: $grey5;
+    color: $font-color;
+    border:none;
+}
+.el-popper[x-placement^=bottom] .popper__arrow{
+  border-bottom-color:$grey5;
+}
+.el-select-dropdown__item.hover,
+.el-select-dropdown__item:hover{
+  background: rgba(255, 255, 255, 0.05);
+  color: $font-color;
+}
+.el-select-dropdown__item{
+  color: $font-color;
+}
+.el-popper[x-placement^=bottom] .popper__arrow::after{
+  border-bottom-color: $grey5;
+}
+.el-button ,.el-button:focus{
+  padding:7px 20px;
+  border:none;
+  background: $grey5;
+  color:#fff;
+}
+.el-button:active,
+.el-button:hover {
+  color: #fff;
+  outline: 0;
+  background: $grey5;
+  opacity: 0.8;
+}
+.el-button--primary{
+    background: $primary;
+      color: #fff;
+}
+.el-button--primary:active,
+.el-button--primary:hover {
+  color: #fff;
+background: $primary;
+  color: #fff;
+  opacity: 0.8;
+}
+.el-button.is-disabled,
+.el-button.is-disabled:focus,
+.el-button.is-disabled:hover{
+  background-color: $grey4;
+  color: rgba(255, 255, 255, 0.3);
+}
+.el-checkbox__inner{
+  background-color: $grey6;
+  border:none;
+}
+.el-checkbox__input.is-checked .el-checkbox__inner,
+.el-checkbox__input.is-indeterminate .el-checkbox__inner{
+  background-color: $primary;
+}
+.el-checkbox__input.is-checked+.el-checkbox__label{
+  color: $font-color;
+}
+.el-dialog{
+  background-color: $background;
+}
+.el-dialog__title{
+  font-size: 14px;
+  color: $font-color;
+}
+.el-dialog__body{
+  padding:18px 16px;
+  border-top: 2px solid  rgba(255, 255, 255, 0.1);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+.el-dialog__header{padding:10px 16px;}
+.el-dialog__footer {
+  padding: 8px 16px;
+}
+.el-dialog__headerbtn{
+  top:13px;
+  right: 16px;
+}
+.el-input-number--mini{
+  line-height: 20px;
+  width: 72px;
+}
+.el-input--mini .el-input__inner{
+  height: 20px;
+  line-height: 20px;
+}
+.el-input-number--middle {
+  line-height: 28px;
+}
+.el-input--middle .el-input__inner {
+  height: 28px;
+  line-height: 28px;
+}
+.el-input--middle .el-input__icon{
+  line-height: 28px;
+}
+.el-input-number.is-controls-right[class*=mini] [class*=decrease],
+.el-input-number.is-controls-right[class*=mini] [class*=increase]{
+  line-height: 10px;
+  height: 10px;
+}
+.el-input-number--mini .el-input-number__decrease,
+.el-input-number--mini .el-input-number__increase{
+  width: 16px;
+}
+.el-input-number.is-controls-right .el-input-number__decrease [class*=el-icon],
+.el-input-number.is-controls-right .el-input-number__increase [class*=el-icon]{
+  -webkit-transform: scale(.6);
+    transform: scale(.6);
+}
+.el-input-number__decrease,
+.el-input-number__increase{
+  background-color:transparent ;
+  border:none;
+  color: $font-color;
+}
+.el-input-number.is-controls-right .el-input-number__increase,.el-input-number.is-controls-right .el-input-number__decrease{
+  border:none;
+}
+.el-input-number.is-controls-right .el-input__inner{
+  padding-right: 30px;
+}
+.el-slider__bar{
+  background-color: $primary;
+}
+.el-slider__button{
+  border-color: $primary;
+  background-color: $primary;
+}
+.el-slider__runway{
+  background-color: rgba(255, 255, 255, 0.2);
+}

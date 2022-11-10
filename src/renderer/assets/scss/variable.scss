@@ -1,0 +1,30 @@
+/**
+ * variable [变量文件]
+ */
+
+$primary: #0568FF;
+$primary-light-12: mix(#fff, $primary, 88%);
+$primary-light-50: mix(#fff, $primary, 50%);
+$primary-light-10: mix(#fff, $primary, 90%);
+$primary-light-7: mix(#fff, $primary, 93%);
+$primary-light-5: mix(#fff, $primary, 95%);
+$success: #3FBF70;
+$success-light-12: mix(#fff, $success, 88%);
+$success-light-30: mix(#fff, $success, 70%);
+$warning: #ffa400;
+$warning-light-12: mix(#fff, $warning, 88%);
+$danger: #ff3838;
+$danger-light-12: mix(#fff, $danger, 88%);
+
+$semi-black: #262626;
+
+$grey1:  #262626;;
+$grey2: rgba(38, 38, 38, 1);
+$grey3: rgba(76, 76, 76, 1);
+$grey4: rgba(102, 102, 102, 0.25);
+$grey5: #3c3c3c;
+$grey6:rgba(255, 255, 255, 0.15);
+$grey7: #333333;
+$white: #fff;
+$font-color:#ccc;
+$background: #1A1A1A;
