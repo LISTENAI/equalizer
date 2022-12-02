@@ -79,6 +79,7 @@ export default {
 
   data() {
     return {
+      type: 'voice',
       show: this.visible,
       detail: {},
     };
@@ -103,14 +104,14 @@ export default {
         this.detail.item.map((item) => {
           params[item.type] = item.value;
         });
-      this.$emit('save', params);
+      this.$emit('save', this.type, params);
     },
     closeHandle() {
       this.resetHandle();
       this.$emit('close');
     },
     resetHandle() {
-      this.$emit('reset');
+      this.$emit('reset', this.type);
     },
   },
 };

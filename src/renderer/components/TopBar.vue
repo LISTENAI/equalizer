@@ -3,7 +3,14 @@
     <div class="logo"></div>
     <div class="top-menu flex">
       <div v-for="(menu, index) in menus" :key="index" class="top-menu-item">
-        <span>{{ menu.label }}</span>
+        <span
+          @click="
+            () => {
+              menu.cb && menu.cb();
+            }
+          "
+          >{{ menu.label }}</span
+        >
         <ul v-if="menu.children" class="top-menu-item-child">
           <li
             v-for="(child, index) in menu.children"
@@ -35,6 +42,7 @@ export default {
   computed: {},
   data() {
     return {
+      version: '1.0.0',
       menus: [
         {
           label: '文件',
@@ -56,10 +64,11 @@ export default {
               // cb: this.toSave,
             },
           ],
+          cb: null,
         },
-
         {
           label: '关于',
+          cb: this.showInfo,
         },
       ],
       isMax: false,
@@ -76,6 +85,27 @@ export default {
     },
     close() {
       this.$electron.ipcRenderer.send('window-close');
+    },
+    menuCick(menu) {
+      console.log(menu);
+    },
+    getInfoHtml() {
+      return `
+        <div class="info-content">
+          <img src="static/imgs/drc.png" alt="" class="logo" />
+          <p>聆思音频下行工具</p>
+          <p>${this.version}</p>
+        </div>
+        `;
+    },
+    showInfo() {
+      const Dom = this.getInfoHtml();
+      this.$alert(Dom, '关于', {
+        dangerouslyUseHTMLString: true,
+        showConfirmButton: false,
+        customClass: 'info-box',
+        callback: (action) => {},
+      });
     },
   },
 };
@@ -103,7 +133,7 @@ export default {
   .top-menu {
     &-item {
       position: relative;
-      cursor: default;
+      cursor: pointer;
       height: 30px;
       line-height: 30px;
       padding: 0 8px;
@@ -111,17 +141,36 @@ export default {
       &-child {
         position: absolute;
         left: 0;
+        top: 32px;
         display: none;
-        width: 120px;
+        width: 144px;
         background-color: $grey7;
         box-shadow: 0px 3px 9px 0px rgba(0, 0, 0, 0.75);
         z-index: 9999;
         border-bottom: 0px;
+        &::before {
+          position: absolute;
+          display: block;
+          width: 0;
+          height: 0;
+          border-color: transparent;
+          border-style: solid;
+          content: ' ';
+          border-width: 6px;
+          top: 1px;
+          margin-left: -6px;
+          border-top-width: 0;
+          top: -6px;
+          left: 6px;
+          border-bottom-color: $grey7;
+        }
         & li {
           cursor: pointer;
-          text-align: center;
+          text-align: left;
           height: 28px;
           line-height: 28px;
+          padding: 0 12px;
+
           &:hover {
             background: rgba(255, 255, 255, 0.05);
           }

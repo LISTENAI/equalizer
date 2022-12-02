@@ -10,11 +10,15 @@
   font-size: 13px;
   -webkit-font-smoothing: antialiased;
   @include scroll();
-    -moz-user-select: none;             /*火狐*/
-    -webkit-user-select: none;          /*webkit浏览器*/
-    -ms-user-select: none;              /*IE10*/
-    -khtml-user-select: none;           /*早期浏览器*/
-    user-select: none;
+  -moz-user-select: none;
+  /*火狐*/
+  -webkit-user-select: none;
+  /*webkit浏览器*/
+  -ms-user-select: none;
+  /*IE10*/
+  -khtml-user-select: none;
+  /*早期浏览器*/
+  user-select: none;
 }
 
 label {
@@ -43,46 +47,95 @@ html {
   font-size: 14px;
 }
 
-.flex{
-    display: flex;
-    align-items: center;
+.flex {
+  display: flex;
+  align-items: center;
 }
 
 // reset element-ui style
 
-.el-input__inner{
-  border:none;
-  color:$font-color;
+.el-input__inner {
+  border: none;
+  color: $font-color;
 }
+
 .el-input__inner,
 .el-select-dropdown__item.is-disabled:hover {
   background-color: $grey5;
 }
-.el-select-dropdown{
-    background-color: $grey5;
-    color: $font-color;
-    border:none;
+
+.el-input.is-disabled .el-input__inner {
+  border: none;
+  color: #595959;
+  background: rgba(255, 255, 255, 0.06);
+  cursor: not-allowed;
 }
-.el-popper[x-placement^=bottom] .popper__arrow{
-  border-bottom-color:$grey5;
+
+.el-select-dropdown {
+  background-color: $grey1;
+  color: $font-color;
+  border: none;
 }
+
+.el-popper[x-placement^=bottom] .popper__arrow {
+  border-bottom-color: $grey1;
+}
+
+.el-popper[x-placement^=top] .popper__arrow {
+  border-top-color: $grey1;
+}
+
+.el-popper[x-placement^=bottom] .popper__arrow::after {
+  border-bottom-color: $grey1;
+}
+
+.el-popper[x-placement^=top] .popper__arrow::after {
+  border-top-color: $grey1;
+
+}
+
 .el-select-dropdown__item.hover,
-.el-select-dropdown__item:hover{
+.el-select-dropdown__item:hover {
   background: rgba(255, 255, 255, 0.05);
   color: $font-color;
 }
-.el-select-dropdown__item{
+
+.el-select-dropdown__item {
   color: $font-color;
+  padding: 0 12px !important;
+  height: 28px;
+  line-height: 28px;
 }
-.el-popper[x-placement^=bottom] .popper__arrow::after{
-  border-bottom-color: $grey5;
+
+.el-select--mini {
+  width: 64px;
 }
-.el-button ,.el-button:focus{
-  padding:7px 20px;
-  border:none;
+
+.el-select--mini .el-input__inner {
+  padding-right: 20px;
+  padding-left: 8px;
+}
+
+.el-select--mini .el-input .el-select__caret {
+  font-size: 12px;
+}
+
+
+
+.el-input--mini .el-input__icon {
+  line-height: 20px;
+  width: 16px;
+}
+
+
+.el-button,
+.el-button:focus {
+  padding: 7px 20px;
+  border: none;
   background: $grey5;
-  color:#fff;
+  color: #fff;
 }
+
 .el-button:active,
 .el-button:hover {
   color: #fff;
@@ -90,105 +143,206 @@ html {
   background: $grey5;
   opacity: 0.8;
 }
-.el-button--primary{
-    background: $primary;
-      color: #fff;
+
+.el-button--primary {
+  background: $primary;
+  color: #fff;
 }
+
 .el-button--primary:active,
 .el-button--primary:hover {
   color: #fff;
-background: $primary;
+  background: $primary;
   color: #fff;
   opacity: 0.8;
 }
+
 .el-button.is-disabled,
 .el-button.is-disabled:focus,
-.el-button.is-disabled:hover{
+.el-button.is-disabled:hover {
   background-color: $grey4;
   color: rgba(255, 255, 255, 0.3);
 }
-.el-checkbox__inner{
+
+.el-checkbox__inner {
   background-color: $grey6;
-  border:none;
+  border: none;
 }
+
 .el-checkbox__input.is-checked .el-checkbox__inner,
-.el-checkbox__input.is-indeterminate .el-checkbox__inner{
+.el-checkbox__input.is-indeterminate .el-checkbox__inner {
   background-color: $primary;
 }
-.el-checkbox__input.is-checked+.el-checkbox__label{
+
+.el-checkbox__input.is-checked+.el-checkbox__label {
   color: $font-color;
 }
-.el-dialog{
+
+.el-dialog {
   background-color: $background;
 }
-.el-dialog__title{
+
+.el-dialog__title {
   font-size: 14px;
   color: $font-color;
 }
-.el-dialog__body{
-  padding:18px 16px;
-  border-top: 2px solid  rgba(255, 255, 255, 0.1);
+
+.el-dialog__body {
+  padding: 18px 16px;
+  border-top: 2px solid rgba(255, 255, 255, 0.1);
   border-bottom: 2px solid rgba(255, 255, 255, 0.1);
 }
-.el-dialog__header{padding:10px 16px;}
+
+.el-dialog__header {
+  padding: 10px 16px;
+}
+
 .el-dialog__footer {
   padding: 8px 16px;
 }
-.el-dialog__headerbtn{
-  top:13px;
+
+.el-dialog__headerbtn {
+  top: 13px;
   right: 16px;
 }
-.el-input-number--mini{
+
+.el-input-number--mini {
   line-height: 20px;
   width: 72px;
 }
-.el-input--mini .el-input__inner{
+
+.el-input--mini .el-input__inner {
   height: 20px;
   line-height: 20px;
 }
+
 .el-input-number--middle {
   line-height: 28px;
 }
+
 .el-input--middle .el-input__inner {
   height: 28px;
   line-height: 28px;
 }
-.el-input--middle .el-input__icon{
+
+.el-input--middle .el-input__icon {
   line-height: 28px;
 }
+
 .el-input-number.is-controls-right[class*=mini] [class*=decrease],
-.el-input-number.is-controls-right[class*=mini] [class*=increase]{
+.el-input-number.is-controls-right[class*=mini] [class*=increase] {
   line-height: 10px;
   height: 10px;
 }
+
 .el-input-number--mini .el-input-number__decrease,
-.el-input-number--mini .el-input-number__increase{
+.el-input-number--mini .el-input-number__increase {
   width: 16px;
 }
+
 .el-input-number.is-controls-right .el-input-number__decrease [class*=el-icon],
-.el-input-number.is-controls-right .el-input-number__increase [class*=el-icon]{
+.el-input-number.is-controls-right .el-input-number__increase [class*=el-icon] {
   -webkit-transform: scale(.6);
-    transform: scale(.6);
+  transform: scale(.6);
 }
+
 .el-input-number__decrease,
-.el-input-number__increase{
-  background-color:transparent ;
-  border:none;
+.el-input-number__increase {
+  background-color: transparent;
+  border: none;
   color: $font-color;
 }
-.el-input-number.is-controls-right .el-input-number__increase,.el-input-number.is-controls-right .el-input-number__decrease{
-  border:none;
+
+.el-input-number.is-controls-right .el-input-number__increase,
+.el-input-number.is-controls-right .el-input-number__decrease {
+  border: none;
 }
-.el-input-number.is-controls-right .el-input__inner{
-  padding-right: 30px;
+
+.el-input-number.is-disabled .el-input-number__decrease,
+.el-input-number.is-disabled .el-input-number__increase {
+  color: #595959;
 }
-.el-slider__bar{
+
+.el-input--mini.is-disabled .el-select__caret {
+  color: #595959;
+}
+
+.el-input-number.is-controls-right .el-input__inner {
+  padding-right: 15px;
+  padding-left: 8px;
+}
+
+.el-slider__bar {
   background-color: $primary;
 }
-.el-slider__button{
+
+.el-slider__button {
   border-color: $primary;
   background-color: $primary;
 }
-.el-slider__runway{
+
+.el-slider__runway {
   background-color: rgba(255, 255, 255, 0.2);
+}
+
+.el-message-box {
+  background: $background;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+
+}
+
+.el-message-box__content {
+  color: $font-color;
+}
+
+.info-box {
+  background: $background;
+  width: 320px;
+  height: 212px;
+  box-shadow: 0px 8px 24px 0px #000000;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: $font-color;
+
+  .el-message-box__header {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 10px 16px;
+  }
+
+  .el-message-box__headerbtn {
+    top: 10px;
+  }
+
+  .el-message-box__title {
+    color: #FFFFFF;
+  }
+
+  .el-message-box__content {
+    border-top: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .info-content {
+    padding: 14px 0;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+
+    .logo {
+      width: 64px;
+      height: 64px;
+      background-color: #D8D8D8;
+      border-radius: 50%;
+      margin-bottom: 16px;
+    }
+
+    p {
+      width: 120px;
+      font-size: 15px;
+      font-family: MicrosoftYaHei;
+      color: $font-color;
+      line-height: 22px;
+      text-align: center;
+    }
+  }
+
 }

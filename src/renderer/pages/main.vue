@@ -2,7 +2,7 @@
   <div class="main-page">
     <div class="top-banner flex">
       <div class="left flex">
-        <el-select v-model="value" placeholder="请选择" size="middle">
+        <el-select v-model="com" placeholder="请选择" size="middle">
           <el-option
             v-for="item in coms"
             :key="item.value"
@@ -13,15 +13,20 @@
         </el-select>
         <el-button size="mini">连接</el-button>
         <span class="flex">
+          <svg-icon v-if="connecting" icon-class="r_connecting" class="icon" />
           <svg-icon
+            v-else
             :icon-class="connected ? 'r_connected' : 'r_disconnected'"
             class="icon"
           />
-          {{ connected ? '已' : '未' }}连接</span
-        >
+
+          {{ connected && !connecting ? '已' : '未' }}连接{{
+            connecting ? '中' : ''
+          }}
+        </span>
       </div>
       <div class="right flex">
-        <el-select v-model="value" placeholder="请选择" size="middle">
+        <el-select v-model="rate" placeholder="请选择" size="middle">
           <el-option
             v-for="item in rates"
             :key="item.value"
@@ -80,113 +85,63 @@
       :checkable="voiceCheckable"
       :vocieData="vocieData"
       @close="closeModal"
-      @reset="resetVoiceModal"
+      @reset="resetModalData"
+      @save="saveHandle"
+    />
+    <EQModal
+      v-if="eqVisible"
+      :visible="eqVisible"
+      :checkable="eqCheckable"
+      :eqData="eqData"
+      @close="closeModal"
+      @reset="resetModalData"
+      @save="saveHandle"
+    />
+    <DRCModal
+      v-if="drcVisible"
+      :visible="drcVisible"
+      :checkable="drcCheckable"
+      :drcData="drcData"
+      @close="closeModal"
+      @reset="resetModalData"
       @save="saveHandle"
     />
   </div>
 </template>
 <script>
 import VoiceModal from '@/components/VoiceModal';
-const voiceType = {
-  low: {
-    title: '低音增强',
-    item: [
-      {
-        type: 'gain',
-        value: 0,
-        max: 24,
-        min: 0,
-        desc: '低音增强增益',
-        unit: 'dB',
-      },
-      {
-        type: 'rate',
-        value: 0,
-        max: 200,
-        min: 0,
-        desc: '低音增强截止频率',
-        unit: 'Hz',
-      },
-    ],
-  },
-  high: {
-    title: '高音增强',
-    item: [
-      {
-        type: 'gain',
-        value: 0,
-        max: 15,
-        min: 0,
-        desc: '高音增强增益',
-        unit: 'dB',
-      },
-      {
-        type: 'rate',
-        value: 0,
-        max: 2000,
-        min: 0,
-        desc: '高音增强截止频率',
-        unit: 'Hz',
-      },
-    ],
-  },
-  out: {
-    title: '输出',
-    item: [
-      {
-        type: 'leftGain',
-        value: 0,
-        max: 20,
-        min: -100,
-        desc: '左声道增益',
-        unit: 'dB',
-      },
-      {
-        type: 'rightGain',
-        value: 0,
-        max: 20,
-        min: -100,
-        desc: '右声道增益',
-        unit: 'dB',
-      },
-    ],
-  },
-};
+import EQModal from '@/components/EQModal';
+import DRCModal from '@/components/DRCModal';
+
 export default {
   name: 'main-page',
-  components: { VoiceModal },
+  components: { VoiceModal, EQModal, DRCModal },
   data() {
     return {
       coms: [
         {
-          value: '选项1',
-          label: '黄金糕',
+          value: 'COM1',
+          label: 'COM1',
         },
         {
-          value: '选项2',
-          label: '双皮奶',
+          value: 'COM2',
+          label: 'COM2',
         },
         {
-          value: '选项3',
-          label: '蚵仔煎',
-        },
-        {
-          value: '选项4',
-          label: '龙须面',
-        },
-        {
-          value: '选项5',
-          label: '北京烤鸭',
+          value: 'COM3',
+          label: 'COM3',
         },
       ],
       rates: [
         {
-          value: '选项1',
-          label: '黄金糕',
+          value: '48K',
+          label: 'Music Manager 48K',
         },
       ],
-      value: '',
-      connected: true,
+      com: '',
+      rate: '',
+      connected: false,
+      connecting: false,
       arrowImgUrl: 'static/imgs/arrow.png',
       soundImgUrl: 'static/imgs/output.png',
       options: [
@@ -221,33 +176,158 @@ export default {
           checkable: false,
         },
       ],
+      voiceType: {
+        low: {
+          title: '低音增强',
+          item: [
+            {
+              type: 'gain',
+              value: 0,
+              max: 24,
+              min: 0,
+              desc: '低音增强增益',
+              unit: 'dB',
+            },
+            {
+              type: 'rate',
+              value: 0,
+              max: 200,
+              min: 0,
+              desc: '低音增强截止频率',
+              unit: 'Hz',
+            },
+          ],
+        },
+        high: {
+          title: '高音增强',
+          item: [
+            {
+              type: 'gain',
+              value: 0,
+              max: 15,
+              min: 0,
+              desc: '高音增强增益',
+              unit: 'dB',
+            },
+            {
+              type: 'rate',
+              value: 0,
+              max: 2000,
+              min: 0,
+              desc: '高音增强截止频率',
+              unit: 'Hz',
+            },
+          ],
+        },
+        out: {
+          title: '输出',
+          item: [
+            {
+              type: 'leftGain',
+              value: 0,
+              max: 20,
+              min: -100,
+              desc: '左声道增益',
+              unit: 'dB',
+            },
+            {
+              type: 'rightGain',
+              value: 0,
+              max: 20,
+              min: -100,
+              desc: '右声道增益',
+              unit: 'dB',
+            },
+          ],
+        },
+        EQ: [
+          { fc: 26, gain: 0, q: 0.5, type: 'Peaking' },
+          { fc: 40, gain: 0, q: 0.7, type: 'LowPass' },
+          { fc: 63, gain: 0, q: 0.7, type: 'Peaking' },
+          { fc: 80, gain: 0, q: 0.7, type: 'Peaking' },
+          { fc: 125, gain: 0, q: 0.7, type: 'Peaking' },
+          { fc: 250, gain: 0, q: 0.7, type: 'Peaking' },
+          { fc: 500, gain: 0, q: 0.7, type: 'Peaking' },
+          { fc: 1000, gain: 0, q: 0.7, type: 'Peaking' },
+          { fc: 2000, gain: 0, q: 0.7, type: 'Peaking' },
+          { fc: 2500, gain: 0, q: 0.7, type: 'Peaking' },
+        ],
+        DRC: {
+          data: [],
+          startTime: 10,
+          releaseTime: 500,
+          drcType: 'Peak',
+        },
+      },
+      eqType: {},
       currentModal: '',
       voiceVisible: false,
-      voiceCheckable: false,
-      vocieData: {},
-      originData: voiceType[this.currentModal],
+      voiceCheckable: false, // 低音/高音/输出 bypass
+      vocieData: {}, // 低音/高音/输出 数据
+      eqVisible: false,
+      eqCheckable: false, // EQ bypass
+      eqData: [], // EQ 数据
+      drcVisible: false,
+      drcCheckable: false, // drc bypass
+      drcData: [], // drc 数据
     };
   },
+  mounted() {},
   methods: {
     open(link) {
       this.$electron.shell.openExternal(link);
     },
     opreateHandle(item) {
-      console.log(item.type, voiceType[item.type]);
-      this.voiceVisible = true;
+      switch (item.type) {
+        case 'EQ':
+          this.openEQModal(item);
+          break;
+        case 'DRC':
+          this.openDRCModal(item);
+          break;
+        default:
+          this.openVoiceModal(item);
+          break;
+      }
+    },
+    openEQModal(item) {
+      this.eqVisible = true;
       this.currentModal = item.type;
-      this.vocieData = JSON.parse(JSON.stringify(voiceType[item.type]));
+      this.eqData = JSON.parse(JSON.stringify(this.voiceType[item.type]));
       this.voiceCheckable = item.checkable;
     },
-    resetVoiceModal() {
-      console.log(voiceType);
-      this.vocieData = JSON.parse(JSON.stringify(voiceType[this.currentModal]));
+    openDRCModal(item) {
+      this.drcVisible = true;
+      this.currentModal = item.type;
+      this.vocieData = JSON.parse(JSON.stringify(this.voiceType[item.type]));
+    },
+    openVoiceModal(item) {
+      this.voiceVisible = true;
+      this.currentModal = item.type;
+      this.vocieData = JSON.parse(JSON.stringify(this.voiceType[item.type]));
+      this.voiceCheckable = item.checkable;
+    },
+    resetModalData(type) {
+      switch (type) {
+        case 'voice':
+          this.vocieData = JSON.parse(
+            JSON.stringify(this.voiceType[this.currentModal])
+          );
+          break;
+        case 'eq':
+          this.eqData = JSON.parse(
+            JSON.stringify(this.voiceType[this.currentModal])
+          );
+          break;
+      }
     },
     closeModal() {
       this.voiceVisible = false;
+      this.eqVisible = false;
+      this.drcVisible = false;
     },
-    saveHandle(data) {
-      console.log(data);
+    saveHandle(type, data) {
+      console.log(type, data);
     },
   },
 };
@@ -271,12 +351,7 @@ export default {
     background: $grey1;
     box-sizing: border-box;
     padding: 0 16px;
-    .connect {
-      background-image: url('@~/asstes/imgs/r_connected.svg');
-    }
-    .disconnect {
-      background-image: url('@~/asstes/imgs/r_disconnected.svg');
-    }
+
     .el-button {
       height: 28px;
       margin: 0 8px;
@@ -295,8 +370,13 @@ export default {
       .opt-btn {
         flex-direction: column;
         cursor: pointer;
+        border-radius: 4px;
+        padding: 3px 8px;
         &:hover {
-          opacity: 0.7;
+          background: rgba(255, 255, 255, 0.1);
+        }
+        span {
+          font-size: 11px;
         }
         &.margin {
           margin: 0 24px;

@@ -3797,6 +3797,14 @@ ecc-jsbn@~0.1.1:
     jsbn "~0.1.0"
     safer-buffer "^2.1.0"
 
+echarts@^5.4.0:
+  version "5.4.0"
+  resolved "https://registry.npmmirror.com/echarts/-/echarts-5.4.0.tgz#a9a8e5367293a397408d3bf3e2638b869249ce04"
+  integrity sha512-uPsO9VRUIKAdFOoH3B0aNg7NRVdN7aM39/OjovjO9MwmWsAkfGyeXJhK+dbRi51iDrQWliXV60/XwLA7kg3z0w==
+  dependencies:
+    tslib "2.3.0"
+    zrender "5.4.0"
+
 ee-first@1.1.1:
   version "1.1.1"
   resolved "https://registry.npmmirror.com/ee-first/-/ee-first-1.1.1.tgz"
@@ -4202,6 +4210,11 @@ escodegen@1.x.x:
     optionator "^0.8.1"
   optionalDependencies:
     source-map "~0.6.1"
+
+eslint-config-prettier@^8.5.0:
+  version "8.5.0"
+  resolved "https://registry.npmmirror.com/eslint-config-prettier/-/eslint-config-prettier-8.5.0.tgz#5a81680ec934beca02c7b1a61cf8ca34b66feab1"
+  integrity sha512-obmWKLUNCnhtQRKc+tmnYuQl0pFU1ibYJQ5BGhTVB08bHe9wC8qUeG7c08dj9XX+AuPj1YSGSQIHl1pnDHZR0Q==
 
 eslint-config-standard@^11.0.0:
   version "11.0.0"
@@ -11044,6 +11057,11 @@ tsconfig-paths@^3.14.1:
     minimist "^1.2.6"
     strip-bom "^3.0.0"
 
+tslib@2.3.0:
+  version "2.3.0"
+  resolved "https://registry.npmmirror.com/tslib/-/tslib-2.3.0.tgz#803b8cdab3e12ba581a4ca41c8839bbb0dacb09e"
+  integrity sha512-N82ooyxVNm6h1riLCoyS9e3fuJ3AMG2zIZs2Gd1ATcSFjSA23Q0fzjjZeh0jbJvWVDZ0cJT8yaNNaaXHzueNjg==
+
 tslib@^1.9.0:
   version "1.14.1"
   resolved "https://registry.npmmirror.com/tslib/-/tslib-1.14.1.tgz"
@@ -11967,3 +11985,10 @@ yeast@0.1.2:
   version "0.1.2"
   resolved "https://registry.npmmirror.com/yeast/-/yeast-0.1.2.tgz"
   integrity sha512-8HFIh676uyGYP6wP13R/j6OJ/1HwJ46snpvzE7aHAN3Ryqh2yX6Xox2B4CUmTwwOIzlG3Bs7ocsP5dZH/R1Qbg==
+
+zrender@5.4.0:
+  version "5.4.0"
+  resolved "https://registry.npmmirror.com/zrender/-/zrender-5.4.0.tgz#d4f76e527b2e3bbd7add2bdaf27a16af85785576"
+  integrity sha512-rOS09Z2HSVGFs2dn/TuYk5BlCaZcVe8UDLLjj1ySYF828LATKKdxuakSZMvrDz54yiKPDYVfjdKqcX8Jky3BIA==
+  dependencies:
+    tslib "2.3.0"
