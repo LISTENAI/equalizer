@@ -37,7 +37,7 @@
     <span slot="footer" class="dialog-footer">
       <div class="fl">
         <el-button @click="resetHandle">重置</el-button>
-        <el-checkbox v-model="checkable">Bypass</el-checkbox>
+        <el-checkbox v-model="enable">Bypass</el-checkbox>
       </div>
       <el-button type="primary" @click="saveHandle">确 定</el-button>
       <el-button @click="closeHandle">取 消</el-button>
@@ -46,9 +46,10 @@
 </template>
 
 <script>
+import _ from 'lodash';
 export default {
   props: {
-    vocieData: {
+    voiceData: {
       type: Object,
       default: () => {
         return {};
@@ -62,9 +63,7 @@ export default {
     },
     checkable: {
       type: Boolean,
-      default: () => {
-        return {};
-      },
+      default: false,
     },
     save: {
       type: Function,
@@ -75,6 +74,9 @@ export default {
     close: {
       type: Function,
     },
+    enableVoice: {
+      type: Function,
+    },
   },
 
   data() {
@@ -82,36 +84,60 @@ export default {
       type: 'voice',
       show: this.visible,
       detail: {},
+      enable: this.checkable,
     };
   },
   watch: {
-    vocieData: {
+    voiceData: {
       handler(newVal) {
         this.detail = newVal;
       },
       deep: true,
     },
+    checkable: function (newVal) {
+      this.enable = newVal;
+    },
     visible: function (newVal) {
       this.show = newVal;
+      this.enable = this.checkable;
     },
   },
-
   methods: {
     saveHandle() {
       this.closeHandle();
-      const params = { checkable: this.checkable };
-      this.detail.item &&
-        this.detail.item.map((item) => {
-          params[item.type] = item.value;
-        });
-      this.$emit('save', this.type, params);
+      const params = { enable: !this.enable };
+      if (this.detail.type === 'agc') {
+        const { sr, vol, item } = this.detail;
+        // data = {
+        //   enable: true,
+        //   sr: 16000,
+        //   vol: 24,
+        //   mono_gains: [
+        //     [true, 10],
+        //     [true, 20],
+        //   ],
+        // };
+        params.sr = sr;
+        params.vol = vol;
+        params.mono_gains = [];
+        item &&
+          item.map((item) => {
+            params.mono_gains.push([true, parseInt(item.value)]);
+          });
+      } else {
+        this.detail.item &&
+          this.detail.item.map((item) => {
+            params[item.type] = parseInt(item.value);
+          });
+      }
+      this.$emit('save', this.detail.type, params);
     },
     closeHandle() {
-      this.resetHandle();
       this.$emit('close');
     },
     resetHandle() {
-      this.$emit('reset', this.type);
+      this.enable = false;
+      this.$emit('reset', this.detail.type);
     },
   },
 };

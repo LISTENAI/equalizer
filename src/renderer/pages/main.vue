@@ -1,17 +1,32 @@
+<!-- 设置和Bypass按钮 disabled状态没改-->
+<!--还剩多次数据写入没有调试 -->
 <template>
   <div class="main-page">
     <div class="top-banner flex">
       <div class="left flex">
-        <el-select v-model="com" placeholder="请选择" size="middle">
+        <el-select
+          v-model="com"
+          placeholder="请选择"
+          size="middle"
+          :loading="loading"
+          @visible-change="getComs"
+        >
           <el-option
             v-for="item in coms"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
+            :key="item.path"
+            :label="item.path"
+            :value="item.path"
           >
           </el-option>
         </el-select>
-        <el-button size="mini">连接</el-button>
+        <el-button
+          size="mini"
+          @click="connectHandle"
+          :disabled="connecting"
+          :loading="connecting"
+        >
+          {{ connected && !connecting ? '断开' : '连接' }}</el-button
+        >
         <span class="flex">
           <svg-icon v-if="connecting" icon-class="r_connecting" class="icon" />
           <svg-icon
@@ -19,10 +34,7 @@
             :icon-class="connected ? 'r_connected' : 'r_disconnected'"
             class="icon"
           />
-
-          {{ connected && !connecting ? '已' : '未' }}连接{{
-            connecting ? '中' : ''
-          }}
+          <span v-if="!connecting"> {{ connected ? '已' : '未' }}连接</span>
         </span>
       </div>
       <div class="right flex">
@@ -35,15 +47,23 @@
           >
           </el-option>
         </el-select>
-        <div class="opt-btn flex">
+        <div
+          class="opt-btn flex"
+          :class="connected ? '' : 'disabled'"
+          @click="() => getData('agc')"
+        >
           <svg-icon icon-class="get" class="icon" />
           <span>获取参数</span>
         </div>
-        <div class="opt-btn flex margin">
+        <div
+          class="opt-btn flex margin"
+          :class="connected ? '' : 'disabled'"
+          @click="saveParamsHandle"
+        >
           <svg-icon icon-class="write" class="icon" />
           <span>写入参数</span>
         </div>
-        <div class="opt-btn flex">
+        <div class="opt-btn flex" :class="connected ? '' : 'disabled'">
           <svg-icon icon-class="export" class="icon" />
           <span>导出bin文件</span>
         </div>
@@ -53,37 +73,42 @@
       <div class="progress flex">
         <div class="step text">输入</div>
         <div class="step flex" v-for="item in options" :key="item.text">
-          <img v-bind:src="arrowImgUrl" class="arrow" />
+          <img :src="require('@/assets/imgs/' + arrowImgUrl)" class="arrow" />
           <div class="flex box">
-            <img v-bind:src="item.imageUrl" />
+            <img :src="require('@/assets/imgs/' + item.imageUrl)" />
             <p class="text">{{ item.text }}</p>
-            <el-button
-              @click="() => opreateHandle(item)"
-              :disabled="item.checkable"
-              >设置</el-button
-            >
-            <el-checkbox v-model="item.checkable">Bypass</el-checkbox>
+            <el-button @click="() => opreateHandle(item)">设置</el-button>
+            <!-- :disabled="item.enable || !connected" -->
+            <!-- :disabled="!connected" -->
+            <el-checkbox v-model="item.enable">Bypass</el-checkbox>
           </div>
         </div>
         <div class="step flex arrow-part">
           <div class="flex">
-            <img v-bind:src="arrowImgUrl" class="arrow" />
+            <img :src="require('@/assets/imgs/' + arrowImgUrl)" class="arrow" />
             <span class="single-text">L</span>
-            <img v-bind:src="soundImgUrl" class="sound-img" />
+            <img
+              :src="require('@/assets/imgs/' + soundImgUrl)"
+              class="sound-img"
+            />
           </div>
           <div class="text">输出</div>
           <div class="flex">
-            <img v-bind:src="arrowImgUrl" class="arrow" />
+            <img :src="require('@/assets/imgs/' + arrowImgUrl)" class="arrow" />
             <span class="single-text">R</span>
-            <img v-bind:src="soundImgUrl" class="sound-img" />
+            <img
+              :src="require('@/assets/imgs/' + soundImgUrl)"
+              class="sound-img"
+            />
           </div>
         </div>
       </div>
     </div>
+
     <VoiceModal
       :visible="voiceVisible"
       :checkable="voiceCheckable"
-      :vocieData="vocieData"
+      :voiceData="voiceData"
       @close="closeModal"
       @reset="resetModalData"
       @save="saveHandle"
@@ -109,29 +134,19 @@
   </div>
 </template>
 <script>
-import VoiceModal from '@/components/VoiceModal';
-import EQModal from '@/components/EQModal';
-import DRCModal from '@/components/DRCModal';
+import VoiceModal from 'components/VoiceModal.vue';
+import EQModal from 'components/EqModal.vue';
+import DRCModal from 'components/DRCModal.vue';
+import SerialPortHandle from '../utils/serialport';
+// import serialportConnect from '../utils/index'
+import { checkConnect, setParams, getParams, TYPES } from '../utils/index';
 
 export default {
   name: 'main-page',
   components: { VoiceModal, EQModal, DRCModal },
   data() {
     return {
-      coms: [
-        {
-          value: 'COM1',
-          label: 'COM1',
-        },
-        {
-          value: 'COM2',
-          label: 'COM2',
-        },
-        {
-          value: 'COM3',
-          label: 'COM3',
-        },
-      ],
+      coms: [],
       rates: [
         {
           value: '48K',
@@ -140,44 +155,45 @@ export default {
       ],
       com: '',
       rate: '',
+      loading: false,
       connected: false,
       connecting: false,
-      arrowImgUrl: 'static/imgs/arrow.png',
-      soundImgUrl: 'static/imgs/output.png',
+      arrowImgUrl: 'arrow.png',
+      soundImgUrl: 'output.png',
       options: [
         {
-          type: 'low',
+          type: 'bass_boost',
           text: '低音增强',
-          imageUrl: 'static/imgs/low.png',
-          checkable: false,
+          imageUrl: 'low.png',
+          enable: false,
         },
         {
-          type: 'high',
+          type: 'treble_boost',
           text: '高音增强',
-          imageUrl: 'static/imgs/high.png',
-          checkable: false,
+          imageUrl: 'high.png',
+          enable: false,
         },
         {
-          type: 'EQ',
+          type: 'eq',
           text: 'EQ均衡器',
-          imageUrl: 'static/imgs/eq.png',
-          checkable: false,
+          imageUrl: 'eq.png',
+          enable: false,
         },
         {
-          type: 'DRC',
+          type: 'drc',
           text: 'DRC',
-          imageUrl: 'static/imgs/drc.png',
-          checkable: false,
+          imageUrl: 'drc.png',
+          enable: false,
         },
         {
-          type: 'out',
+          type: 'agc',
           text: '输出增益',
-          imageUrl: 'static/imgs/out.png',
-          checkable: false,
+          imageUrl: 'out.png',
+          enable: false,
         },
       ],
       voiceType: {
-        low: {
+        bass_boost: {
           title: '低音增强',
           item: [
             {
@@ -189,7 +205,7 @@ export default {
               unit: 'dB',
             },
             {
-              type: 'rate',
+              type: 'freq',
               value: 0,
               max: 200,
               min: 0,
@@ -198,7 +214,7 @@ export default {
             },
           ],
         },
-        high: {
+        treble_boost: {
           title: '高音增强',
           item: [
             {
@@ -210,7 +226,7 @@ export default {
               unit: 'dB',
             },
             {
-              type: 'rate',
+              type: 'freq',
               value: 0,
               max: 2000,
               min: 0,
@@ -219,105 +235,357 @@ export default {
             },
           ],
         },
-        out: {
+        agc: {
           title: '输出',
           item: [
             {
               type: 'leftGain',
               value: 0,
-              max: 20,
-              min: -100,
+              max: 15,
+              min: -0,
               desc: '左声道增益',
               unit: 'dB',
             },
             {
               type: 'rightGain',
               value: 0,
-              max: 20,
-              min: -100,
+              max: 15,
+              min: -0,
               desc: '右声道增益',
               unit: 'dB',
             },
           ],
         },
-        EQ: [
-          { fc: 26, gain: 0, q: 0.5, type: 'Peaking' },
-          { fc: 40, gain: 0, q: 0.7, type: 'LowPass' },
-          { fc: 63, gain: 0, q: 0.7, type: 'Peaking' },
-          { fc: 80, gain: 0, q: 0.7, type: 'Peaking' },
-          { fc: 125, gain: 0, q: 0.7, type: 'Peaking' },
-          { fc: 250, gain: 0, q: 0.7, type: 'Peaking' },
-          { fc: 500, gain: 0, q: 0.7, type: 'Peaking' },
-          { fc: 1000, gain: 0, q: 0.7, type: 'Peaking' },
-          { fc: 2000, gain: 0, q: 0.7, type: 'Peaking' },
-          { fc: 2500, gain: 0, q: 0.7, type: 'Peaking' },
+        eq: [
+          { fc: 26, gain: 0, q: 0.5, type: 2 },
+          { fc: 40, gain: 0, q: 0.7, type: 0 },
+          { fc: 63, gain: 0, q: 0.7, type: 2 },
+          { fc: 80, gain: 0, q: 0.7, type: 2 },
+          { fc: 125, gain: 0, q: 0.7, type: 2 },
+          { fc: 250, gain: 0, q: 0.7, type: 2 },
+          { fc: 500, gain: 0, q: 0.7, type: 2 },
+          { fc: 1000, gain: 0, q: 0.7, type: 2 },
+          { fc: 2000, gain: 0, q: 0.7, type: 2 },
+          { fc: 2500, gain: 0, q: 0.7, type: 2 },
         ],
-        DRC: {
-          data: [],
-          startTime: 10,
-          releaseTime: 500,
-          drcType: 'Peak',
+        drc: {
+          fs: 48000,
+          seg: 5,
+          at: 10,
+          rt: 500,
+          rms: 0.02,
+          mode: 0,
+          dots: [],
         },
       },
+      originOptions: [],
+      originVoiceType: [],
       eqType: {},
       currentModal: '',
       voiceVisible: false,
       voiceCheckable: false, // 低音/高音/输出 bypass
-      vocieData: {}, // 低音/高音/输出 数据
+      voiceData: {}, // 低音/高音/输出 数据
       eqVisible: false,
       eqCheckable: false, // EQ bypass
       eqData: [], // EQ 数据
       drcVisible: false,
       drcCheckable: false, // drc bypass
-      drcData: [], // drc 数据
+      drcData: null, // drc 数据
+      allParams: {},
     };
   },
-  mounted() {},
+  mounted() {
+    this.originOptions = JSON.parse(JSON.stringify(this.options));
+    this.originVoiceType = JSON.parse(JSON.stringify(this.voiceType));
+    this.getComs();
+    this.serialPorEmitterHandle();
+  },
+  watch: {
+    connected(val) {
+      if (val) {
+        // this.getData();
+      }
+    },
+  },
   methods: {
+    async getData(type) {
+      if (!this.connected) {
+        return;
+      }
+      try {
+        const params = getParams(type);
+        await this.writeSerialPortHandle(params);
+      } catch (error) {
+        console.error(error);
+      }
+      //依次获取5
+      // ['bass_boost'].map(async (type) => {
+      //   try {
+      //     const params = getParams(type);
+      //     await this.writeSerialPortHandle(params);
+      //   } catch (error) {
+      //     console.error(error);
+      //   }
+      // });
+    },
+
+    serialPorEmitterHandle() {
+      SerialPortHandle.serialPorEmitter.on('SerialPort', (res) => {
+        console.log('data from SerialPort', res);
+        console.log(JSON.stringify(res));
+        const { code, data } = res;
+        switch (data.type) {
+          case 'connect':
+            this.changeConnectHandle(code === 0);
+            break;
+          case 'save':
+            if (code === 0) {
+              //设置数据成功
+              console.log('save成功', this.voiceType);
+            }
+            break;
+          case 'error':
+            this.$message.error(data.message);
+          case 'bass_boost':
+            this.parseVoiceData('bass_boost', data.data);
+            break;
+          case 'treble_boost':
+            this.parseVoiceData('treble_boost', data.data);
+            break;
+          case 'eq':
+            this.parseEQData(data.data);
+            break;
+          case 'drc':
+            this.parseDRCData(data.data);
+            break;
+          case 'agc':
+            this.parseAGCData(data.data);
+            break;
+          default:
+            break;
+        }
+      });
+    },
+    async writeSerialPortHandle(params, errorCb) {
+      try {
+        await SerialPortHandle.write(params);
+      } catch (error) {
+        errorCb && errorCb();
+        this.$message.error(error.message || '写入参数失败请重试');
+      }
+    },
+    async getComs() {
+      this.loading = true;
+      const res = await SerialPortHandle.getList();
+      this.coms = res;
+      this.loading = false;
+      console.log(res);
+    },
     open(link) {
       this.$electron.shell.openExternal(link);
     },
-    opreateHandle(item) {
+    async connectHandle() {
+      try {
+        if (this.connected) {
+          await SerialPortHandle.close();
+          this.connected = false;
+        } else {
+          this.connecting = true;
+          await SerialPortHandle.open(this.com);
+          this.checkConnectHandle();
+        }
+      } catch (error) {
+        this.connecting = false;
+        this.connected = false;
+        this.$message.error(error);
+      }
+    },
+    async checkConnectHandle() {
+      try {
+        const params = checkConnect();
+        SerialPortHandle.type = 'connect';
+        await this.writeSerialPortHandle(params);
+      } catch (error) {
+        this.changeConnectHandle(false);
+      }
+    },
+    async changeConnectHandle(isOk) {
+      console.log('isok', isOk);
+      this.connected = isOk;
+      this.connecting = false;
+    },
+    async opreateHandle(item) {
       switch (item.type) {
-        case 'EQ':
-          this.openEQModal(item);
+        case 'eq':
+          await this.openEQModal(item);
           break;
-        case 'DRC':
-          this.openDRCModal(item);
+        case 'drc':
+          await this.openDRCModal(item);
           break;
         default:
-          this.openVoiceModal(item);
+          await this.openVoiceModal(item);
           break;
       }
     },
-    openEQModal(item) {
+    //打开设置 ->获取参数
+    async openEQModal(item) {
+      await this.getData(item.type);
       this.eqVisible = true;
       this.currentModal = item.type;
-      this.eqData = JSON.parse(JSON.stringify(this.voiceType[item.type]));
-      this.voiceCheckable = item.checkable;
+      this.eqCheckable = item.enable;
     },
-    openDRCModal(item) {
-      this.drcVisible = true;
+    async openDRCModal(item) {
+      await this.getData(item.type);
       this.currentModal = item.type;
-      this.vocieData = JSON.parse(JSON.stringify(this.voiceType[item.type]));
+      this.drcCheckable = item.enable;
+      this.drcVisible = true;
+      // this.drcData = JSON.parse(JSON.stringify(this.voiceType['drc']));
     },
-    openVoiceModal(item) {
+    async openVoiceModal(item) {
+      await this.getData(item.type);
       this.voiceVisible = true;
       this.currentModal = item.type;
-      this.vocieData = JSON.parse(JSON.stringify(this.voiceType[item.type]));
-      this.voiceCheckable = item.checkable;
+      this.voiceCheckable = item.enable;
+    },
+    parseEQData(data) {
+      let modalData = JSON.parse(JSON.stringify(this.voiceType['eq']));
+      if (data) {
+        const { filters } = data;
+        modalData = filters;
+        // this.eqCheckable = !enable;
+      }
+      console.log(modalData);
+      this.eqData = modalData;
+    },
+    parseDRCData(data) {
+      // data = {
+      //   enable: true,
+      //   fs: 16000,
+      //   at: 10, //启动时间
+      //   rt: 50, //释放时间
+      //   mode: 0, //类型
+      //   rms: 1, //Rms检测窗时间
+      //   seg: 3, //DRC段数
+      //   dots: [
+      //     [1, 1, 1],
+      //     [2, 2, 2],
+      //     [3, 3, 3],
+      //     [4, 4, 4],
+      //   ],
+      // };
+
+      let modalData = JSON.parse(JSON.stringify(this.voiceType['drc']));
+      if (data) {
+        const { fs, at, rt, rms, mode, seg, dots } = data;
+        modalData = {
+          fs,
+          at,
+          rt,
+          rms,
+          mode,
+          seg,
+          dots: dots.map((item) => {
+            return { x: item[0], y: item[1], w: item[2] };
+          }),
+        };
+        // this.eqCheckable = !enable;
+      }
+      console.log(modalData);
+      this.drcData = modalData;
+    },
+    parseAGCData(data) {
+      // {
+      //       type: 'leftGain',
+      //       value: 0,
+      //       max: 20,
+      //       min: -100,
+      //       desc: '左声道增益',
+      //       unit: 'dB',
+      //     }
+      // data = {
+      //   enable: true,
+      //   sr: 16000,
+      //   vol: 24,
+      //   mono_gains: [
+      //     [true, 10],
+      //     [true, 20],
+      //   ],
+      // };
+      let modalData = this.voiceType['agc'];
+      modalData.type = 'agc';
+      if (data) {
+        const { mono_gains, sr, vol } = data;
+        modalData.sr = sr;
+        modalData.vol = vol;
+        const item = mono_gains.map((item, index) => {
+          return {
+            type: `${index === 0 ? 'left' : 'right'}Gain`,
+            value: item[1],
+            max: 20,
+            min: -100,
+            desc: `${index === 0 ? '左' : '右'}声道增益`,
+            unit: 'dB',
+          };
+        });
+        modalData.item = item;
+      }
+      this.voiceData = modalData;
+    },
+    parseVoiceData(type, data) {
+      console.log(type, data);
+      if (data) {
+        const { gain, freq } = data;
+        const modalData = this.voiceType[type];
+        modalData.type = type;
+        modalData.item.map((voice) => {
+          switch (voice.type) {
+            case 'gain':
+              voice.value = parseInt(gain);
+              break;
+            case 'freq':
+              voice.value = parseInt(freq);
+              break;
+          }
+          return voice;
+        });
+        this.voiceData = modalData;
+        // this.voiceCheckable = !enable;
+      } else {
+        this.voiceData = JSON.parse(JSON.stringify(this.voiceType[type]));
+        this.voiceData.type = type;
+      }
     },
     resetModalData(type) {
+      console.log('reset', type);
+      const voiceData = JSON.parse(
+        JSON.stringify(this.originVoiceType[this.currentModal])
+      );
       switch (type) {
-        case 'voice':
-          this.vocieData = JSON.parse(
-            JSON.stringify(this.voiceType[this.currentModal])
-          );
-          break;
+        // case 'bass_boost':
+        //   this.voiceData = voiceData;
+        //   this.voiceCheckable = false;
+        //   this.enableVoice(type, false);
+        //   voiceData.type = type;
+        //   break;
+        // case 'treble_boost':
+        //   this.voiceData = voiceData;
+        //   this.voiceCheckable = false;
+        //   this.enableVoice(type, false);
+        //   voiceData.type = type;
+        //   break;
         case 'eq':
-          this.eqData = JSON.parse(
-            JSON.stringify(this.voiceType[this.currentModal])
-          );
+          this.eqData = voiceData;
+          this.eqCheckable = false;
+          break;
+        case 'drc':
+          this.drcData = voiceData;
+          this.drcCheckable = false;
+          break;
+        default: //'bass_boost'|'treble_boost'|'agc'
+          this.voiceData = voiceData;
+          this.voiceCheckable = false;
+          this.enableVoice(type, false);
+          voiceData.type = type;
           break;
       }
     },
@@ -326,8 +594,45 @@ export default {
       this.eqVisible = false;
       this.drcVisible = false;
     },
-    saveHandle(type, data) {
-      console.log(type, data);
+    //修改主页Bypass
+    enableVoice(type, val) {
+      let index;
+      let voiceItem;
+      this.originOptions.map((item, id) => {
+        if (item.type === type) {
+          index = id;
+          voiceItem = JSON.parse(JSON.stringify(item));
+        }
+      });
+      if (voiceItem) {
+        voiceItem.enable = val;
+        this.$set(this.options, index, voiceItem);
+      }
+    },
+    async saveHandle(type, data) {
+      this.$set(this.allParams, type, data);
+      this.enableVoice(type, !data.enable);
+      await this.saveParamsHandle(type, data);
+      console.log(this.allParams);
+    },
+    //单个写入设置
+    async saveParamsHandle(type, data) {
+      try {
+        const params = setParams(type, data);
+        SerialPortHandle.type = 'save';
+        await this.writeSerialPortHandle(params, () => {
+          this.resetModalData(type);
+        });
+      } catch (error) {
+        this.$message.error(error.message);
+      }
+    },
+    //写入所有参数
+    async saveAllParamsHandle() {
+      try {
+      } catch (error) {
+        this.$message.error(error.message);
+      }
     },
   },
 };
@@ -383,6 +688,9 @@ export default {
         }
         .icon {
           margin-bottom: 2px;
+        }
+        &.disabled {
+          cursor: not-allowed;
         }
       }
     }

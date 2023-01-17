@@ -1,4 +1,5 @@
-import { ipcMain, BrowserWindow } from 'electron';
+
+import { ipcMain, BrowserWindow, ipcRenderer } from 'electron';
 ipcMain.on('window-min', function () {
   BrowserWindow.getFocusedWindow().minimize();
 });

@@ -5,12 +5,14 @@ import router from './router';
 import store from './store';
 import './element';
 import Components from './components';
+import 'element-ui/lib/theme-chalk/index.css';
 import '@/assets/scss/basic.scss';
-// import * as echarts from 'echarts';
-// import 'echarts/lib/chart/line'; // 折线图
-// Vue.prototype.$echarts = echarts;
-if (!process.env.IS_WEB) Vue.use(require('vue-electron'));
+import * as electron from "electron";
+import _ from 'lodash';
+Vue.prototype._ = _;
 Vue.http = Vue.prototype.$http = axios;
+Vue.electron = Vue.prototype.$electron = electron;
+
 Vue.config.productionTip = false;
 Vue.use(Components);
 /* eslint-disable no-new */

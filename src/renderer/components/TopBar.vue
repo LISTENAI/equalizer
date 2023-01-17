@@ -92,7 +92,7 @@ export default {
     getInfoHtml() {
       return `
         <div class="info-content">
-          <img src="static/imgs/drc.png" alt="" class="logo" />
+          <img src="@/assets/imgs/drc.png" alt="" class="logo" />
           <p>聆思音频下行工具</p>
           <p>${this.version}</p>
         </div>

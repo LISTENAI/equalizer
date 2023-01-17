@@ -25,15 +25,15 @@
           :key="key"
           :class="[
             activeIndex === key ? 'active' : '',
-            item.chose ? '' : 'disabled',
+            item.enable ? '' : 'disabled',
           ]"
-          @mouseover="() => activeHandle(item.chose, key, true)"
-          @mouseleave="() => activeHandle(item.chose, key, false)"
+          @mouseover="() => activeHandle(item.enable, key, true)"
+          @mouseleave="() => activeHandle(item.enable, key, false)"
         >
           <el-checkbox
             :label="`频段${key + 1}`"
-            v-model="item.chose"
-            @change="(v) => changeChose(v, key)"
+            v-model="item.enable"
+            @change="(v) => changeenable(v, key)"
           ></el-checkbox>
           <el-input-number
             v-model="item.fc"
@@ -41,7 +41,7 @@
             :min="20"
             :max="20000"
             size="mini"
-            :disabled="!item.chose"
+            :disabled="!item.enable"
           ></el-input-number>
           <el-input-number
             v-model="item.gain"
@@ -51,7 +51,7 @@
             :precision="1"
             :step="0.1"
             size="mini"
-            :disabled="!item.chose"
+            :disabled="!item.enable"
           ></el-input-number>
           <el-input-number
             v-model="item.q"
@@ -61,7 +61,7 @@
             :precision="1"
             :step="0.1"
             size="mini"
-            :disabled="!item.chose"
+            :disabled="!item.enable"
           ></el-input-number>
           <el-select
             v-model="item.type"
@@ -69,17 +69,20 @@
             :ref="'select' + key"
             @change="changeType($event, key)"
             popper-class="type-select"
-            :disabled="!item.chose"
+            :disabled="!item.enable"
           >
             <el-option
               v-for="type in types"
-              :label="type.val"
+              :label="type.label"
               :value="type.val"
               :key="type.val"
             >
               <p class="type-label">
-                <span>{{ type.val }}</span>
-                <img v-bind:src="type.imgUrl" class="type-img" />
+                <span>{{ type.label }}</span>
+                <img
+                  :src="require('@/assets/imgs/' + type.imgUrl)"
+                  class="type-img"
+                />
               </p>
             </el-option>
           </el-select>
@@ -90,7 +93,7 @@
     <span slot="footer" class="dialog-footer">
       <div class="fl">
         <el-button @click="resetHandle">重置</el-button>
-        <el-checkbox v-model="checkable">Bypass</el-checkbox>
+        <el-checkbox v-model="enable">Bypass</el-checkbox>
       </div>
       <el-button type="primary" @click="saveHandle">确 定</el-button>
       <el-button @click="closeHandle">取消</el-button>
@@ -101,6 +104,7 @@
 <script>
 import * as echarts from 'echarts';
 export default {
+  name: 'EqModal',
   props: {
     eqData: {
       type: Array,
@@ -116,9 +120,7 @@ export default {
     },
     checkable: {
       type: Boolean,
-      default: () => {
-        return {};
-      },
+      default: false,
     },
     save: {
       type: Function,
@@ -135,6 +137,7 @@ export default {
     return {
       activeIndex: null,
       type: 'eq',
+      enable: this.checkable,
       symbolSize: 9, // 通过拖动是可以实时改变这里的值的
       boundaryVal: {
         maxdB: 20,
@@ -156,29 +159,29 @@ export default {
       ],
       types: [
         {
-          val: 'Peaking',
+          val: 0,
+          label: 'LowPass',
+          imgUrl: 'eq_LowPass.png',
+        },
+        {
+          val: 1,
+          label: 'HighPass',
+          imgUrl: 'eq_HighPass.png',
+        },
+        {
+          val: 2,
           label: 'Peaking',
-          imgUrl: 'static/imgs/eq_Peaking.png',
+          imgUrl: 'eq_Peaking.png',
         },
         {
-          val: 'HighPass',
-          label: 'High Pass',
-          imgUrl: 'static/imgs/eq_HighPass.png',
+          val: 3,
+          label: 'lowShelf',
+          imgUrl: 'eq_lowShelf.png',
         },
         {
-          val: 'HighShelf',
-          label: 'High Shelf',
-          imgUrl: 'static/imgs/eq_HighShelf.png',
-        },
-        {
-          val: 'LowPass',
-          label: 'Low Pass',
-          imgUrl: 'static/imgs/eq_LowPass.png',
-        },
-        {
-          val: 'lowShelf',
-          label: 'low Shelf',
-          imgUrl: 'static/imgs/eq_lowShelf.png',
+          val: 4,
+          label: 'HighShelf',
+          imgUrl: 'eq_HighShelf.png',
         },
       ],
       bandsData: this.eqData,
@@ -197,8 +200,12 @@ export default {
       },
       deep: true,
     },
+    checkable: function (newVal) {
+      this.enable = newVal;
+    },
     visible: function (newVal) {
       this.show = newVal;
+      this.enable = this.checkable;
     },
   },
   mounted() {
@@ -212,7 +219,7 @@ export default {
   methods: {
     getBandsData(data) {
       return data.map((item) => {
-        item.chose = item.chose === undefined ? true : item.chose;
+        item.enable = item.enable === undefined ? true : !!item.enable;
         return item;
       });
     },
@@ -237,7 +244,7 @@ export default {
       return this.chartDom && this.chartDom.convertToPixel('grid', dataItem);
     },
     renderChart() {
-      console.log(this.chartDatas);
+      // console.log(this.chartDatas);
       const that = this;
       this.chartDom = echarts && echarts.init(this.$refs.dom);
       if (!this.chartDom) return;
@@ -316,7 +323,8 @@ export default {
             smooth: true,
             symbol: 'circle',
             symbolSize: (_value, params) => {
-              return this.bandsData[params.dataIndex].chose
+              return this.bandsData[params.dataIndex] &&
+                this.bandsData[params.dataIndex].enable
                 ? this.symbolSize / 2
                 : 0;
             },
@@ -428,8 +436,12 @@ export default {
     },
     saveHandle() {
       this.closeHandle();
-      const params = { checkable: this.checkable, data: this.eqData };
-      console.log(params, this.eqData);
+      const data = this.eqData.map((item) => {
+        const { enable, type, dSampleRateHz, q, gain, fc } = item;
+        return [enable ? 1 : 0, type, dSampleRateHz || 48000, q, gain, fc];
+      });
+      const params = { enable: !this.enable, filters: data };
+      console.log(params);
       // this.eqData.item &&
       //   this.eqData.item.map((item) => {
       //     params[item.type] = item.value;
@@ -449,31 +461,35 @@ export default {
       });
     },
     changeTypeImg(key, item) {
-      console.log(item);
       const typeObj = this.types.find((type) => item.type === type.val);
-      const opacity = item.chose ? 1 : 0.5;
-      this.$refs['select' + key][0].$el.children[0].children[0].setAttribute(
-        'style',
-        'background-image:url(' +
-          typeObj.imgUrl +
-          ');text-indent: -9999px;background-position: 6px 2px;background-repeat: no-repeat;background-size: 32px 16px;opacity:' +
-          opacity +
-          ';'
-      );
+      const opacity = item.enable ? 1 : 0.5;
+      const img =
+        typeObj && typeObj.imgUrl && require('@/assets/imgs/' + typeObj.imgUrl);
+      img &&
+        this.$refs['select' + key][0].$el.children[0].children[0].setAttribute(
+          'style',
+          'background-image:url(' +
+            img +
+            ');color: transparent;background-position: 6px 2px;background-repeat: no-repeat;background-size: 32px 16px;opacity:' +
+            opacity +
+            ';'
+        );
     },
     changeType(e, key) {
       const item = this.types.find((item) => item.val === e);
+      const img =
+        item && item.imgUrl && require('@/assets/imgs/' + item.imgUrl);
       this.$refs['select' + key][0].$el.children[0].children[0].setAttribute(
         'style',
         'background-image:url(' +
-          item.imgUrl +
-          ');text-indent: -9999px;background-position: 6px 2px;background-repeat: no-repeat;background-size: 32px 16px;'
+          img +
+          ');color: transparent;background-position: 6px 2px;background-repeat: no-repeat;background-size: 32px 16px;'
       );
     },
-    changeChose(v, key) {
+    changeenable(v, key) {
       console.log(v, key);
       const item = this.bandsData[key];
-      item.chose = v;
+      item.enable = v;
       this.$set(this.bandsData, key, item);
       this.changeTypeImg(key, item);
       this.renderChart();
@@ -482,24 +498,26 @@ export default {
       if (!key) {
         return;
       }
-      this.chartDom.dispatchAction({
-        type: 'showTip',
-        seriesIndex: 0,
-        dataIndex: key,
-      });
+      this.chartDom &&
+        this.chartDom.dispatchAction({
+          type: 'showTip',
+          seriesIndex: 0,
+          dataIndex: key,
+        });
     },
     hideTooltip(key) {
       if (!key) {
         return;
       }
-      this.chartDom.dispatchAction({
-        type: 'hideTip',
-        seriesIndex: 0,
-        dataIndex: key,
-      });
+      this.chartDom &&
+        this.chartDom.dispatchAction({
+          type: 'hideTip',
+          seriesIndex: 0,
+          dataIndex: key,
+        });
     },
-    activeHandle(chose, key, isActive) {
-      if (!chose) {
+    activeHandle(enable, key, isActive) {
+      if (!enable) {
         this.activeIndex = null;
         return;
       }

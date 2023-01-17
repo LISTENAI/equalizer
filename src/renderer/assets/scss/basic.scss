@@ -295,6 +295,16 @@ html {
   color: $font-color;
 }
 
+.el-checkbox__input.is-disabled .el-checkbox__inner {
+  background-color: $grey4;
+  border-color: $grey4;
+}
+
+.el-checkbox__input.is-disabled+span.el-checkbox__label {
+  color: rgba(255, 255, 255, 0.3);
+  cursor: not-allowed;
+}
+
 .info-box {
   background: $background;
   width: 320px;

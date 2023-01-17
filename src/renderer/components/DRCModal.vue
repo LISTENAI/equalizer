@@ -15,7 +15,8 @@
           <el-radio
             v-for="item in bandNums"
             :label="item"
-            v-model="bandNum"
+            v-model="seg"
+            @change="changeBandNums"
             :key="item"
             >{{ `${item}段` }}</el-radio
           >
@@ -60,7 +61,7 @@
           <div class="list">
             <span>启动时间</span>
             <el-input-number
-              v-model="startTime"
+              v-model="at"
               controls-position="right"
               :min="0"
               :max="100"
@@ -71,7 +72,7 @@
           <div class="list">
             <span>释放时间</span>
             <el-input-number
-              v-model="releaseTime"
+              v-model="rt"
               controls-position="right"
               :min="0"
               :max="5000"
@@ -81,20 +82,20 @@
           </div>
           <div class="list">
             <span>检测类型</span>
-            <el-select v-model="drcType" size="mini">
+            <el-select v-model="mode" size="mini">
               <el-option
                 v-for="type in types"
-                :label="type"
-                :value="type"
-                :key="type"
+                :label="type.label"
+                :value="type.val"
+                :key="type.val"
               >
               </el-option>
             </el-select>
           </div>
-          <div class="list" v-if="drcType !== 'Peak'">
+          <div class="list" v-if="mode !== 0">
             <span>检测时间</span>
             <el-input-number
-              v-model="checkTime"
+              v-model="rms"
               controls-position="right"
               :min="0.02"
               :max="100"
@@ -111,7 +112,7 @@
     <span slot="footer" class="dialog-footer">
       <div class="fl">
         <el-button @click="resetHandle">重置</el-button>
-        <el-checkbox v-model="checkable">Bypass</el-checkbox>
+        <el-checkbox v-model="enable">Bypass</el-checkbox>
       </div>
       <el-button type="primary" @click="saveHandle">确 定</el-button>
       <el-button @click="closeHandle">取消</el-button>
@@ -124,22 +125,18 @@ import * as echarts from 'echarts';
 export default {
   props: {
     drcData: {
-      type: Array,
+      type: Object,
       default: () => {
-        return [];
+        return {};
       },
     },
     visible: {
       type: Boolean,
-      default: () => {
-        return {};
-      },
+      default: false,
     },
     checkable: {
       type: Boolean,
-      default: () => {
-        return {};
-      },
+      default: false,
     },
     save: {
       type: Function,
@@ -156,7 +153,6 @@ export default {
     return {
       activeIndex: null,
       bandNums: [3, 4, 5],
-      bandNum: 5,
       type: 'drc',
       symbolSize: 9, // 通过拖动是可以实时改变这里的值的
       drcVal: {
@@ -174,23 +170,58 @@ export default {
         [-75, -75],
         [-100, -100],
       ],
-      types: ['Peak', 'RMS'],
-      // bandsData: this.drcData, //后续数据传入
+      types: [
+        {
+          label: 'Peak',
+          val: 0,
+        },
+        {
+          label: 'RMS',
+          val: 1,
+        },
+      ],
+      enable: this.checkable,
       bandsData: [],
-      startTime: 10,
-      releaseTime: 500,
-      checkTime: 0.02,
-      drcType: 'Peak',
+      fs: 48000, //采样率
+      seg: 5, //段数
+      at: 10, //启动时间
+      rt: 500, //释放时间
+      rms: 0.02, //检测时间
+      mode: 0, //类型
       show: this.visible,
       chartDom: null,
       mutex: false, // 属性监听互斥锁
+      originBandsData: {},
     };
   },
   watch: {
     // bands改变 更新 chart  chart改变band，但是band不需要再
+    drcData: {
+      handler(newVal) {
+        if (!newVal) return;
+        console.log('更新drcData', newVal);
+        const { fs, at, rt, mode, rms, seg, dots } = newVal;
+        this.fs = fs;
+        this.at = at;
+        this.rt = rt;
+        this.rms = rms;
+        this.seg = seg;
+        this.mode = mode;
+        this.dots = dots;
+        if (dots?.length) {
+          this.bandsData = dots;
+        } else {
+          const { bands } = this.getBandsData(this.seg || 5);
+          this.bandsData = bands;
+        }
+        this.mutex = false;
+      },
+      deep: true,
+      immediate: true,
+    },
     bandsData: {
       handler(newVal) {
-        if (!this.mutex) {
+        if (!this.mutex && newVal) {
           console.log('更新bandsdata', newVal);
           this.bandsData = newVal;
           this.chartDatas = this.getChartData(newVal);
@@ -199,35 +230,62 @@ export default {
       },
       deep: true,
     },
+    checkable: function (newVal) {
+      this.enable = newVal;
+    },
     visible: function (newVal) {
       this.show = newVal;
+      this.enable = this.checkable;
     },
-    bandNum: function (newVal) {
-      const { charts, bands } = this.getBandsData(newVal);
-      this.chartDatas = charts;
-      this.bandsData = bands;
-      setTimeout(this.renderChart, 0);
-    },
+    // visible: {
+    //   handler(newVal) {
+    //     this.show = newVal;
+    //     if (newVal) {
+    //       this.originBandsData[this.seg] = {
+    //         bands: this.dots,
+    //         charts: this.getChartData(this.dots),
+    //       };
+    //     }
+    //   },
+    //   immediate: true,
+    // },
   },
 
   mounted() {
-    const { charts, bands } = this.getBandsData(this.bandNum);
-    this.chartDatas = charts;
-    this.bandsData = bands;
+    console.log('mounted', this.seg, this.dots);
+    if (this.dots) {
+      this.originBandsData[this.seg] = {
+        bands: this.dots,
+        charts: this.getChartData(this.dots),
+      };
+    } else {
+      const { bands } = this.getBandsData(this.seg);
+      this.bandsData = bands;
+    }
+    // const { charts, bands } = this.getBandsData(this.seg);
+    // this.chartDatas = charts;
+    // this.bandsData = bands;
     // setTimeout(this.renderChart, 0);
   },
   beforeDestroy() {
     // off(window, 'resize', this.resize);
   },
+  //默认只给几段的数据，在切换的时候其他默认的点都是默认平均分布
   methods: {
     getBandsData(num) {
+      if (!num) return [];
+      const originBandsData = this.originBandsData[num];
+
+      if (originBandsData) {
+        const { charts, bands } = originBandsData;
+        return { charts, bands };
+      }
       const { minX, minY, maxX, maxY, defaultW } = this.drcVal;
-      console.log(defaultW);
-      const Xrange = -parseInt((maxX - minX) / (num - 1));
-      const Yrange = -parseInt((maxY - minY) / (num - 1));
+      const Xrange = -parseInt((maxX - minX) / num);
+      const Yrange = -parseInt((maxY - minY) / num);
       const bandArr = [];
       const chartArr = [];
-      for (let i = 0; i < num; i++) {
+      for (let i = 0; i < num + 1; i++) {
         bandArr.push({
           x: Xrange * i,
           y: Yrange * i,
@@ -251,7 +309,7 @@ export default {
       });
     },
     getBoundaryValGrid(n) {
-      const num = n || this.bandNum;
+      const num = n || this.seg;
       const { maxY, minY, maxX, minX } = this.drcVal;
       const maxYStep = maxY / num;
       const minYStep = minY / num;
@@ -260,12 +318,12 @@ export default {
       const maxArr = this.convertToPixel([maxXStep, maxYStep]);
       const minArr = this.convertToPixel([minXStep, minYStep]);
 
-      console.log({
-        maxX: maxArr[0],
-        minX: minArr[0],
-        maxY: maxArr[1],
-        minY: minArr[1],
-      });
+      // console.log({
+      //   maxX: maxArr[0],
+      //   minX: minArr[0],
+      //   maxY: maxArr[1],
+      //   minY: minArr[1],
+      // });
       return {
         maxX: maxArr[0],
         minX: minArr[0],
@@ -274,10 +332,9 @@ export default {
       };
     },
     convertToPixel(dataItem) {
-      return this.chartDom && this.chartDom.convertToPixel('grid', dataItem);
+      return this?.chartDom.convertToPixel('grid', dataItem);
     },
     renderChart() {
-      console.log(this.chartDatas);
       const that = this;
       this.chartDom = echarts && echarts.init(this.$refs.dom);
       if (!this.chartDom) return;
@@ -342,7 +399,8 @@ export default {
           formatter(params) {
             const data = params[0].data || [0, 0];
             const dataIndex = params[0].dataIndex;
-            const wVal = that.bandsData[dataIndex].w;
+            const wVal =
+              that.bandsData[dataIndex] && that.bandsData[dataIndex].w;
             return (
               'X: ' +
               data[0].toFixed(0) +
@@ -434,7 +492,7 @@ export default {
               fontSize: 12,
               position: 'bottom',
               formatter: (params) => {
-                return '' + params.dataIndex;
+                return '' + (params.dataIndex + 1);
               },
             },
             data: this.chartDatas,
@@ -443,7 +501,7 @@ export default {
       };
       this.chartDom.setOption(option);
       const { minX, maxX, minY, maxY } = this.getBoundaryValGrid(1);
-      console.log(minX, maxX, minY, maxY);
+      // console.log(minX, maxX, minY, maxY);
       const graphicList = echarts.util.map(
         this.chartDatas,
         (dataItem, dataIndex) => {
@@ -460,14 +518,14 @@ export default {
             // },
             // 用 transform 的方式对圆点进行定位。position: [x, y] 表示将圆点平移到 [x, y] 位置。
             // convertToPixel获取每个圆点的位置
-            position: that.chartDom.convertToPixel('grid', dataItem),
+            position: that.chartDom?.convertToPixel('grid', dataItem),
             // 圆点不可见
             invisible: true,
             draggable: true,
             z: 100,
             onmousemove: () => {
               setTimeout(() => {
-                that.chartDom.dispatchAction({
+                that.chartDom?.dispatchAction({
                   type: 'showTip', // 根据 tooltip 的配置项显示提示框。
                   seriesIndex: 0,
                   dataIndex,
@@ -525,24 +583,23 @@ export default {
       // this.dom.resize();
     },
     saveHandle() {
-      this.closeHandle();
-      const {
-        checkable,
-        bandsData,
-        drcType,
-        startTime,
-        releaseTime,
-        checkTime,
-      } = this;
+      const { enable, bandsData, mode, at, rt, rms, fs, seg } = this;
       const params = {
-        checkable,
-        data: bandsData,
-        drcType,
-        startTime,
-        releaseTime,
-        checkTime,
+        enable: !enable,
+        fs,
+        seg,
+        dots: bandsData.map((item) => [item.x, item.y, item.w]),
+        mode,
+        at,
+        rt,
+        rms,
       };
       this.$emit('save', this.type, params);
+      this.closeHandle();
+    },
+    changeBandNums() {
+      const { bands } = this.getBandsData(this.seg);
+      this.bandsData = bands;
     },
     closeHandle() {
       this.resetHandle();
@@ -550,18 +607,19 @@ export default {
     },
     resetHandle() {
       // this.$emit('reset', this.type);
-      this.bandNum = 5;
-      this.startTime = 10;
-      this.releaseTime = 500;
-      this.checkTime = 0.02;
-      this.drcType = 'Peak';
-      const { charts, bands } = this.getBandsData(this.bandNum);
+      this.seg = 5;
+      this.at = 10;
+      this.rt = 500;
+      this.rms = 0.02;
+      this.mode = 0;
+      const { charts, bands } = this.getBandsData(this.seg);
       this.chartDatas = charts;
       this.bandsData = bands;
+      this.originBandsData = {};
       this.mutex = false;
     },
     showToolTip(key) {
-      this.chartDom.dispatchAction({
+      this.chartDom?.dispatchAction({
         type: 'showTip',
         seriesIndex: 0,
         dataIndex: key,
@@ -572,7 +630,7 @@ export default {
 </script>
 <style lang="scss" scoped>
 .drc-dialog {
-  /deep/.el-dialog__body {
+  ::v-deep.el-dialog__body {
     padding: 14px 16px !important;
   }
   .flex {
@@ -626,7 +684,7 @@ export default {
       .el-radio {
         margin-right: 16px;
       }
-      /deep/.el-radio__label {
+      ::v-deep.el-radio__label {
         font-size: 13px;
       }
     }
