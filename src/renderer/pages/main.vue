@@ -8,7 +8,7 @@
           v-model="com"
           placeholder="请选择"
           size="middle"
-          :loading="loading"
+          :loading="comsLoading"
           @visible-change="getComs"
         >
           <el-option
@@ -50,7 +50,7 @@
         <div
           class="opt-btn flex"
           :class="connected ? '' : 'disabled'"
-          @click="() => getData('agc')"
+          @click="getAllParams"
         >
           <svg-icon icon-class="get" class="icon" />
           <span>获取参数</span>
@@ -63,13 +63,17 @@
           <svg-icon icon-class="write" class="icon" />
           <span>写入参数</span>
         </div>
-        <div class="opt-btn flex" :class="connected ? '' : 'disabled'">
+        <div
+          class="opt-btn flex"
+          :class="connected ? '' : 'disabled'"
+          @click="clearTime"
+        >
           <svg-icon icon-class="export" class="icon" />
           <span>导出bin文件</span>
         </div>
       </div>
     </div>
-    <div class="container flex">
+    <div class="container flex" v-loading="loading">
       <div class="progress flex">
         <div class="step text">输入</div>
         <div class="step flex" v-for="item in options" :key="item.text">
@@ -138,14 +142,14 @@ import VoiceModal from 'components/VoiceModal.vue';
 import EQModal from 'components/EqModal.vue';
 import DRCModal from 'components/DRCModal.vue';
 import SerialPortHandle from '../utils/serialport';
-// import serialportConnect from '../utils/index'
-import { checkConnect, setParams, getParams, TYPES } from '../utils/index';
+import { checkConnect, setParams, getParams } from '../utils/index';
 
 export default {
   name: 'main-page',
   components: { VoiceModal, EQModal, DRCModal },
   data() {
     return {
+      dataTypes: ['bass_boost', 'treble_boost', 'drc', 'eq', 'agc'],
       coms: [],
       rates: [
         {
@@ -155,6 +159,7 @@ export default {
       ],
       com: '',
       rate: '',
+      comsLoading: false,
       loading: false,
       connected: false,
       connecting: false,
@@ -292,6 +297,8 @@ export default {
       drcCheckable: false, // drc bypass
       drcData: null, // drc 数据
       allParams: {},
+      eName: '',
+      eDone: false,
     };
   },
   mounted() {
@@ -308,11 +315,38 @@ export default {
     },
   },
   methods: {
+    async getAllParams() {
+      this.loading = true;
+      let timeId = setInterval(async () => {
+        if (this.dataTypes.length === 0) {
+          clearInterval(this.timeId);
+          this.timeId = null;
+          this.loading = false;
+          return;
+        } else {
+          const type = this.dataTypes[0];
+          if (this.eName && this.eName === type) {
+            if (this.eDone) {
+              console.log(type, this.eName, this.eDone);
+              this.dataTypes.shift();
+              this.eName = '';
+              this.eDone = false;
+            }
+          } else {
+            this.eName = type;
+            this.eDone = false;
+            await this.getData(type);
+          }
+        }
+      }, 400);
+      this.timeId = timeId;
+    },
     async getData(type) {
       if (!this.connected) {
         return;
       }
       try {
+        console.log('getData-->', type);
         const params = getParams(type);
         await this.writeSerialPortHandle(params);
       } catch (error) {
@@ -331,9 +365,12 @@ export default {
 
     serialPorEmitterHandle() {
       SerialPortHandle.serialPorEmitter.on('SerialPort', (res) => {
-        console.log('data from SerialPort', res);
-        console.log(JSON.stringify(res));
+        // console.log('data from SerialPort', res);
+        // console.log(JSON.stringify(res));
         const { code, data } = res;
+        if (this.eName === data.type) {
+          this.eDone = true;
+        }
         switch (data.type) {
           case 'connect':
             this.changeConnectHandle(code === 0);
@@ -375,10 +412,10 @@ export default {
       }
     },
     async getComs() {
-      this.loading = true;
+      this.comsLoading = true;
       const res = await SerialPortHandle.getList();
       this.coms = res;
-      this.loading = false;
+      this.comsLoading = false;
       console.log(res);
     },
     open(link) {
@@ -410,7 +447,7 @@ export default {
       }
     },
     async changeConnectHandle(isOk) {
-      console.log('isok', isOk);
+      // console.log('isok', isOk);
       this.connected = isOk;
       this.connecting = false;
     },
@@ -429,20 +466,20 @@ export default {
     },
     //打开设置 ->获取参数
     async openEQModal(item) {
-      await this.getData(item.type);
+      // await this.getData(item.type);
       this.eqVisible = true;
       this.currentModal = item.type;
       this.eqCheckable = item.enable;
     },
     async openDRCModal(item) {
-      await this.getData(item.type);
+      // await this.getData(item.type);
       this.currentModal = item.type;
       this.drcCheckable = item.enable;
       this.drcVisible = true;
       // this.drcData = JSON.parse(JSON.stringify(this.voiceType['drc']));
     },
     async openVoiceModal(item) {
-      await this.getData(item.type);
+      // await this.getData(item.type);
       this.voiceVisible = true;
       this.currentModal = item.type;
       this.voiceCheckable = item.enable;
@@ -614,6 +651,10 @@ export default {
       this.enableVoice(type, !data.enable);
       await this.saveParamsHandle(type, data);
       console.log(this.allParams);
+    },
+    clearTime() {
+      this.timeId && clearInterval(this.timeId);
+      this.timeId = undefined;
     },
     //单个写入设置
     async saveParamsHandle(type, data) {

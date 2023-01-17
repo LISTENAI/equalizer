@@ -4,7 +4,7 @@ const eventEmitter = require('events');
 export default class SerialPortHandle {
     currentConnection = null;
     static type = '';//串口读取的数据种类
-    static cacaheData = [];//串口读取的数据缓冲
+    static cacheData = [];//串口读取的数据缓冲
     static serialPorEmitter = new eventEmitter();
     static async getList() {
         return await SerialPort.list();
@@ -14,7 +14,7 @@ export default class SerialPortHandle {
             const baud_rate = 115200;
             if (this.currentConnection) {
                 this.currentConnection.close();
-                this.currentConnection = null;
+                this.clear();
             }
             const port = new SerialPort({
                 path: portPath,
@@ -38,13 +38,13 @@ export default class SerialPortHandle {
             });
             port.on('data', (buf) => {
                 const str = buf && buf2Hex(buf).replace(/\s/g, '');
-                // console.log(this.cacaheData);
-                this.cacaheData.push(str);
+                this.cacheData.push(str);
+                console.log('串口收到的数据--->', buf2Hex(Buffer.from(this.cacheData.join(''), 'hex')));
                 let isEnd = false;
                 let all;
                 let timeid = setInterval(() => {
                     if (!isEnd) {
-                        const allData = Buffer.from(this.cacaheData.join(''), 'hex');
+                        const allData = Buffer.from(this.cacheData.join(''), 'hex');
                         const { code, data } = reciveDataDone(allData);
                         isEnd = code;
                         all = data;
@@ -52,12 +52,19 @@ export default class SerialPortHandle {
                         clearInterval(timeid);
                         timeid = null;
                         this.read(all);
-                        this.cacaheData = [];
+                        this.cacheData = [];
                     }
                 }, 200);
             });
+            // port.on('data', (buf) => {
+            //     const str = buf && buf2Hex(buf).replace(/\s/g, '');
+            //     const allData = Buffer.from(str, 'hex');
+            //     const res = parseData(allData, this.type);
+            //     console.log('读取串口数据成功', res);
+            //     this.serialPorEmitter.emit('SerialPort', res);
+            // });
             port.on('error', (err) => {
-                this.currentConnection = null;
+                this.clear();
                 this.serialPorEmitter.emit('SerialPort', { code: -1, data: { type: 'error', message: err.message || '请重新连接串口' } });
             });
         });
@@ -71,7 +78,7 @@ export default class SerialPortHandle {
                         reject(err.message || '串口关闭失败');
                     }
                     console.log('断开串口');
-                    this.currentConnection = null;
+                    this.clear();
                     resolve();
                 });
             }
@@ -91,7 +98,7 @@ export default class SerialPortHandle {
                     if (err) {
                         reject(err.message || '串口写数据出错');
                     } else {
-                        console.log('发送完成！', Buffer.from(data, 'hex'));
+                        console.log('发送完成！', buf2Hex(Buffer.from(data, 'hex')));
                         resolve();
                     }
                 });
@@ -109,5 +116,9 @@ export default class SerialPortHandle {
         } catch (error) {
             console.log(error);
         }
+    }
+    clear() {
+        this.currentConnection = null;
+        this.cacheData = [];
     }
 }

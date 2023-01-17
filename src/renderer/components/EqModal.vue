@@ -146,16 +146,16 @@ export default {
         minFC: 20,
       },
       chartDatas: [
-        [20, 0],
-        [100, 10],
-        [200, 5],
-        [300, -12],
-        [400, -6],
-        [500, 20],
-        [600, -5],
-        [1000, 6],
-        [1800, 20],
-        [20000, -0],
+        // [20, 0],
+        // [100, 10],
+        // [200, 5],
+        // [300, -12],
+        // [400, -6],
+        // [500, 20],
+        // [600, -5],
+        // [1000, 6],
+        // [1800, 20],
+        // [20000, -0],
       ],
       types: [
         {
@@ -197,6 +197,7 @@ export default {
         this.bandsData = this.getBandsData(newVal);
         this.chartDatas = this.getChartData(newVal);
         setTimeout(this.renderChart, 0);
+        setTimeout(this.resetTypeSelect, 0);
       },
       deep: true,
     },

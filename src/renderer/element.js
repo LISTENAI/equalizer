@@ -1,5 +1,5 @@
 import Vue from 'vue';
-import { Button, Select, Option, Checkbox, Dialog, InputNumber, Slider, MessageBox, Message, Radio } from 'element-ui';
+import { Button, Select, Option, Checkbox, Dialog, InputNumber, Slider, MessageBox, Message, Radio, Loading } from 'element-ui';
 Vue.use(Button);
 Vue.use(Select);
 Vue.use(Option);
@@ -8,7 +8,7 @@ Vue.use(Dialog);
 Vue.use(InputNumber);
 Vue.use(Slider);
 Vue.use(Radio);
-
+Vue.use(Loading.directive);
 Vue.prototype.$msgbox = MessageBox;
 Vue.prototype.$alert = MessageBox.alert;
 Vue.prototype.$confirm = MessageBox.confirm;

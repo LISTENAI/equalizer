@@ -144,7 +144,6 @@ export const setParams = (type, data) => {
 };
 
 export const getParams = (type) => {
-  console.log(type);
   return new Uint8Array([
     ...createHeader(1),
     ...createData(0x04, [TYPES_HEX[type]])
@@ -152,7 +151,7 @@ export const getParams = (type) => {
 };
 //查询的参数
 export const reciveDataDone = (buf) => {
-  // console.log('buf--->', buf2Hex(buf));
+  console.log('buf--->', buf2Hex(buf));
   let offset = 0;
   let bufLen = 0;
   let data = [];
@@ -169,7 +168,7 @@ export const reciveDataDone = (buf) => {
       break;
     }
   }
-  // console.log('data--->', data);
+  console.log('data--->', data);
   return {
     code: isEnd,
     data
@@ -177,20 +176,20 @@ export const reciveDataDone = (buf) => {
 
 };
 // 58 46 0B 00 00 57 FF 00 F1 00 10
-export const parseData = (data, bufType) => {
-  // console.log('buf--->', buf2Hex(buf));
-  // const data = [];
-  // let offset = 0;
-  // while (buf.length > offset) {
-  //   // head start with: 0x58 0x46
-  //   if (buf.readInt16LE(offset) === 18008) {
-  //     const len = buf.readInt16LE(offset + 2);//命令帧长度
-  //     data.push(buf.subarray(offset, offset + len));
-  //     offset += len;
-  //   } else {
-  //     break;
-  //   }
-  // }
+export const parseData = (buf, bufType) => {
+  console.log('buf--->', buf2Hex(buf));
+  const data = [];
+  let offset = 0;
+  while (buf.length > offset) {
+    // head start with: 0x58 0x46
+    if (buf.readInt16LE(offset) === 18008) {
+      const len = buf.readInt16LE(offset + 2);//命令帧长度
+      data.push(buf.subarray(offset, offset + len));
+      offset += len;
+    } else {
+      break;
+    }
+  }
   let res_code = -1;
   let res_data = {
     type: '',
@@ -206,7 +205,6 @@ export const parseData = (data, bufType) => {
         if (bufType) res_data.type = bufType;
       } else if (data_buf.readUInt8(2) === 242) {
         // 返回参数: 0xf2
-        console.log('parseData1-->', data_buf.readInt8(3) - 1);
         const type = TYPES[data_buf.readInt8(3) - 1];
         res_data.type = type;
         console.log('parseData-->', type);
@@ -318,7 +316,7 @@ const parseTrebleBoost = (buf) => {
 };
 
 // // 58 46 0A 00 01 57 F0 00 01 0F
-// console.log('checkConnect =>', checkConnect());
+console.log('checkConnect =>', checkConnect());
 
 // // 58 46 6F 00 01 F2 F0 00 03 01 01 00 00 00 00 00 7A 46 CD CC 4C 3D CD CC 4C 3E 00 00 00 00 00 00 80 3F 03 00 00 00 00 00 80 BF 00 00 80 BF 00 00 80 3F 00 00 00 C0 00 00 00 C0 00 00 00 40 00 00 40 C0 00 00 40 C0 00 00 40 40 00 00 80 C0 00 00 80 C0 00 00 80 40 00 00 A0 C0 00 00 A0 C0 00 00 A0 40 00 00 C0 C0 00 00 C0 C0 00 00 C0 40 E7
 // console.log('drc =>', setParams('drc', {
