@@ -87,10 +87,15 @@ export default {
       enable: this.checkable,
     };
   },
+  mounted() {
+    console.log('mounted', this.voiceData);
+    this.detail = JSON.parse(JSON.stringify(this.voiceData));
+  },
   watch: {
     voiceData: {
       handler(newVal) {
-        this.detail = newVal;
+        console.log('更新', this.voiceData.type, newVal);
+        this.detail = JSON.parse(JSON.stringify(newVal));
       },
       deep: true,
     },
@@ -100,6 +105,7 @@ export default {
     visible: function (newVal) {
       this.show = newVal;
       this.enable = this.checkable;
+      console.log(this.voiceData);
     },
   },
   methods: {

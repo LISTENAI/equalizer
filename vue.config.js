@@ -95,7 +95,7 @@ module.exports = {
         //   output: 'build' // 输出文件夹
         // },
         win: {
-          // icon: 'xxx/icon.ico',
+          icon: 'xxx/icon.ico',
           target: ['nsis', 'zip']
         },
         mac: {

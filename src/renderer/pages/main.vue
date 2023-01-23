@@ -1,5 +1,6 @@
-<!-- 设置和Bypass按钮 disabled状态没改-->
-<!--还剩多次数据写入没有调试 -->
+<!-- 获取参数之前没办法设置写入参数，因为有些字段是通过串口拿到的，页面并没有-->
+<!-- 缺少工具logo icon-->
+<!-- 验证打包其他版本 serialport10.x只支持win10,window上暂时不能打liunx安装包-->
 <template>
   <div class="main-page">
     <div class="top-banner flex">
@@ -8,7 +9,7 @@
           v-model="com"
           placeholder="请选择"
           size="middle"
-          :loading="comsLoading"
+          v-loading="comsLoading"
           @visible-change="getComs"
         >
           <el-option
@@ -22,8 +23,8 @@
         <el-button
           size="mini"
           @click="connectHandle"
-          :disabled="connecting"
-          :loading="connecting"
+          :disabled="connecting || !com"
+          v-loading="connecting"
         >
           {{ connected && !connecting ? '断开' : '连接' }}</el-button
         >
@@ -49,7 +50,7 @@
         </el-select>
         <div
           class="opt-btn flex"
-          :class="connected ? '' : 'disabled'"
+          :class="!connected || loading || writing ? 'disabled' : ''"
           @click="getAllParams"
         >
           <svg-icon icon-class="get" class="icon" />
@@ -57,8 +58,9 @@
         </div>
         <div
           class="opt-btn flex margin"
-          :class="connected ? '' : 'disabled'"
-          @click="saveParamsHandle"
+          v-loading="writing"
+          :class="!connected || loading || writing ? 'disabled' : ''"
+          @click="saveAllParamsHandle"
         >
           <svg-icon icon-class="write" class="icon" />
           <span>写入参数</span>
@@ -81,10 +83,14 @@
           <div class="flex box">
             <img :src="require('@/assets/imgs/' + item.imageUrl)" />
             <p class="text">{{ item.text }}</p>
-            <el-button @click="() => opreateHandle(item)">设置</el-button>
-            <!-- :disabled="item.enable || !connected" -->
-            <!-- :disabled="!connected" -->
-            <el-checkbox v-model="item.enable">Bypass</el-checkbox>
+            <el-button
+              :disabled="item.enable || !connected"
+              @click="() => opreateHandle(item)"
+              >设置</el-button
+            >
+            <el-checkbox v-model="item.enable" :disabled="!connected"
+              >Bypass</el-checkbox
+            >
           </div>
         </div>
         <div class="step flex arrow-part">
@@ -110,9 +116,10 @@
     </div>
 
     <VoiceModal
+      v-if="voiceVisible"
       :visible="voiceVisible"
       :checkable="voiceCheckable"
-      :voiceData="voiceData"
+      :voiceData="voiceData[currentModalType]"
       @close="closeModal"
       @reset="resetModalData"
       @save="saveHandle"
@@ -142,25 +149,26 @@ import VoiceModal from 'components/VoiceModal.vue';
 import EQModal from 'components/EqModal.vue';
 import DRCModal from 'components/DRCModal.vue';
 import SerialPortHandle from '../utils/serialport';
-import { checkConnect, setParams, getParams } from '../utils/index';
+import { checkConnect, setParams, getParams, TYPES } from '../utils/index';
 
 export default {
   name: 'main-page',
   components: { VoiceModal, EQModal, DRCModal },
   data() {
     return {
-      dataTypes: ['bass_boost', 'treble_boost', 'drc', 'eq', 'agc'],
+      // dataTypes: ['bass_boost', 'treble_boost', 'drc', 'eq', 'agc'],
       coms: [],
       rates: [
         {
-          value: '48K',
+          value: '4800',
           label: 'Music Manager 48K',
         },
       ],
       com: '',
-      rate: '',
+      rate: '4800',
       comsLoading: false,
       loading: false,
+      writing: false,
       connected: false,
       connecting: false,
       arrowImgUrl: 'arrow.png',
@@ -211,9 +219,9 @@ export default {
             },
             {
               type: 'freq',
-              value: 0,
+              value: 200,
               max: 200,
-              min: 0,
+              min: 40,
               desc: '低音增强截止频率',
               unit: 'Hz',
             },
@@ -232,9 +240,9 @@ export default {
             },
             {
               type: 'freq',
-              value: 0,
+              value: 2000,
               max: 2000,
-              min: 0,
+              min: 200,
               desc: '高音增强截止频率',
               unit: 'Hz',
             },
@@ -247,7 +255,7 @@ export default {
               type: 'leftGain',
               value: 0,
               max: 15,
-              min: -0,
+              min: 0,
               desc: '左声道增益',
               unit: 'dB',
             },
@@ -255,7 +263,7 @@ export default {
               type: 'rightGain',
               value: 0,
               max: 15,
-              min: -0,
+              min: 0,
               desc: '右声道增益',
               unit: 'dB',
             },
@@ -286,7 +294,7 @@ export default {
       originOptions: [],
       originVoiceType: [],
       eqType: {},
-      currentModal: '',
+      currentModalType: '',
       voiceVisible: false,
       voiceCheckable: false, // 低音/高音/输出 bypass
       voiceData: {}, // 低音/高音/输出 数据
@@ -306,6 +314,10 @@ export default {
     this.originVoiceType = JSON.parse(JSON.stringify(this.voiceType));
     this.getComs();
     this.serialPorEmitterHandle();
+    this.setInitData();
+  },
+  unmounted() {
+    clearInterval(this.timeId);
   },
   watch: {
     connected(val) {
@@ -315,20 +327,44 @@ export default {
     },
   },
   methods: {
+    //没有获取参数之前赋默认值
+    setInitData() {
+      TYPES.forEach((item) => {
+        this.resetModalData(item);
+      });
+    },
+
+    serialPorEmitterHandle() {
+      SerialPortHandle.serialPorEmitter.on('SerialPort', (res) => {
+        // console.log('data from SerialPort', res);
+        // console.log(JSON.stringify(res));
+        const { code, data } = res;
+        if (this.eName === data.type) {
+          this.eDone = true;
+        }
+        this.parseData(data.type, data.data, code, data.message);
+      });
+    },
     async getAllParams() {
+      const dataTypes = JSON.parse(JSON.stringify(TYPES));
+      if (!this.connected || this.loading || this.writing) return;
       this.loading = true;
       let timeId = setInterval(async () => {
-        if (this.dataTypes.length === 0) {
+        if (dataTypes.length === 0) {
           clearInterval(this.timeId);
           this.timeId = null;
           this.loading = false;
+          this.eName = '';
+          this.eDone = false;
+          console.log('所有参数');
+          console.log(this.voiceData);
           return;
         } else {
-          const type = this.dataTypes[0];
+          const type = dataTypes[0];
           if (this.eName && this.eName === type) {
             if (this.eDone) {
               console.log(type, this.eName, this.eDone);
-              this.dataTypes.shift();
+              dataTypes.shift();
               this.eName = '';
               this.eDone = false;
             }
@@ -363,46 +399,6 @@ export default {
       // });
     },
 
-    serialPorEmitterHandle() {
-      SerialPortHandle.serialPorEmitter.on('SerialPort', (res) => {
-        // console.log('data from SerialPort', res);
-        // console.log(JSON.stringify(res));
-        const { code, data } = res;
-        if (this.eName === data.type) {
-          this.eDone = true;
-        }
-        switch (data.type) {
-          case 'connect':
-            this.changeConnectHandle(code === 0);
-            break;
-          case 'save':
-            if (code === 0) {
-              //设置数据成功
-              console.log('save成功', this.voiceType);
-            }
-            break;
-          case 'error':
-            this.$message.error(data.message);
-          case 'bass_boost':
-            this.parseVoiceData('bass_boost', data.data);
-            break;
-          case 'treble_boost':
-            this.parseVoiceData('treble_boost', data.data);
-            break;
-          case 'eq':
-            this.parseEQData(data.data);
-            break;
-          case 'drc':
-            this.parseDRCData(data.data);
-            break;
-          case 'agc':
-            this.parseAGCData(data.data);
-            break;
-          default:
-            break;
-        }
-      });
-    },
     async writeSerialPortHandle(params, errorCb) {
       try {
         await SerialPortHandle.write(params);
@@ -468,30 +464,74 @@ export default {
     async openEQModal(item) {
       // await this.getData(item.type);
       this.eqVisible = true;
-      this.currentModal = item.type;
+      this.currentModalType = item.type;
       this.eqCheckable = item.enable;
+      console.log(this.eqData);
     },
     async openDRCModal(item) {
       // await this.getData(item.type);
-      this.currentModal = item.type;
+      this.currentModalType = item.type;
       this.drcCheckable = item.enable;
       this.drcVisible = true;
+      console.log(this.drcData);
       // this.drcData = JSON.parse(JSON.stringify(this.voiceType['drc']));
     },
     async openVoiceModal(item) {
+      console.log(this.voiceData);
       // await this.getData(item.type);
       this.voiceVisible = true;
-      this.currentModal = item.type;
+      this.currentModalType = item.type;
       this.voiceCheckable = item.enable;
+    },
+    parseData(type, data, code, message) {
+      switch (type) {
+        case 'connect':
+          this.changeConnectHandle(code === 0);
+          break;
+        case 'save':
+          if (code === 0) {
+            //设置数据成功 更新voiceType
+            console.log('save成功');
+          }
+          break;
+        case 'error':
+          this.$message.error(message);
+        case 'bass_boost':
+          this.parseVoiceData('bass_boost', data);
+          break;
+        case 'treble_boost':
+          this.parseVoiceData('treble_boost', data);
+          break;
+        case 'eq':
+          this.parseEQData(data);
+          break;
+        case 'drc':
+          this.parseDRCData(data);
+          break;
+        case 'agc':
+          this.parseAGCData(data);
+          break;
+        default:
+          break;
+      }
     },
     parseEQData(data) {
       let modalData = JSON.parse(JSON.stringify(this.voiceType['eq']));
       if (data) {
         const { filters } = data;
+        // filters.map((item) => {
+        //   return {
+        //     enable: !!item[0],
+        //     dSampleRateHz:item[],
+        //     dSampleRateHz:item[],
+        //     dSampleRateHz:item[],
+
+        //   };
+        // });
         modalData = filters;
         // this.eqCheckable = !enable;
       }
-      console.log(modalData);
+      console.log('eqdata--->', modalData);
       this.eqData = modalData;
     },
     parseDRCData(data) {
@@ -566,7 +606,7 @@ export default {
         });
         modalData.item = item;
       }
-      this.voiceData = modalData;
+      this.voiceData['agc'] = modalData;
     },
     parseVoiceData(type, data) {
       console.log(type, data);
@@ -585,18 +625,19 @@ export default {
           }
           return voice;
         });
-        this.voiceData = modalData;
+        this.voiceData[type] = modalData;
+
         // this.voiceCheckable = !enable;
       } else {
-        this.voiceData = JSON.parse(JSON.stringify(this.voiceType[type]));
-        this.voiceData.type = type;
+        const modalData = JSON.parse(JSON.stringify(this.voiceType[type]));
+        modalData.type = type;
+        this.voiceData[type] = modalData;
       }
     },
     resetModalData(type) {
-      console.log('reset', type);
-      const voiceData = JSON.parse(
-        JSON.stringify(this.originVoiceType[this.currentModal])
-      );
+      const voiceData = JSON.parse(JSON.stringify(this.originVoiceType[type]));
+      console.log('reset', type, voiceData);
+
       switch (type) {
         // case 'bass_boost':
         //   this.voiceData = voiceData;
@@ -619,10 +660,10 @@ export default {
           this.drcCheckable = false;
           break;
         default: //'bass_boost'|'treble_boost'|'agc'
-          this.voiceData = voiceData;
+          voiceData.type = type;
+          this.voiceData[type] = voiceData;
           this.voiceCheckable = false;
           this.enableVoice(type, false);
-          voiceData.type = type;
           break;
       }
     },
@@ -647,10 +688,16 @@ export default {
       }
     },
     async saveHandle(type, data) {
+      this.parseData(type, data);
+      if (type === 'eq') {
+        const { filters } = data;
+        data.filters = filters.map((item) => {
+          const { enable, type, dSampleRateHz, q, gain, fc } = item;
+          return [enable ? 1 : 0, type, dSampleRateHz || 48000, q, gain, fc];
+        });
+      }
       this.$set(this.allParams, type, data);
       this.enableVoice(type, !data.enable);
-      await this.saveParamsHandle(type, data);
-      console.log(this.allParams);
     },
     clearTime() {
       this.timeId && clearInterval(this.timeId);
@@ -659,8 +706,10 @@ export default {
     //单个写入设置
     async saveParamsHandle(type, data) {
       try {
+        console.log('写入参数', type, data);
         const params = setParams(type, data);
-        SerialPortHandle.type = 'save';
+        SerialPortHandle.type = `save-${type}`;
+
         await this.writeSerialPortHandle(params, () => {
           this.resetModalData(type);
         });
@@ -670,10 +719,34 @@ export default {
     },
     //写入所有参数
     async saveAllParamsHandle() {
-      try {
-      } catch (error) {
-        this.$message.error(error.message);
-      }
+      const saveDatas = Object.keys(this.allParams);
+      if (!this.connected || this.loading || this.writing) return;
+      console.log('写入参数');
+      this.writing = true;
+      this.$message.l;
+      let timeId = setInterval(async () => {
+        if (saveDatas.length === 0) {
+          clearInterval(this.timeId);
+          this.timeId = null;
+          this.writing = false;
+          return;
+        } else {
+          const type = saveDatas[0];
+          if (this.eName && this.eName === `save-${type}`) {
+            if (this.eDone) {
+              console.log(type, this.eName, this.eDone);
+              saveDatas.shift();
+              this.eName = '';
+              this.eDone = false;
+            }
+          } else {
+            this.eName = `save-${type}`;
+            this.eDone = false;
+            await this.saveParamsHandle(type, this.allParams[type]);
+          }
+        }
+      }, 400);
+      this.timeId = timeId;
     },
   },
 };

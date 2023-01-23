@@ -97,10 +97,10 @@
             <el-input-number
               v-model="rms"
               controls-position="right"
-              :min="0.02"
-              :max="100"
-              :precision="2"
-              :step="0.01"
+              :min="0.3"
+              :max="10"
+              :precision="1"
+              :step="0.1"
               size="mini"
             ></el-input-number>
             <i>ms</i>
@@ -253,19 +253,19 @@ export default {
 
   mounted() {
     console.log('mounted', this.seg, this.dots);
-    if (this.dots) {
+    if (this.dots?.length) {
+      const dots = JSON.parse(JSON.stringify(this.dots));
       this.originBandsData[this.seg] = {
-        bands: this.dots,
-        charts: this.getChartData(this.dots),
+        bands: dots,
+        charts: this.getChartData(dots),
       };
+      this.bandsData = dots;
+      this.chartDatas = this.getChartData(dots);
     } else {
       const { bands } = this.getBandsData(this.seg);
       this.bandsData = bands;
     }
-    // const { charts, bands } = this.getBandsData(this.seg);
-    // this.chartDatas = charts;
-    // this.bandsData = bands;
-    // setTimeout(this.renderChart, 0);
+    setTimeout(this.renderChart, 0);
   },
   beforeDestroy() {
     // off(window, 'resize', this.resize);

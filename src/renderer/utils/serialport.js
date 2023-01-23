@@ -39,7 +39,7 @@ export default class SerialPortHandle {
             port.on('data', (buf) => {
                 const str = buf && buf2Hex(buf).replace(/\s/g, '');
                 this.cacheData.push(str);
-                console.log('串口收到的数据--->', buf2Hex(Buffer.from(this.cacheData.join(''), 'hex')));
+                // console.log('串口收到的数据--->', buf2Hex(Buffer.from(this.cacheData.join(''), 'hex')));
                 let isEnd = false;
                 let all;
                 let timeid = setInterval(() => {
@@ -70,6 +70,7 @@ export default class SerialPortHandle {
         });
     }
     static close() {
+        const self = this;
         return new Promise((resolve, _reject) => {
             if (this.currentConnection) {
                 this.currentConnection.close();
@@ -78,7 +79,7 @@ export default class SerialPortHandle {
                         reject(err.message || '串口关闭失败');
                     }
                     console.log('断开串口');
-                    this.clear();
+                    self.clear();
                     resolve();
                 });
             }
@@ -98,7 +99,7 @@ export default class SerialPortHandle {
                     if (err) {
                         reject(err.message || '串口写数据出错');
                     } else {
-                        console.log('发送完成！', buf2Hex(Buffer.from(data, 'hex')));
+                        // console.log('发送完成！', buf2Hex(Buffer.from(data, 'hex')));
                         resolve();
                     }
                 });
@@ -117,7 +118,7 @@ export default class SerialPortHandle {
             console.log(error);
         }
     }
-    clear() {
+    static clear() {
         this.currentConnection = null;
         this.cacheData = [];
     }

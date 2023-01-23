@@ -84,7 +84,7 @@ export const checkConnect = () => {
 };
 
 export const setParams = (type, data) => {
-  console.log(type, data);
+  // console.log(type, data);
   let buf;
   let data_buf = new Array();
   data_buf.push(TYPES_HEX[type]);
@@ -144,7 +144,6 @@ export const setParams = (type, data) => {
 };
 
 export const getParams = (type) => {
-  console.log(type);
   return new Uint8Array([
     ...createHeader(1),
     ...createData(0x04, [TYPES_HEX[type]])
@@ -206,7 +205,6 @@ export const parseData = (data, bufType) => {
         if (bufType) res_data.type = bufType;
       } else if (data_buf.readUInt8(2) === 242) {
         // 返回参数: 0xf2
-        console.log('parseData1-->', data_buf.readInt8(3) - 1);
         const type = TYPES[data_buf.readInt8(3) - 1];
         res_data.type = type;
         console.log('parseData-->', type);

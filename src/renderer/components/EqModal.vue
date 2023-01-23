@@ -46,8 +46,8 @@
           <el-input-number
             v-model="item.gain"
             controls-position="right"
-            :min="-20"
-            :max="20"
+            :min="-18"
+            :max="18"
             :precision="1"
             :step="0.1"
             size="mini"
@@ -56,8 +56,8 @@
           <el-input-number
             v-model="item.q"
             controls-position="right"
-            :min="0"
-            :max="1"
+            :min="0.3"
+            :max="10.0"
             :precision="1"
             :step="0.1"
             size="mini"
@@ -210,7 +210,9 @@ export default {
     },
   },
   mounted() {
-    this.bandsData = this.getBandsData(this.eqData);
+    const bandsData = this.getBandsData(this.eqData);
+    this.bandsData = bandsData;
+    this.chartDatas = this.getChartData(bandsData);
     setTimeout(this.renderChart, 0);
     setTimeout(this.resetTypeSelect, 0);
   },
@@ -437,20 +439,16 @@ export default {
     },
     saveHandle() {
       this.closeHandle();
-      const data = this.eqData.map((item) => {
-        const { enable, type, dSampleRateHz, q, gain, fc } = item;
-        return [enable ? 1 : 0, type, dSampleRateHz || 48000, q, gain, fc];
-      });
-      const params = { enable: !this.enable, filters: data };
-      console.log(params);
-      // this.eqData.item &&
-      //   this.eqData.item.map((item) => {
-      //     params[item.type] = item.value;
-      //   });
+      // const data = this.eqData.map((item) => {
+      //   const { enable, type, dSampleRateHz, q, gain, fc } = item;
+      //   return [enable ? 1 : 0, type, dSampleRateHz || 48000, q, gain, fc];
+      // });
+      const params = { enable: !this.enable, filters: this.eqData };
+
       this.$emit('save', this.type, params);
     },
     closeHandle() {
-      this.resetHandle();
+      // this.resetHandle();
       this.$emit('close');
     },
     resetHandle() {
