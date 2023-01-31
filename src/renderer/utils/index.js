@@ -206,8 +206,8 @@ export const parseData = (data, bufType) => {
       } else if (data_buf.readUInt8(2) === 242) {
         // 返回参数: 0xf2
         const type = TYPES[data_buf.readInt8(3) - 1];
-        res_data.type = type;
-        console.log('parseData-->', type);
+        res_data.type = `${type}`;
+        // console.log('parseData-->', type);
         switch (type) {
           case 'drc':
             res_data.data = parseDrc(data_buf.subarray(4, data_buf.length - 1));
@@ -267,15 +267,25 @@ const parseEq = (buf) => {
   data.filters = [];
   let offset = 1 * 4;
   while (buf.length > offset) {
+    // data.filters.push(
+    //   {
+    //     enable: buf.readInt32LE(offset),
+    //     type: buf.readInt32LE(offset + 4),
+    //     dSampleRateHz: parseFloat(buf.readFloatLE(offset + 8).toFixed(3)),
+    //     q: parseFloat(buf.readFloatLE(offset + 12).toFixed(3)),
+    //     gain: parseFloat(buf.readFloatLE(offset + 16).toFixed(3)),
+    //     fc: parseFloat(buf.readFloatLE(offset + 20).toFixed(3)),
+    //   }
+    // );
     data.filters.push(
-      {
-        enable: buf.readInt32LE(offset),
-        type: buf.readInt32LE(offset + 4),
-        dSampleRateHz: parseFloat(buf.readFloatLE(offset + 8).toFixed(3)),
-        q: parseFloat(buf.readFloatLE(offset + 12).toFixed(3)),
-        gain: parseFloat(buf.readFloatLE(offset + 16).toFixed(3)),
-        fc: parseFloat(buf.readFloatLE(offset + 20).toFixed(3)),
-      }
+      [
+        buf.readInt32LE(offset),
+        buf.readInt32LE(offset + 4),
+        parseFloat(buf.readFloatLE(offset + 8).toFixed(3)),
+        parseFloat(buf.readFloatLE(offset + 12).toFixed(3)),
+        parseFloat(buf.readFloatLE(offset + 16).toFixed(3)),
+        parseFloat(buf.readFloatLE(offset + 20).toFixed(3)),
+      ]
     );
     offset += 24;
   }
@@ -337,8 +347,8 @@ const parseTrebleBoost = (buf) => {
 //   ]
 // }));
 
-// // 58 46 FF 00 01 62 
-//    F0 00 03 02 01 00 
+// // 58 46 FF 00 01 62
+//    F0 00 03 02 01 00
 //    00 00 00 00 00 00 00 00 00 00 00 00 7A 46 00 00 80 3F 00 00 80 3F 00 00 C8 42 00 00 00 00 01 00 00 00 00 00 7A 46 00 00 80 3F 00 00 80 3F 00 00 C8 42 00 00 00 00 02 00 00 00 00 00 7A 46 00 00 80 3F 00 00 80 3F 00 00 C8 42 00 00 00 00 03 00 00 00 00 00 7A 46 00 00 80 3F 00 00 80 3F 00 00 C8 42 00 00 00 00 04 00 00 00 00 00 7A 46 00 00 80 3F 00 00 80 3F 00 00 C8 42 00 00 00 00 04 00 00 00 00 00 7A 46 00 00 80 3F 00 00 80 3F 00 00 C8 42 00 00 00 00 03 00 00 00 00 00 7A 46 00 00 80 3F 00 00 80 3F 00 00 C8 42 00 00 00 00 02 00 00 00 00 00 7A 46 00 00 80 3F 00 00 80 3F 00 00 C8 42 00 00 00 00 01 00 00 00 00 00 7A 46 00 00 80 3F 00 00 80 3F 00 00 C8 42 00 00 00 00 00 00 00 00 00 00 7A 46 00 00 80 3F 00 00 80 3F 00 00 C8 42 26
 // console.log('eq =>', setParams('eq', {
 //   enable: true,

@@ -146,16 +146,16 @@ export default {
         minFC: 20,
       },
       chartDatas: [
-        // [20, 0],
-        // [100, 10],
-        // [200, 5],
-        // [300, -12],
-        // [400, -6],
-        // [500, 20],
-        // [600, -5],
-        // [1000, 6],
-        // [1800, 20],
-        // [20000, -0],
+        [20, 0],
+        [100, 10],
+        [200, 5],
+        [300, -12],
+        [400, -6],
+        [500, 20],
+        [600, -5],
+        [1000, 6],
+        [1800, 20],
+        [20000, -0],
       ],
       types: [
         {
@@ -193,8 +193,15 @@ export default {
   },
   watch: {
     eqData: {
-      handler(newVal) {
-        this.bandsData = this.getBandsData(newVal);
+      handler(val) {
+        const newVal = JSON.parse(JSON.stringify(val));
+        this.parseEqData(newVal);
+      },
+      deep: true,
+    },
+    bandsData: {
+      handler(val) {
+        const newVal = JSON.parse(JSON.stringify(val));
         this.chartDatas = this.getChartData(newVal);
         setTimeout(this.renderChart, 0);
         setTimeout(this.resetTypeSelect, 0);
@@ -210,16 +217,37 @@ export default {
     },
   },
   mounted() {
-    const bandsData = this.getBandsData(this.eqData);
-    this.bandsData = bandsData;
-    this.chartDatas = this.getChartData(bandsData);
-    setTimeout(this.renderChart, 0);
-    setTimeout(this.resetTypeSelect, 0);
+    this.parseEqData(JSON.parse(JSON.stringify(this.eqData)));
+    // const bandsData = this.getBandsData(
+
+    // );
+    // this.bandsData = bandsData;
+    // this.chartDatas = this.getChartData(bandsData);
+    // setTimeout(this.renderChart, 0);
+    // setTimeout(this.resetTypeSelect, 0);
   },
   beforeDestroy() {
     // off(window, 'resize', this.resize);
   },
   methods: {
+    parseEqData(data) {
+      console.log(data);
+      const filters = data.map((item) => {
+        const [enable, type, dSampleRateHz, q, gain, fc] = item;
+        return {
+          enable: !!enable,
+          type,
+          dSampleRateHz: dSampleRateHz || 48000,
+          q,
+          gain,
+          fc,
+        };
+      });
+      this.bandsData = this.getBandsData(filters);
+      this.chartDatas = this.getChartData(filters);
+      setTimeout(this.renderChart, 0);
+      setTimeout(this.resetTypeSelect, 0);
+    },
     getBandsData(data) {
       return data.map((item) => {
         item.enable = item.enable === undefined ? true : !!item.enable;
@@ -439,12 +467,11 @@ export default {
     },
     saveHandle() {
       this.closeHandle();
-      // const data = this.eqData.map((item) => {
-      //   const { enable, type, dSampleRateHz, q, gain, fc } = item;
-      //   return [enable ? 1 : 0, type, dSampleRateHz || 48000, q, gain, fc];
-      // });
-      const params = { enable: !this.enable, filters: this.eqData };
-
+      const data = this.bandsData.map((item) => {
+        const { enable, type, dSampleRateHz, q, gain, fc } = item;
+        return [enable ? 1 : 0, type, dSampleRateHz || 48000, q, gain, fc];
+      });
+      const params = { enable: !this.enable, filters: data };
       this.$emit('save', this.type, params);
     },
     closeHandle() {

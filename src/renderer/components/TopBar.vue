@@ -1,6 +1,6 @@
 <template>
   <div class="top-bar flex">
-    <div class="logo"></div>
+    <img class="logo" :src="require('@/assets/imgs/lsAudio.png')" />
     <div class="top-menu flex">
       <div v-for="(menu, index) in menus" :key="index" class="top-menu-item">
         <span
@@ -33,15 +33,25 @@
         <svg-icon icon-class="r_cross"></svg-icon>
       </div>
     </div>
+    <ProjectModal
+      :visible="projectModalVisible"
+      @close="closeModal"
+      @save="saveHandle"
+    />
   </div>
 </template>
 
 <script>
+import ProjectModal from './CreateProjectModal';
+import { mapState } from 'vuex';
+
 export default {
   name: 'TopBar',
-  computed: {},
+  components: { ProjectModal },
   data() {
     return {
+      projectModalVisible: false,
+      projectModalType: '新建',
       version: '1.0.0',
       menus: [
         {
@@ -49,19 +59,19 @@ export default {
           children: [
             {
               name: '新建',
-              // cb: this.toCreate,
+              cb: this.toCreate,
             },
             {
               name: '打开',
-              // cb: this.toOpen,
+              cb: this.toOpen,
             },
             {
               name: '保存',
-              // cb: this.toSave,
+              cb: this.toSave,
             },
             {
               name: '另存为',
-              // cb: this.toSave,
+              cb: this.toSaveOther,
             },
           ],
           cb: null,
@@ -74,7 +84,31 @@ export default {
       isMax: false,
     };
   },
+  computed: {
+    ...mapState({
+      project: (state) => state.Project.project,
+      params: (state) => state.Project.params,
+    }),
+  },
+  mounted() {
+    //保存打开新建项目之后 都会给渲染进程发送最新的项目信息
+    this.$electron.ipcRenderer.on(
+      'projectInfo',
+      (_e, res) => {
+        const { code, data, msg } = res;
+        if (code === 0) {
+          console.log(data);
+        } else {
+          this.$message.error(msg);
+        }
+      },
+      []
+    );
+  },
   methods: {
+    // 新建项目之后 打开项目，参数都为默认值
+    //打开项目之后，使用默认值进行操作
+    //保存项目 把params都保存到config。json 更新manifest.json的version和modified
     max() {
       this.isMax = !this.isMax;
       this.$electron.ipcRenderer.send('window-max');
@@ -98,6 +132,50 @@ export default {
         </div>
         `;
     },
+    toOpen() {
+      this.$electron.ipcRenderer.invoke('open-project').then((res) => {
+        const { code, data, msg } = res;
+        if (code === 0) {
+          this.$store.dispatch('saveProject', JSON.parse(JSON.stringify(data)));
+          this.$store.dispatch(
+            'saveParams',
+            JSON.parse(JSON.stringify(data.configJson))
+          );
+        } else {
+          this.$message.error(msg);
+          this.$store.dispatch('saveProject', {});
+        }
+      });
+    },
+    toCreate() {
+      this.projectModalType = '新建';
+      this.projectModalVisible = true;
+    },
+    //另存
+    toSaveOther() {
+      this.projectModalType = '保存';
+      this.projectModalVisible = true;
+    },
+    //保存
+    toSave() {
+      const project = Object.assign({}, this.project, {
+        configJson: this.params,
+      });
+      this.$electron.ipcRenderer.invoke('save-project', project).then((res) => {
+        const { code, data, msg } = res;
+        if (code === 0) {
+          this.$store.dispatch('saveProject', JSON.parse(JSON.stringify(data)));
+          this.$store.dispatch(
+            'saveParams',
+            JSON.parse(JSON.stringify(data.configJson))
+          );
+          this.$message.success(`保存成功`);
+        } else {
+          this.$message.error(msg);
+          this.$store.dispatch('saveProject', {});
+        }
+      });
+    },
     showInfo() {
       const Dom = this.getInfoHtml();
       this.$alert(Dom, '关于', {
@@ -106,6 +184,33 @@ export default {
         customClass: 'info-box',
         callback: (action) => {},
       });
+    },
+    closeModal() {
+      this.projectModalVisible = false;
+    },
+    saveHandle(data) {
+      this.$electron.ipcRenderer
+        .invoke(
+          'create-project',
+          Object.assign({}, data, { configJson: this.params })
+        )
+        .then((res) => {
+          //创建成功之后，
+          const { code, data, msg } = res;
+          if (code === 0) {
+            //新建之后直接打开项目
+            if (this.projectModalType === '新建') {
+              this.$store.dispatch(
+                'saveProject',
+                JSON.parse(JSON.stringify(data))
+              );
+            }
+            this.$message.success(`${this.projectModalType}成功`);
+          } else {
+            this.$message.error(msg);
+            this.$store.dispatch('saveProject', {});
+          }
+        });
     },
   },
 };
@@ -140,8 +245,8 @@ export default {
       -webkit-app-region: no-drag;
       &-child {
         position: absolute;
-        left: 0;
-        top: 32px;
+        left: 10px;
+        top: 29px;
         display: none;
         width: 144px;
         background-color: $grey7;

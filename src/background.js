@@ -1,41 +1,47 @@
 "use strict";
-
+app.allowRendererProcessReuse = false;
 import { app, protocol, BrowserWindow } from "electron";
 import { createProtocol } from "vue-cli-plugin-electron-builder/lib";
 import installExtension, { VUEJS_DEVTOOLS } from "electron-devtools-installer";
 const isDevelopment = process.env.NODE_ENV !== "production";
+import { IpcMainHandle } from './main/ipcMain';
 
 // Scheme must be registered before the app is ready
 protocol.registerSchemesAsPrivileged([
   { scheme: "app", privileges: { secure: true, standard: true } },
 ]);
-
 async function createWindow() {
-  // Create the browser window.
-  const win = new BrowserWindow({
-    height: 600,
-    width: 1100,
-    minHeight: 600,
-    minWidth: 1100,
-    frame: false,
-    useContentSize: true,
-    webPreferences: {
-      // Use pluginOptions.nodeIntegration, leave this alone
-      // See nklayman.github.io/vue-cli-plugin-electron-builder/guide/security.html#node-integration for more info
-      nodeIntegration: process.env.ELECTRON_NODE_INTEGRATION,
-      contextIsolation: !process.env.ELECTRON_NODE_INTEGRATION,
-    },
-  });
+  try {
+    // Create the browser window.
+    const win = new BrowserWindow({
+      height: 600,
+      width: 1100,
+      minHeight: 600,
+      minWidth: 1100,
+      frame: false,
+      useContentSize: true,
+      webPreferences: {
+        // Use pluginOptions.nodeIntegration, leave this alone
+        // See nklayman.github.io/vue-cli-plugin-electron-builder/guide/security.html#node-integration for more info
+        nodeIntegration: true,
+        contextIsolation: false
+      },
+    });
+    IpcMainHandle(win);
+    if (process.env.WEBPACK_DEV_SERVER_URL) {
+      // Load the url of the dev server if in development mode
+      await win.loadURL(process.env.WEBPACK_DEV_SERVER_URL);
+      if (!process.env.IS_TEST) win.webContents.openDevTools();
+    } else {
+      createProtocol("app");
+      // Load the index.html when not in development
+      win.loadURL("app://./index.html");
 
-  if (process.env.WEBPACK_DEV_SERVER_URL) {
-    // Load the url of the dev server if in development mode
-    await win.loadURL(process.env.WEBPACK_DEV_SERVER_URL);
-    if (!process.env.IS_TEST) win.webContents.openDevTools();
-  } else {
-    createProtocol("app");
-    // Load the index.html when not in development
-    win.loadURL("app://./index.html");
+    }
+  } catch (error) {
+    console.log(error);
   }
+
 }
 
 // Quit when all windows are closed.
@@ -67,7 +73,8 @@ app.on("ready", async () => {
   }
   createWindow();
 });
-require('./main/ipcMain');
+// app.allowRendererProcessReuse = false;
+
 // Exit cleanly on request from parent process in development mode.
 if (isDevelopment) {
   if (process.platform === "win32") {

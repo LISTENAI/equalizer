@@ -1,4 +1,4 @@
-const { SerialPort } = require('serialport');
+const SerialPort = require('serialport');
 import { parseData, buf2Hex, reciveDataDone } from '../utils/index';
 const eventEmitter = require('events');
 export default class SerialPortHandle {
@@ -16,13 +16,14 @@ export default class SerialPortHandle {
                 this.currentConnection.close();
                 this.clear();
             }
-            const port = new SerialPort({
-                path: portPath,
+            console.log(123, portPath);
+            const port = new SerialPort(portPath, {
                 baudRate: baud_rate,
                 autoOpen: false,
             });
             port.open((err) => {
                 if (err) {
+                    console.error(err);
                     const message = err.message || '串口连接失败';
                     if (message.includes('Access denied')) {
                         reject('串口已被其他程序打开，或访问串口被系统拒绝');
@@ -112,7 +113,7 @@ export default class SerialPortHandle {
     static read(data) {
         try {
             const res = parseData(data, this.type);
-            console.log('读取串口数据成功', res);
+            // console.log('读取串口数据成功', JSON.stringify(res));
             this.serialPorEmitter.emit('SerialPort', res);
         } catch (error) {
             console.log(error);

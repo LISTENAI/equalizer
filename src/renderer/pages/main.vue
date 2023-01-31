@@ -1,6 +1,3 @@
-<!-- 获取参数之前没办法设置写入参数，因为有些字段是通过串口拿到的，页面并没有-->
-<!-- 缺少工具logo icon-->
-<!-- 验证打包其他版本 serialport10.x只支持win10,window上暂时不能打liunx安装包-->
 <template>
   <div class="main-page">
     <div class="top-banner flex">
@@ -9,7 +6,7 @@
           v-model="com"
           placeholder="请选择"
           size="middle"
-          v-loading="comsLoading"
+          :loading="comsLoading"
           @visible-change="getComs"
         >
           <el-option
@@ -24,9 +21,10 @@
           size="mini"
           @click="connectHandle"
           :disabled="connecting || !com"
-          v-loading="connecting"
+          :loading="connecting"
         >
-          {{ connected && !connecting ? '断开' : '连接' }}</el-button
+          {{ connected && !connecting ? '断开' : '连接'
+          }}{{ connecting ? '中' : '' }}</el-button
         >
         <span class="flex">
           <svg-icon v-if="connecting" icon-class="r_connecting" class="icon" />
@@ -61,9 +59,10 @@
           v-loading="writing"
           :class="!connected || loading || writing ? 'disabled' : ''"
           @click="saveAllParamsHandle"
+          element-loading-spinner="el-icon-loading"
         >
           <svg-icon icon-class="write" class="icon" />
-          <span>写入参数</span>
+          <span>{{ writing ? '写入中' : '写入参数' }}</span>
         </div>
         <div
           class="opt-btn flex"
@@ -84,11 +83,15 @@
             <img :src="require('@/assets/imgs/' + item.imageUrl)" />
             <p class="text">{{ item.text }}</p>
             <el-button
-              :disabled="item.enable || !connected"
+              :disabled="
+                item.enable || (!Object.keys(params).length && !connected)
+              "
               @click="() => opreateHandle(item)"
               >设置</el-button
             >
-            <el-checkbox v-model="item.enable" :disabled="!connected"
+            <el-checkbox
+              v-model="item.enable"
+              :disabled="!Object.keys(params).length && !connected"
               >Bypass</el-checkbox
             >
           </div>
@@ -150,7 +153,7 @@ import EQModal from 'components/EqModal.vue';
 import DRCModal from 'components/DRCModal.vue';
 import SerialPortHandle from '../utils/serialport';
 import { checkConnect, setParams, getParams, TYPES } from '../utils/index';
-
+import { mapState } from 'vuex';
 export default {
   name: 'main-page',
   components: { VoiceModal, EQModal, DRCModal },
@@ -270,16 +273,16 @@ export default {
           ],
         },
         eq: [
-          { fc: 26, gain: 0, q: 0.5, type: 2 },
-          { fc: 40, gain: 0, q: 0.7, type: 0 },
-          { fc: 63, gain: 0, q: 0.7, type: 2 },
-          { fc: 80, gain: 0, q: 0.7, type: 2 },
-          { fc: 125, gain: 0, q: 0.7, type: 2 },
-          { fc: 250, gain: 0, q: 0.7, type: 2 },
-          { fc: 500, gain: 0, q: 0.7, type: 2 },
-          { fc: 1000, gain: 0, q: 0.7, type: 2 },
-          { fc: 2000, gain: 0, q: 0.7, type: 2 },
-          { fc: 2500, gain: 0, q: 0.7, type: 2 },
+          [1, 2, 4800, 0.5, 0, 26],
+          [1, 0, 4800, 0.7, 0, 40],
+          [1, 2, 4800, 0.7, 0, 63],
+          [1, 2, 4800, 0.7, 0, 80],
+          [1, 2, 4800, 0.7, 0, 125],
+          [1, 2, 4800, 0.7, 0, 250],
+          [1, 2, 4800, 0.7, 0, 500],
+          [1, 2, 4800, 0.7, 0, 1000],
+          [1, 2, 4800, 0.7, 0, 2000],
+          [1, 2, 4800, 0.7, 0, 2500],
         ],
         drc: {
           fs: 48000,
@@ -304,7 +307,7 @@ export default {
       drcVisible: false,
       drcCheckable: false, // drc bypass
       drcData: null, // drc 数据
-      allParams: {},
+      // allParams: {}, //最终写入的参数
       eName: '',
       eDone: false,
     };
@@ -319,11 +322,21 @@ export default {
   unmounted() {
     clearInterval(this.timeId);
   },
+  computed: {
+    ...mapState({
+      project: (state) => state.Project.project,
+      params: (state) => state.Project.params,
+    }),
+  },
   watch: {
-    connected(val) {
-      if (val) {
-        // this.getData();
-      }
+    params: {
+      handler(val) {
+        const data = JSON.parse(JSON.stringify(val));
+        Object.keys(data).forEach((key) => {
+          this.parseData(key, data[key]);
+        });
+      },
+      deep: true,
     },
   },
   methods: {
@@ -336,47 +349,38 @@ export default {
 
     serialPorEmitterHandle() {
       SerialPortHandle.serialPorEmitter.on('SerialPort', (res) => {
-        // console.log('data from SerialPort', res);
+        console.log('data from SerialPort', res);
         // console.log(JSON.stringify(res));
         const { code, data } = res;
         if (this.eName === data.type) {
           this.eDone = true;
         }
-        this.parseData(data.type, data.data, code, data.message);
+        switch (data.type) {
+          case 'connect':
+            this.changeConnectHandle(code === 0);
+            break;
+          case 'save':
+            if (code === 0) {
+              //设置数据成功 更新voiceType
+              console.log('save成功');
+            }
+            break;
+          case 'error':
+            this.$message.error(message);
+            break;
+          default:
+            if (TYPES.includes(data.type)) {
+              this.parseData(data.type, data.data);
+              const newParams = JSON.parse(JSON.stringify(this.params));
+              newParams[data.type] = data.data;
+              console.log(newParams);
+              this.$store.dispatch('saveParams', newParams);
+            }
+            break;
+        }
       });
     },
-    async getAllParams() {
-      const dataTypes = JSON.parse(JSON.stringify(TYPES));
-      if (!this.connected || this.loading || this.writing) return;
-      this.loading = true;
-      let timeId = setInterval(async () => {
-        if (dataTypes.length === 0) {
-          clearInterval(this.timeId);
-          this.timeId = null;
-          this.loading = false;
-          this.eName = '';
-          this.eDone = false;
-          console.log('所有参数');
-          console.log(this.voiceData);
-          return;
-        } else {
-          const type = dataTypes[0];
-          if (this.eName && this.eName === type) {
-            if (this.eDone) {
-              console.log(type, this.eName, this.eDone);
-              dataTypes.shift();
-              this.eName = '';
-              this.eDone = false;
-            }
-          } else {
-            this.eName = type;
-            this.eDone = false;
-            await this.getData(type);
-          }
-        }
-      }, 400);
-      this.timeId = timeId;
-    },
+
     async getData(type) {
       if (!this.connected) {
         return;
@@ -412,7 +416,6 @@ export default {
       const res = await SerialPortHandle.getList();
       this.coms = res;
       this.comsLoading = false;
-      console.log(res);
     },
     open(link) {
       this.$electron.shell.openExternal(link);
@@ -422,6 +425,8 @@ export default {
         if (this.connected) {
           await SerialPortHandle.close();
           this.connected = false;
+          this.writing = false;
+          this.loading = false;
         } else {
           this.connecting = true;
           await SerialPortHandle.open(this.com);
@@ -430,6 +435,8 @@ export default {
       } catch (error) {
         this.connecting = false;
         this.connected = false;
+        this.writing = false;
+        this.loading = false;
         this.$message.error(error);
       }
     },
@@ -462,40 +469,24 @@ export default {
     },
     //打开设置 ->获取参数
     async openEQModal(item) {
-      // await this.getData(item.type);
       this.eqVisible = true;
       this.currentModalType = item.type;
       this.eqCheckable = item.enable;
-      console.log(this.eqData);
     },
     async openDRCModal(item) {
-      // await this.getData(item.type);
       this.currentModalType = item.type;
       this.drcCheckable = item.enable;
       this.drcVisible = true;
       console.log(this.drcData);
-      // this.drcData = JSON.parse(JSON.stringify(this.voiceType['drc']));
     },
     async openVoiceModal(item) {
       console.log(this.voiceData);
-      // await this.getData(item.type);
       this.voiceVisible = true;
       this.currentModalType = item.type;
       this.voiceCheckable = item.enable;
     },
-    parseData(type, data, code, message) {
+    parseData(type, data) {
       switch (type) {
-        case 'connect':
-          this.changeConnectHandle(code === 0);
-          break;
-        case 'save':
-          if (code === 0) {
-            //设置数据成功 更新voiceType
-            console.log('save成功');
-          }
-          break;
-        case 'error':
-          this.$message.error(message);
         case 'bass_boost':
           this.parseVoiceData('bass_boost', data);
           break;
@@ -518,20 +509,9 @@ export default {
     parseEQData(data) {
       let modalData = JSON.parse(JSON.stringify(this.voiceType['eq']));
       if (data) {
-        const { filters } = data;
-        // filters.map((item) => {
-        //   return {
-        //     enable: !!item[0],
-        //     dSampleRateHz:item[],
-        //     dSampleRateHz:item[],
-        //     dSampleRateHz:item[],
-
-        //   };
-        // });
+        let { filters } = data;
         modalData = filters;
-        // this.eqCheckable = !enable;
       }
-      console.log('eqdata--->', modalData);
       this.eqData = modalData;
     },
     parseDRCData(data) {
@@ -565,9 +545,9 @@ export default {
             return { x: item[0], y: item[1], w: item[2] };
           }),
         };
+
         // this.eqCheckable = !enable;
       }
-      console.log(modalData);
       this.drcData = modalData;
     },
     parseAGCData(data) {
@@ -590,16 +570,17 @@ export default {
       // };
       let modalData = this.voiceType['agc'];
       modalData.type = 'agc';
+      console.log(modalData);
       if (data) {
         const { mono_gains, sr, vol } = data;
-        modalData.sr = sr;
-        modalData.vol = vol;
+        modalData.sr = sr || 0;
+        modalData.vol = vol || 0;
         const item = mono_gains.map((item, index) => {
           return {
             type: `${index === 0 ? 'left' : 'right'}Gain`,
             value: item[1],
-            max: 20,
-            min: -100,
+            max: modalData.item[index].max,
+            min: modalData.item[index].min,
             desc: `${index === 0 ? '左' : '右'}声道增益`,
             unit: 'dB',
           };
@@ -609,11 +590,10 @@ export default {
       this.voiceData['agc'] = modalData;
     },
     parseVoiceData(type, data) {
-      console.log(type, data);
+      let modalData = JSON.parse(JSON.stringify(this.voiceType[type]));
+      modalData.type = type;
       if (data) {
         const { gain, freq } = data;
-        const modalData = this.voiceType[type];
-        modalData.type = type;
         modalData.item.map((voice) => {
           switch (voice.type) {
             case 'gain':
@@ -625,32 +605,14 @@ export default {
           }
           return voice;
         });
-        this.voiceData[type] = modalData;
-
         // this.voiceCheckable = !enable;
-      } else {
-        const modalData = JSON.parse(JSON.stringify(this.voiceType[type]));
-        modalData.type = type;
-        this.voiceData[type] = modalData;
       }
+      this.voiceData[type] = modalData;
     },
     resetModalData(type) {
       const voiceData = JSON.parse(JSON.stringify(this.originVoiceType[type]));
       console.log('reset', type, voiceData);
-
       switch (type) {
-        // case 'bass_boost':
-        //   this.voiceData = voiceData;
-        //   this.voiceCheckable = false;
-        //   this.enableVoice(type, false);
-        //   voiceData.type = type;
-        //   break;
-        // case 'treble_boost':
-        //   this.voiceData = voiceData;
-        //   this.voiceCheckable = false;
-        //   this.enableVoice(type, false);
-        //   voiceData.type = type;
-        //   break;
         case 'eq':
           this.eqData = voiceData;
           this.eqCheckable = false;
@@ -688,15 +650,12 @@ export default {
       }
     },
     async saveHandle(type, data) {
+      console.log(data);
       this.parseData(type, data);
-      if (type === 'eq') {
-        const { filters } = data;
-        data.filters = filters.map((item) => {
-          const { enable, type, dSampleRateHz, q, gain, fc } = item;
-          return [enable ? 1 : 0, type, dSampleRateHz || 48000, q, gain, fc];
-        });
-      }
-      this.$set(this.allParams, type, data);
+      const newParams = JSON.parse(JSON.stringify(this.params));
+      newParams[type] = data;
+      console.log(newParams);
+      this.$store.dispatch('saveParams', newParams);
       this.enableVoice(type, !data.enable);
     },
     clearTime() {
@@ -706,10 +665,8 @@ export default {
     //单个写入设置
     async saveParamsHandle(type, data) {
       try {
-        console.log('写入参数', type, data);
         const params = setParams(type, data);
         SerialPortHandle.type = `save-${type}`;
-
         await this.writeSerialPortHandle(params, () => {
           this.resetModalData(type);
         });
@@ -719,11 +676,10 @@ export default {
     },
     //写入所有参数
     async saveAllParamsHandle() {
-      const saveDatas = Object.keys(this.allParams);
+      const saveDatas = Object.keys(this.params);
       if (!this.connected || this.loading || this.writing) return;
-      console.log('写入参数');
+      console.log('写入参数', this.params);
       this.writing = true;
-      this.$message.l;
       let timeId = setInterval(async () => {
         if (saveDatas.length === 0) {
           clearInterval(this.timeId);
@@ -742,7 +698,39 @@ export default {
           } else {
             this.eName = `save-${type}`;
             this.eDone = false;
-            await this.saveParamsHandle(type, this.allParams[type]);
+            await this.saveParamsHandle(type, this.params[type]);
+          }
+        }
+      }, 400);
+      this.timeId = timeId;
+    },
+    async getAllParams() {
+      const dataTypes = JSON.parse(JSON.stringify(TYPES));
+      if (!this.connected || this.loading || this.writing) return;
+      this.loading = true;
+      let timeId = setInterval(async () => {
+        if (dataTypes.length === 0) {
+          clearInterval(this.timeId);
+          this.timeId = null;
+          this.loading = false;
+          this.eName = '';
+          this.eDone = false;
+          console.log('所有参数', this.voiceData, this.eqData);
+          console.log(this.params);
+          return;
+        } else {
+          const type = dataTypes[0];
+          if (this.eName && this.eName === type) {
+            if (this.eDone) {
+              console.log(type, this.eName, this.eDone);
+              dataTypes.shift();
+              this.eName = '';
+              this.eDone = false;
+            }
+          } else {
+            this.eName = type;
+            this.eDone = false;
+            await this.getData(type);
           }
         }
       }, 400);
