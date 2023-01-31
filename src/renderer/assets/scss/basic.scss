@@ -180,6 +180,7 @@ html {
 
 .el-dialog {
   background-color: $background;
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .el-dialog__title {
@@ -189,9 +190,11 @@ html {
 
 .el-dialog__body {
   padding: 18px 16px;
-  border-top: 2px solid rgba(255, 255, 255, 0.1);
-  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+
 
 .el-dialog__header {
   padding: 10px 16px;
@@ -359,4 +362,14 @@ html {
 
 .el-loading-mask {
   background-color: rgba(0, 0, 0, .4);
+}
+
+.confirm-dialog {
+  .el-dialog__header {
+    display: none !important;
+  }
+
+  .el-dialog__body {
+    border-top: none !important;
+  }
 }

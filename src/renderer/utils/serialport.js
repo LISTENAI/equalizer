@@ -16,7 +16,7 @@ export default class SerialPortHandle {
                 this.currentConnection.close();
                 this.clear();
             }
-            console.log(123, portPath);
+            console.log('open serialPort', portPath);
             const port = new SerialPort(portPath, {
                 baudRate: baud_rate,
                 autoOpen: false,

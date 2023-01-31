@@ -35,11 +35,9 @@ async function openProject() {
     console.log(res);
     const data = await ProjectHandle.checkProject(res[0]);
     return data;
-    mainWindow && mainWindow.webContents.send('projectInfo', data);
+  } else {
+    return { code: 0, data: null };
   }
-  // else {
-  //   return { code: 0, data: {} };
-  // }
 
 }
 async function createProject(params) {

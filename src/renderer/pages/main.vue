@@ -84,14 +84,15 @@
             <p class="text">{{ item.text }}</p>
             <el-button
               :disabled="
-                item.enable || (!Object.keys(params).length && !connected)
+                item.enable || (!Object.keys(project).length && !connected)
               "
               @click="() => opreateHandle(item)"
               >设置</el-button
             >
             <el-checkbox
               v-model="item.enable"
-              :disabled="!Object.keys(params).length && !connected"
+              @change="() => changeBypass(item)"
+              :disabled="!Object.keys(project).length && !connected"
               >Bypass</el-checkbox
             >
           </div>
@@ -159,7 +160,6 @@ export default {
   components: { VoiceModal, EQModal, DRCModal },
   data() {
     return {
-      // dataTypes: ['bass_boost', 'treble_boost', 'drc', 'eq', 'agc'],
       coms: [],
       rates: [
         {
@@ -310,6 +310,8 @@ export default {
       // allParams: {}, //最终写入的参数
       eName: '',
       eDone: false,
+      timeId: null,
+      timeOutid: null,
     };
   },
   mounted() {
@@ -321,16 +323,22 @@ export default {
   },
   unmounted() {
     clearInterval(this.timeId);
+    clearTimeout(this.timeOutid);
   },
   computed: {
     ...mapState({
       project: (state) => state.Project.project,
       params: (state) => state.Project.params,
+      reset: (state) => state.Project.reset,
     }),
   },
   watch: {
+    reset(v) {
+      v && this.setInitData();
+    },
     params: {
       handler(val) {
+        console.log('params--->', val);
         const data = JSON.parse(JSON.stringify(val));
         Object.keys(data).forEach((key) => {
           this.parseData(key, data[key]);
@@ -345,6 +353,10 @@ export default {
       TYPES.forEach((item) => {
         this.resetModalData(item);
       });
+      this.eqCheckable = false;
+      this.drcCheckable = false;
+      this.voiceCheckable = false;
+      this.$store.dispatch('changeReset', false);
     },
 
     serialPorEmitterHandle() {
@@ -427,7 +439,16 @@ export default {
           this.connected = false;
           this.writing = false;
           this.loading = false;
+          clearTimeout(this.timeOutid);
+          this.timeOutid = null;
         } else {
+          const timeOutid = setTimeout(() => {
+            this.connecting = false;
+            this.writing = false;
+            this.loading = false;
+            this.$message.error('连接超时，请重试');
+          }, 10000);
+          this.timeOutid = timeOutid;
           this.connecting = true;
           await SerialPortHandle.open(this.com);
           this.checkConnectHandle();
@@ -453,6 +474,17 @@ export default {
       // console.log('isok', isOk);
       this.connected = isOk;
       this.connecting = false;
+      clearTimeout(this.timeOutid);
+    },
+    changeBypass(item) {
+      console.log(this.params);
+      const params = JSON.parse(JSON.stringify(this.params));
+      if (params[item.type]) {
+        params[item.type].enable = !item.enable;
+      } else {
+        params[item.type] = { enable: !item.enable };
+      }
+      this.$store.dispatch('saveParams', params);
     },
     async opreateHandle(item) {
       switch (item.type) {
@@ -486,6 +518,7 @@ export default {
       this.voiceCheckable = item.enable;
     },
     parseData(type, data) {
+      this.enableVoice(type, !data.enable);
       switch (type) {
         case 'bass_boost':
           this.parseVoiceData('bass_boost', data);
@@ -509,8 +542,9 @@ export default {
     parseEQData(data) {
       let modalData = JSON.parse(JSON.stringify(this.voiceType['eq']));
       if (data) {
-        let { filters } = data;
-        modalData = filters;
+        let { filters, enable } = data;
+        this.eqCheckable = !enable;
+        if (filters) modalData = filters;
       }
       this.eqData = modalData;
     },
@@ -533,20 +567,20 @@ export default {
 
       let modalData = JSON.parse(JSON.stringify(this.voiceType['drc']));
       if (data) {
-        const { fs, at, rt, rms, mode, seg, dots } = data;
-        modalData = {
-          fs,
-          at,
-          rt,
-          rms,
-          mode,
-          seg,
-          dots: dots.map((item) => {
-            return { x: item[0], y: item[1], w: item[2] };
-          }),
-        };
-
-        // this.eqCheckable = !enable;
+        const { fs, at, rt, rms, mode, seg, dots, enable } = data;
+        this.drcCheckable = !enable;
+        if (fs)
+          modalData = {
+            fs,
+            at,
+            rt,
+            rms,
+            mode,
+            seg,
+            dots: dots.map((item) => {
+              return { x: item[0], y: item[1], w: item[2] };
+            }),
+          };
       }
       this.drcData = modalData;
     },
@@ -570,9 +604,9 @@ export default {
       // };
       let modalData = this.voiceType['agc'];
       modalData.type = 'agc';
-      console.log(modalData);
       if (data) {
         const { mono_gains, sr, vol } = data;
+        if (mono_gains === undefined) return;
         modalData.sr = sr || 0;
         modalData.vol = vol || 0;
         const item = mono_gains.map((item, index) => {
@@ -594,6 +628,7 @@ export default {
       modalData.type = type;
       if (data) {
         const { gain, freq } = data;
+        if (gain === undefined) return;
         modalData.item.map((voice) => {
           switch (voice.type) {
             case 'gain':
@@ -605,13 +640,13 @@ export default {
           }
           return voice;
         });
-        // this.voiceCheckable = !enable;
       }
       this.voiceData[type] = modalData;
     },
     resetModalData(type) {
       const voiceData = JSON.parse(JSON.stringify(this.originVoiceType[type]));
       console.log('reset', type, voiceData);
+      this.enableVoice(type, false);
       switch (type) {
         case 'eq':
           this.eqData = voiceData;
@@ -625,7 +660,6 @@ export default {
           voiceData.type = type;
           this.voiceData[type] = voiceData;
           this.voiceCheckable = false;
-          this.enableVoice(type, false);
           break;
       }
     },
@@ -656,7 +690,6 @@ export default {
       newParams[type] = data;
       console.log(newParams);
       this.$store.dispatch('saveParams', newParams);
-      this.enableVoice(type, !data.enable);
     },
     clearTime() {
       this.timeId && clearInterval(this.timeId);
@@ -678,12 +711,25 @@ export default {
     async saveAllParamsHandle() {
       const saveDatas = Object.keys(this.params);
       if (!this.connected || this.loading || this.writing) return;
+      if (saveDatas.length === 0) {
+        return this.$message.error('请先设置参数');
+      }
       console.log('写入参数', this.params);
+      const timeOutid = setTimeout(() => {
+        clearInterval(this.timeId);
+        this.timeId = null;
+        this.timeOutid = null;
+        this.writing = false;
+        this.$message.error('写入超时，请重试');
+      }, 15000);
+      this.timeOutid = timeOutid;
       this.writing = true;
       let timeId = setInterval(async () => {
         if (saveDatas.length === 0) {
           clearInterval(this.timeId);
           this.timeId = null;
+          clearTimeout(this.timeOutid);
+          this.timeOutid = null;
           this.writing = false;
           return;
         } else {
@@ -708,10 +754,21 @@ export default {
       const dataTypes = JSON.parse(JSON.stringify(TYPES));
       if (!this.connected || this.loading || this.writing) return;
       this.loading = true;
+      const timeOutid = setTimeout(() => {
+        clearInterval(this.timeId);
+        this.timeId = null;
+        this.loading = false;
+        this.eName = '';
+        this.eDone = false;
+        this.$message.error('获取超时，请重试');
+      }, 15000);
+      this.timeOutid = timeOutid;
       let timeId = setInterval(async () => {
         if (dataTypes.length === 0) {
           clearInterval(this.timeId);
           this.timeId = null;
+          clearTimeout(this.timeOutid);
+          this.timeOutid = null;
           this.loading = false;
           this.eName = '';
           this.eDone = false;

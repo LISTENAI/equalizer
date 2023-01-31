@@ -38,19 +38,36 @@
       @close="closeModal"
       @save="saveHandle"
     />
+    <el-dialog
+      width="466px"
+      class="confirm-dialog"
+      :visible="confirmVisible"
+      :show-close="false"
+    >
+      <p class="desc">是否保存所做的更改？如果不保存，更改的内容将会丢失</p>
+      <span slot="footer" class="dialog-footer">
+        <el-button type="primary" @click="closeHandle(true, true)"
+          >保存</el-button
+        >
+        <el-button @click="() => closeHandle(false, true)">不保存</el-button>
+        <el-button @click="() => closeHandle(false, false)">取 消</el-button>
+      </span>
+    </el-dialog>
   </div>
 </template>
 
 <script>
 import ProjectModal from './CreateProjectModal';
 import { mapState } from 'vuex';
-
+const LogoImg = require('@/assets/imgs/lsAudio.png');
 export default {
   name: 'TopBar',
   components: { ProjectModal },
   data() {
     return {
       projectModalVisible: false,
+      confirmVisible: false,
+      isclose: false,
       projectModalType: '新建',
       version: '1.0.0',
       menus: [
@@ -118,7 +135,26 @@ export default {
       this.$electron.ipcRenderer.send('window-min');
     },
     close() {
-      this.$electron.ipcRenderer.send('window-close');
+      if (this.params && Object.keys(this.params).length !== 0) {
+        this.confirmVisible = true;
+      } else {
+        this.$electron.ipcRenderer.send('window-close');
+      }
+    },
+    closeHandle(isSave, isClose) {
+      this.isclose = isClose;
+      if (!isSave && !isClose) {
+        this.confirmVisible = false;
+        return;
+      }
+      if (!isSave && isClose) {
+        this.confirmVisible = false;
+        this.$electron.ipcRenderer.send('window-close');
+        return;
+      }
+      if (isSave) {
+        this.toSave();
+      }
     },
     menuCick(menu) {
       console.log(menu);
@@ -126,7 +162,7 @@ export default {
     getInfoHtml() {
       return `
         <div class="info-content">
-          <img src="@/assets/imgs/drc.png" alt="" class="logo" />
+          <img src=${LogoImg} alt="" class="logo" />
           <p>聆思音频下行工具</p>
           <p>${this.version}</p>
         </div>
@@ -136,6 +172,8 @@ export default {
       this.$electron.ipcRenderer.invoke('open-project').then((res) => {
         const { code, data, msg } = res;
         if (code === 0) {
+          if (!data) return;
+          this.$store.dispatch('changeReset', true);
           this.$store.dispatch('saveProject', JSON.parse(JSON.stringify(data)));
           this.$store.dispatch(
             'saveParams',
@@ -158,6 +196,9 @@ export default {
     },
     //保存
     toSave() {
+      if (this.project && Object.keys(this.project).length === 0) {
+        return this.toCreate();
+      }
       const project = Object.assign({}, this.project, {
         configJson: this.params,
       });
@@ -170,6 +211,10 @@ export default {
             JSON.parse(JSON.stringify(data.configJson))
           );
           this.$message.success(`保存成功`);
+          this.confirmVisible = false;
+          if (this.isclose) {
+            this.$electron.ipcRenderer.send('window-close');
+          }
         } else {
           this.$message.error(msg);
           this.$store.dispatch('saveProject', {});
@@ -192,10 +237,11 @@ export default {
       this.$electron.ipcRenderer
         .invoke(
           'create-project',
-          Object.assign({}, data, { configJson: this.params })
+          Object.assign({}, data, {
+            configJson: this.projectModalType === '新建' ? {} : this.params,
+          })
         )
         .then((res) => {
-          //创建成功之后，
           const { code, data, msg } = res;
           if (code === 0) {
             //新建之后直接打开项目
@@ -204,8 +250,13 @@ export default {
                 'saveProject',
                 JSON.parse(JSON.stringify(data))
               );
+              this.$store.dispatch('saveParams', {});
             }
             this.$message.success(`${this.projectModalType}成功`);
+            this.confirmVisible = false;
+            if (this.isclose) {
+              this.$electron.ipcRenderer.send('window-close');
+            }
           } else {
             this.$message.error(msg);
             this.$store.dispatch('saveProject', {});
@@ -217,6 +268,15 @@ export default {
 </script>
 
 <style scoped lang="scss">
+.confirm-dialog {
+  .desc {
+    width: 328px;
+    font-size: 13px;
+    color: #cccccc;
+    line-height: 18px;
+  }
+}
+
 .top-bar {
   background-color: $grey7;
   width: 100%;

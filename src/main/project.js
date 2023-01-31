@@ -18,7 +18,7 @@ export const ProjectHandle = {
             const newConfigJson = configJson || {};
             await writeJson(manifestFile, manifestJson);
             await writeJson(configFile, newConfigJson);
-            return { code: 0, data: { manifestJson, newConfigJson } };
+            return { code: 0, data: { manifestJson, configJson: newConfigJson } };
 
         } catch (error) {
             console.log(error);

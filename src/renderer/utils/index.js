@@ -97,7 +97,7 @@ export const setParams = (type, data) => {
       data_buf.writeInt(data.mode);
       data_buf.writeFloat(data.rms);
       data_buf.writeInt(data.seg);
-      data.dots.forEach(dot => {
+      data.dots && data.dots.forEach(dot => {
         data_buf.writeFloat(dot[0]);
         data_buf.writeFloat(dot[1]);
         data_buf.writeFloat(dot[2]);
@@ -105,7 +105,7 @@ export const setParams = (type, data) => {
       break;
     case 'eq':
       data_buf.writeInt(data.enable);
-      data.filters.forEach(filter => {
+      data.filters && data.filters.forEach(filter => {
         data_buf.writeInt(filter[0]);
         data_buf.writeInt(filter[1]);
         data_buf.writeFloat(filter[2]);
@@ -118,7 +118,7 @@ export const setParams = (type, data) => {
       data_buf.writeInt(data.enable);
       data_buf.writeFloat(data.sr);
       data_buf.writeFloat(data.vol);
-      data.mono_gains.forEach(gain => {
+      data.mono_gains && data.mono_gains.forEach(gain => {
         data_buf.writeInt(gain[0]);
         data_buf.writeFloat(gain[1]);
       });

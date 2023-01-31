@@ -1,6 +1,7 @@
 const state = {
   project: {},
-  params: {}
+  params: {},
+  reset: false,
 };
 
 const mutations = {
@@ -10,6 +11,9 @@ const mutations = {
   SAVE_PARAMS(state, val) {
     state.params = val;
   },
+  CHANGE_RESET(state, val) {
+    state.reset = val;
+  },
 };
 
 const actions = {
@@ -18,6 +22,9 @@ const actions = {
   },
   saveParams({ commit }, data) {
     commit('SAVE_PARAMS', data);
+  },
+  changeReset({ commit }, data) {
+    commit('CHANGE_RESET', data);
   }
 };
 
