@@ -1,6 +1,7 @@
 
 import { ipcMain, BrowserWindow, dialog } from 'electron';
 import { ProjectHandle } from './project';
+import drawHandle from './draw';
 let mainWindow = null;
 export function IpcMainHandle(window) {
   mainWindow = window;
@@ -25,6 +26,7 @@ export function IpcMainHandle(window) {
   ipcMain.handle('create-project', async (_e, msg) => await createProject(msg));
   ipcMain.handle('save-project', async (_e, msg) => await saveProject(msg));
 
+  drawHandle(ipcMain);
 
 };
 async function openProject() {
