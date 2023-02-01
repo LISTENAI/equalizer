@@ -103,6 +103,8 @@
 
 <script>
 import * as echarts from 'echarts';
+import _ from 'lodash';
+
 export default {
   name: 'EqModal',
   props: {
@@ -140,23 +142,13 @@ export default {
       enable: this.checkable,
       symbolSize: 9, // 通过拖动是可以实时改变这里的值的
       boundaryVal: {
-        maxdB: 20,
-        mindB: -20,
+        maxdB: 18,
+        mindB: -18,
         maxFC: 20000,
         minFC: 20,
       },
-      chartDatas: [
-        [20, 0],
-        [100, 10],
-        [200, 5],
-        [300, -12],
-        [400, -6],
-        [500, 20],
-        [600, -5],
-        [1000, 6],
-        [1800, 20],
-        [20000, -0],
-      ],
+      pointsData: [],
+      linesData: [],
       types: [
         {
           val: 0,
@@ -188,7 +180,6 @@ export default {
       show: this.visible,
       detail: {},
       chartDom: null,
-      mutex: false, // 属性监听互斥锁
     };
   },
   watch: {
@@ -201,10 +192,8 @@ export default {
     },
     bandsData: {
       handler(val) {
-        const newVal = JSON.parse(JSON.stringify(val));
-        this.chartDatas = this.getChartData(newVal);
-        setTimeout(this.renderChart, 0);
-        setTimeout(this.resetTypeSelect, 0);
+        const that = this;
+        this.updateBandsData(that, val);
       },
       deep: true,
     },
@@ -218,20 +207,21 @@ export default {
   },
   mounted() {
     this.parseEqData(JSON.parse(JSON.stringify(this.eqData)));
-    // const bandsData = this.getBandsData(
-
-    // );
-    // this.bandsData = bandsData;
-    // this.chartDatas = this.getChartData(bandsData);
-    // setTimeout(this.renderChart, 0);
-    // setTimeout(this.resetTypeSelect, 0);
   },
   beforeDestroy() {
     // off(window, 'resize', this.resize);
   },
   methods: {
+    updateBandsData: _.debounce((that, val) => {
+      console.log('bandsData更新', val);
+      const newVal = JSON.parse(JSON.stringify(val));
+      that.pointsData = that.getPointsData(newVal);
+      that.linesData = that.getLinesData(newVal);
+      setTimeout(that.renderChart, 0);
+      setTimeout(that.resetTypeSelect, 0);
+    }, 400),
+
     parseEqData(data) {
-      console.log(data);
       const filters = data.map((item) => {
         const [enable, type, dSampleRateHz, q, gain, fc] = item;
         return {
@@ -244,7 +234,8 @@ export default {
         };
       });
       this.bandsData = this.getBandsData(filters);
-      this.chartDatas = this.getChartData(filters);
+      this.pointsData = this.getPointsData(filters);
+      this.linesData = this.getLinesData(filters);
       setTimeout(this.renderChart, 0);
       setTimeout(this.resetTypeSelect, 0);
     },
@@ -254,11 +245,24 @@ export default {
         return item;
       });
     },
-    getChartData(data) {
+    getPointsData(data) {
       const arr = data.map((item) => {
         return [item.fc, item.gain];
       });
+      console.log('获取point', arr);
+
       return arr;
+    },
+    getLinesData(data) {
+      const arr = JSON.parse(JSON.stringify(this.pointsData));
+      arr.map((item) => {
+        item[0] = item[0] * 3;
+        item[1] = item[1] + 2;
+        return item;
+      });
+      console.log('获取line', arr);
+      return arr;
+      //调用算法拿到line的数据
     },
     getBoundaryValGrid() {
       const { maxdB, mindB, maxFC, minFC } = this.boundaryVal;
@@ -275,7 +279,6 @@ export default {
       return this.chartDom && this.chartDom.convertToPixel('grid', dataItem);
     },
     renderChart() {
-      // console.log(this.chartDatas);
       const that = this;
       this.chartDom = echarts && echarts.init(this.$refs.dom);
       if (!this.chartDom) return;
@@ -292,6 +295,7 @@ export default {
           formatter(params) {
             const data = params.data || [0, 0];
             const item = that.bandsData[params.dataIndex];
+            // console.log(params.dataIndex);
             return (
               '频率: ' +
               data[0].toFixed(0) +
@@ -366,7 +370,7 @@ export default {
               // 设置symbol的颜色
               color: 'rgba(255,255,255,0.5)',
             },
-            data: this.chartDatas,
+            data: this.pointsData,
           },
           {
             id: 'line',
@@ -392,7 +396,7 @@ export default {
                 },
               ]),
             },
-            data: this.chartDatas,
+            data: this.linesData,
           },
         ],
       };
@@ -400,7 +404,7 @@ export default {
       const { minX, maxX, minY, maxY } = this.getBoundaryValGrid();
       // console.log(minX, maxX, minY, maxY);
       const graphicList = echarts.util.map(
-        this.chartDatas,
+        this.pointsData,
         (dataItem, dataIndex) => {
           const that = this;
           return {
@@ -439,16 +443,29 @@ export default {
                 this.position[1] = maxY;
               }
               // 实时获取拖动的点位信息并根据此信息重新画图
-              that.chartDatas[dataIndex] = that.chartDom.convertFromPixel(
-                'grid',
-                [this.position[0], this.position[1]]
+              let [fc, gain] = that.chartDom.convertFromPixel('grid', [
+                this.position[0],
+                this.position[1],
+              ]);
+              fc = parseInt(fc);
+              that.$set(
+                that.bandsData,
+                dataIndex,
+                Object.assign(that.bandsData[dataIndex], {
+                  fc,
+                  gain,
+                })
               );
-              // console.log(that.chartDatas);
+              // const linesData = that.getLinesData(that, that.bandsData);
               that.chartDom.setOption({
                 series: [
                   {
                     id: 'point',
-                    data: that.chartDatas,
+                    data: that.pointsData,
+                  },
+                  {
+                    id: 'line',
+                    data: that.linesData,
                   },
                 ],
               });
@@ -517,7 +534,7 @@ export default {
       this.renderChart();
     },
     showTooltip(key) {
-      if (!key) {
+      if (key === undefined) {
         return;
       }
       this.chartDom &&
