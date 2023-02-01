@@ -85,7 +85,7 @@ module.exports = {
     electronBuilder: {
       // 这里是在浏览器中使用node环境，需要为true
       nodeIntegration: true,
-      externals: ['serialport'],
+      externals: ['serialport', 'ffi-napi', 'ref-napi'],
       builderOptions: {
         productName: 'equliazer',
         appId: 'listenai.com',
