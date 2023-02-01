@@ -285,7 +285,7 @@ export default {
       const Yrange = -parseInt((maxY - minY) / num);
       const bandArr = [];
       const chartArr = [];
-      for (let i = 0; i < num + 1; i++) {
+      for (let i = num; i >= 0; i--) {
         bandArr.push({
           x: Xrange * i,
           y: Yrange * i,
@@ -532,16 +532,40 @@ export default {
                 });
               }, 0);
             },
+            // onclick: () => {
+            //   console.log(that.chartDom?.convertToPixel('grid', dataItem));
+            //   if (dataIndex > that.chartDatas.length) return;
+            //   const minIndex =
+            //     dataIndex + 1 >= that.chartDatas.length
+            //       ? that.chartDatas.length - 1
+            //       : dataIndex + 1;
+            //   const maxIndex = dataIndex - 1 > 0 ? dataIndex - 1 : 0;
+            //   let minX, minY, maxX, maxY;
+            //   if (dataIndex === 0) {
+            //     [minX, minY] = that.chartDom?.convertToPixel(
+            //       'grid',
+            //       [-100, -100]
+            //     );
+            //   } else {
+            //     [minX, minY] = that.chartDom?.convertToPixel(
+            //       'grid',
+            //       that.chartDatas[minIndex]
+            //     );
+            //   }
+            //   if (dataIndex + 1 === that.chartDatas.length) {
+            //     [maxX, maxY] = that.chartDom?.convertToPixel('grid', [0, 0]);
+            //   } else {
+            //     [maxX, maxY] = that.chartDom?.convertToPixel(
+            //       'grid',
+            //       that.chartDatas[maxIndex]
+            //     );
+            //   }
+            //   console.log([minX, minY], [maxX, maxY]);
+            // },
             ondrag: echarts.util.curry(function (dataIndex) {
               // 这里要改 具体每个点可拖动范围等确定
-              // position:[x,y]坐标 限制边界
-              // console.log(
-              //   dataIndex - 1,
-              //   that.chartDom.convertToPixel(
-              //     'grid',
-              //     that.chartDatas[dataIndex - 1]
-              //   )
-              // );
+
+              if (dataIndex > that.chartDatas.length) return;
               that.activeIndex = dataIndex;
               if (this.position[0] > maxX) {
                 this.position[0] = maxX;
@@ -574,7 +598,7 @@ export default {
           };
         }
       );
-      // console.log(graphicList);
+      console.log(graphicList);
       this.chartDom.setOption({
         graphic: graphicList,
       });
@@ -599,7 +623,8 @@ export default {
     },
     changeBandNums() {
       const { bands } = this.getBandsData(this.seg);
-      this.bandsData = bands;
+      this.mutex = false;
+      this.bandsData = JSON.parse(JSON.stringify(bands));
     },
     closeHandle() {
       this.resetHandle();

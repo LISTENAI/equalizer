@@ -354,8 +354,7 @@ export default {
             smooth: true,
             symbol: 'circle',
             symbolSize: (_value, params) => {
-              return this.bandsData[params.dataIndex] &&
-                this.bandsData[params.dataIndex].enable
+              return this.bandsData[params.dataIndex]?.enable
                 ? this.symbolSize / 2
                 : 0;
             },
@@ -489,8 +488,7 @@ export default {
     changeTypeImg(key, item) {
       const typeObj = this.types.find((type) => item.type === type.val);
       const opacity = item.enable ? 1 : 0.5;
-      const img =
-        typeObj && typeObj.imgUrl && require('@/assets/imgs/' + typeObj.imgUrl);
+      const img = typeObj?.imgUrl && require('@/assets/imgs/' + typeObj.imgUrl);
       img &&
         this.$refs['select' + key][0].$el.children[0].children[0].setAttribute(
           'style',
@@ -503,8 +501,7 @@ export default {
     },
     changeType(e, key) {
       const item = this.types.find((item) => item.val === e);
-      const img =
-        item && item.imgUrl && require('@/assets/imgs/' + item.imgUrl);
+      const img = item?.imgUrl && require('@/assets/imgs/' + item.imgUrl);
       this.$refs['select' + key][0].$el.children[0].children[0].setAttribute(
         'style',
         'background-image:url(' +
@@ -513,7 +510,6 @@ export default {
       );
     },
     changeenable(v, key) {
-      console.log(v, key);
       const item = this.bandsData[key];
       item.enable = v;
       this.$set(this.bandsData, key, item);

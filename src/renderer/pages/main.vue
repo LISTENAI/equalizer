@@ -74,7 +74,7 @@
         </div>
       </div>
     </div>
-    <div class="container flex" v-loading="loading">
+    <div class="container flex" v-loading="loading || writing">
       <div class="progress flex">
         <div class="step text">输入</div>
         <div class="step flex" v-for="item in options" :key="item.text">
@@ -83,16 +83,14 @@
             <img :src="require('@/assets/imgs/' + item.imageUrl)" />
             <p class="text">{{ item.text }}</p>
             <el-button
-              :disabled="
-                item.enable || (!Object.keys(project).length && !connected)
-              "
+              :disabled="item.enable"
               @click="() => opreateHandle(item)"
               >设置</el-button
             >
+            <!-- || (!Object.keys(project).length && !connected) -->
             <el-checkbox
               v-model="item.enable"
               @change="() => changeBypass(item)"
-              :disabled="!Object.keys(project).length && !connected"
               >Bypass</el-checkbox
             >
           </div>
@@ -645,7 +643,7 @@ export default {
     },
     resetModalData(type) {
       const voiceData = JSON.parse(JSON.stringify(this.originVoiceType[type]));
-      console.log('reset', type, voiceData);
+      // console.log('reset', type, voiceData);
       this.enableVoice(type, false);
       switch (type) {
         case 'eq':

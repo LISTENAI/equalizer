@@ -22,6 +22,11 @@
         </ul>
       </div>
     </div>
+    <div class="info flex">
+      {{
+        project?.manifestJson?.name ? project?.manifestJson?.name : '未命名 - 1'
+      }}
+    </div>
     <div class="operate-bar flex">
       <div class="icon" @click="min">
         <svg-icon icon-class="win_min"></svg-icon>
@@ -44,7 +49,14 @@
       :visible="confirmVisible"
       :show-close="false"
     >
-      <p class="desc">是否保存所做的更改？如果不保存，更改的内容将会丢失</p>
+      <p class="desc">
+        是否保存对“
+        {{
+          project?.manifestJson?.name
+            ? project?.manifestJson?.name
+            : '未命名 - 1'
+        }}”所做的更改？如果不保存，更改的内容将会丢失
+      </p>
       <span slot="footer" class="dialog-footer">
         <el-button type="primary" @click="closeHandle(true, true)"
           >保存</el-button
@@ -216,6 +228,10 @@ export default {
             this.$electron.ipcRenderer.send('window-close');
           }
         } else {
+          if (msg === '项目不存在') {
+            this.projectModalType === '保存';
+            this.projectModalVisible = true;
+          }
           this.$message.error(msg);
           this.$store.dispatch('saveProject', {});
         }
@@ -234,6 +250,11 @@ export default {
       this.projectModalVisible = false;
     },
     saveHandle(data) {
+      console.log(
+        Object.assign({}, data, {
+          configJson: this.projectModalType === '新建' ? {} : this.params,
+        })
+      );
       this.$electron.ipcRenderer
         .invoke(
           'create-project',
@@ -349,6 +370,11 @@ export default {
         }
       }
     }
+  }
+  .info {
+    height: 100%;
+    flex: 1;
+    justify-content: center;
   }
   .operate-bar {
     margin-left: auto;
