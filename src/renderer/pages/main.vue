@@ -66,16 +66,14 @@
         </div>
         <div
           class="opt-btn flex"
-          :class="connected ? '' : 'disabled'"
-          @click="clearTime"
+          :class="Object.keys(params).length ? '' : 'disabled'"
+          @click="exportBinFile"
         >
           <svg-icon icon-class="export" class="icon" />
           <span>导出bin文件</span>
         </div>
       </div>
     </div>
-    <p>project--->{{ project }}</p>
-    <p>params--->{{ params }}</p>
     <div class="container flex" v-loading="loading || writing">
       <div class="progress flex">
         <div class="step text">输入</div>
@@ -603,21 +601,9 @@ export default {
       let modalData = this.voiceType['agc'];
       modalData.type = 'agc';
       if (data) {
-        const { mono_gains, sr, vol } = data;
-        if (mono_gains === undefined) return;
-        modalData.sr = sr || 0;
-        modalData.vol = vol || 0;
-        const item = mono_gains.map((item, index) => {
-          return {
-            type: `${index === 0 ? 'left' : 'right'}Gain`,
-            value: item[1],
-            max: modalData.item[index].max,
-            min: modalData.item[index].min,
-            desc: `${index === 0 ? '左' : '右'}声道增益`,
-            unit: 'dB',
-          };
-        });
-        modalData.item = item;
+        const { sr, vol } = data;
+        modalData.item[0].value = vol;
+        modalData.item[0].sr = sr;
       }
       this.voiceData['agc'] = modalData;
     },
@@ -790,6 +776,28 @@ export default {
         }
       }, 400);
       this.timeId = timeId;
+    },
+    async exportBinFile() {
+      if (Object.keys(this.params).length === 0) {
+        return;
+      }
+      const pathStr = await this.$electron.ipcRenderer.invoke('open-dict');
+      if (pathStr) {
+        console.log(this.params);
+        const res = await this.$electron.ipcRenderer.invoke(
+          'write-bin',
+          pathStr,
+          this.project?.manifestJson?.name
+            ? this.project?.manifestJson?.name + '.bin'
+            : 'euqlizer.bin',
+          this.params
+        );
+        if (res === 0) {
+          this.$message.success('导出成功');
+        } else {
+          this.$message.error('导出失败');
+        }
+      }
     },
   },
 };

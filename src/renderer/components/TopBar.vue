@@ -121,7 +121,7 @@ export default {
     }),
   },
   mounted() {
-    console.log(defaultConfig);
+    window.addEventListener('keydown', this.handleEvent);
     //保存打开新建项目之后 都会给渲染进程发送最新的项目信息
     this.$electron.ipcRenderer.on(
       'projectInfo',
@@ -281,6 +281,24 @@ export default {
             this.$store.dispatch('saveProject', {});
           }
         });
+    },
+    handleEvent(event) {
+      switch (event.keyCode) {
+        case 79:
+          event.preventDefault();
+          event.returnValue = false;
+          if (event.ctrlKey && event.code === 'KeyO') {
+            this.toOpen();
+          }
+          break;
+        case 83:
+          event.preventDefault();
+          event.returnValue = false;
+          if (event.ctrlKey && event.code === 'KeyS') {
+            this.toSave();
+          }
+          break;
+      }
     },
   },
 };

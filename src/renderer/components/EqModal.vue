@@ -139,7 +139,7 @@ export default {
       activeIndex: null,
       type: 'eq',
       enable: this.checkable,
-      symbolSize: 20, // 通过拖动是可以实时改变这里的值的
+      symbolSize: 16, // 通过拖动是可以实时改变这里的值的
       boundaryVal: {
         maxdB: 30,
         mindB: -30,
@@ -257,7 +257,6 @@ export default {
       this.pointsData = arr;
       return arr;
     },
-
     async getLinesData(data) {
       const { maxdB, mindB, maxFC, minFC } = this.boundaryVal;
       const filters = JSON.parse(JSON.stringify(data));
@@ -274,19 +273,18 @@ export default {
         xNum: 840,
         yNum: 370,
       };
-      // console.log(params, options);
       const res = await this.$electron.ipcRenderer.invoke(
         'eq-draw',
         params,
         options
       );
       this.linesData = res.points;
+      // console.log(res.points);
       return res.points;
     },
     convertToPixel(dataItem) {
       return this.chartDom && this.chartDom.convertToPixel('grid', dataItem);
     },
-
     initChart() {
       const that = this;
       this.chartDom = echarts && echarts.init(this.$refs.dom);
@@ -335,8 +333,8 @@ export default {
           },
         },
         yAxis: {
-          min: this.boundaryVal.mindB,
-          max: this.boundaryVal.maxdB,
+          min: -100,
+          max: 100,
           splitNumber: 6,
           minInterval: 1,
           type: 'value',
@@ -360,17 +358,17 @@ export default {
             },
           },
         },
-        // dataZoom: [
-        //   {
-        //     startValue: this.boundaryVal.mindB,
-        //     endValue: this.boundaryVal.maxdB,
-        //     type: 'inside',
-        //     yAxisIndex: 0,
-        //     moveOnMouseMove: 'shift',
-        //     // preventDefaultMouseMove: false,
-        //     filterMode: 'none',
-        //   },
-        // ],
+        dataZoom: [
+          {
+            startValue: this.boundaryVal.mindB,
+            endValue: this.boundaryVal.maxdB,
+            type: 'inside',
+            yAxisIndex: 0,
+            moveOnMouseMove: 'shift',
+            // preventDefaultMouseMove: false,
+            filterMode: 'none',
+          },
+        ],
         series: [
           {
             id: 'point',
@@ -421,6 +419,9 @@ export default {
         ],
       };
       this.chartDom.setOption(option);
+      this.renderGraphicList();
+    },
+    renderGraphicList() {
       const graphicList = echarts.util.map(
         this.pointsData,
         (dataItem, dataIndex) => {
@@ -452,7 +453,6 @@ export default {
               that.hideTooltip(dataIndex);
             },
             ondrag: echarts.util.curry(async function (dataIndex) {
-              console.log(1);
               const { maxdB, mindB, maxFC, minFC } = that.boundaryVal;
               // 实时获取拖动的点位信息并根据此信息重新画图
               let [fc, gain] = that.chartDom.convertFromPixel(
@@ -463,29 +463,28 @@ export default {
               fc = fc >= maxFC ? maxFC : fc;
               gain = gain <= mindB ? mindB : gain;
               gain = gain >= maxdB ? maxdB : gain;
-              // fc = parseInt(fc);
-              console.log(fc, gain);
+              fc = parseInt(fc);
               const newData = JSON.parse(JSON.stringify(that.bandsData));
               newData[dataIndex] = Object.assign(newData[dataIndex], {
                 fc,
                 gain,
               });
-              that.mutex = true;
+              // that.mutex = true;
               that.bandsData = newData;
-              const pointsData = that.getPointsData(newData);
+              // const pointsData = that.getPointsData(newData);
               // const linesData = await that.getLinesData(newData);
-              that.chartDom.setOption({
-                series: [
-                  {
-                    id: 'point',
-                    data: pointsData,
-                  },
-                  {
-                    id: 'line',
-                    data: pointsData,
-                  },
-                ],
-              });
+              // that.chartDom.setOption({
+              //   series: [
+              //     {
+              //       id: 'point',
+              //       data: pointsData,
+              //     },
+              //     {
+              //       id: 'line',
+              //       data: linesData,
+              //     },
+              //   ],
+              // });
             }, dataIndex),
             ondragend: function () {
               that.mutex = false;
@@ -498,7 +497,7 @@ export default {
       });
     },
     renderChart() {
-      console.log('renderchart', this.pointsData);
+      console.log('renderchart');
       if (!this.chartDom) return;
       this?.chartDom.setOption({
         series: [
@@ -508,85 +507,11 @@ export default {
           },
           {
             id: 'line',
-            data: this.pointsData,
+            data: this.linesData,
           },
         ],
       });
-      const graphicList = echarts.util.map(
-        this.pointsData,
-        (dataItem, dataIndex) => {
-          const that = this;
-          return {
-            type: 'circle',
-            shape: {
-              r: that.symbolSize,
-            },
-            // style: {
-            //   fill: '#fff',
-            //   stroke: '#fff',
-            //   lineWidth: 0,
-            // },
-            // 用 transform 的方式对圆点进行定位。position: [x, y] 表示将圆点平移到 [x, y] 位置。
-            // convertToPixel获取每个圆点的位置
-            position: that.chartDom.convertToPixel('grid', dataItem),
-            // 圆点不可见
-            invisible: true,
-            draggable: true,
-            z: 100,
-            onclick: function () {
-              console.log(this.position);
-            },
-            onmousemove: function () {
-              that.showTooltip(dataIndex);
-            },
-            onmouseout: function () {
-              that.hideTooltip(dataIndex);
-            },
-            ondrag: echarts.util.curry(async function (dataIndex) {
-              console.log(1);
-              const { maxdB, mindB, maxFC, minFC } = that.boundaryVal;
-              // 实时获取拖动的点位信息并根据此信息重新画图
-              let [fc, gain] = that.chartDom.convertFromPixel(
-                'grid',
-                this.position
-              );
-              fc = fc < minFC ? minFC : fc;
-              fc = fc >= maxFC ? maxFC : fc;
-              gain = gain <= mindB ? mindB : gain;
-              gain = gain >= maxdB ? maxdB : gain;
-              // fc = parseInt(fc);
-              console.log(fc, gain);
-              const newData = JSON.parse(JSON.stringify(that.bandsData));
-              newData[dataIndex] = Object.assign(newData[dataIndex], {
-                fc,
-                gain,
-              });
-              that.mutex = true;
-              that.bandsData = newData;
-              const pointsData = that.getPointsData(newData);
-              // const linesData = await that.getLinesData(newData);
-              that.chartDom.setOption({
-                series: [
-                  {
-                    id: 'point',
-                    data: pointsData,
-                  },
-                  {
-                    id: 'line',
-                    data: pointsData,
-                  },
-                ],
-              });
-            }, dataIndex),
-            ondragend: function () {
-              that.mutex = false;
-            },
-          };
-        }
-      );
-      this.chartDom.setOption({
-        graphic: graphicList,
-      });
+      this.renderGraphicList();
     },
     resize() {
       // this.dom.resize();

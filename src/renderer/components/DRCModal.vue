@@ -265,7 +265,7 @@ export default {
       const { bands } = this.getBandsData(this.seg);
       this.bandsData = bands;
     }
-    setTimeout(this.renderChart, 0);
+    setTimeout(this.initChart, 0);
   },
   beforeDestroy() {
     // off(window, 'resize', this.resize);
@@ -308,33 +308,11 @@ export default {
         return item;
       });
     },
-    getBoundaryValGrid(n) {
-      const num = n || this.seg;
-      const { maxY, minY, maxX, minX } = this.drcVal;
-      const maxYStep = maxY / num;
-      const minYStep = minY / num;
-      const maxXStep = maxX / num;
-      const minXStep = minX / num;
-      const maxArr = this.convertToPixel([maxXStep, maxYStep]);
-      const minArr = this.convertToPixel([minXStep, minYStep]);
 
-      // console.log({
-      //   maxX: maxArr[0],
-      //   minX: minArr[0],
-      //   maxY: maxArr[1],
-      //   minY: minArr[1],
-      // });
-      return {
-        maxX: maxArr[0],
-        minX: minArr[0],
-        maxY: maxArr[1],
-        minY: minArr[1],
-      };
-    },
     convertToPixel(dataItem) {
       return this?.chartDom.convertToPixel('grid', dataItem);
     },
-    renderChart() {
+    initChart() {
       const that = this;
       this.chartDom = echarts && echarts.init(this.$refs.dom);
       if (!this.chartDom) return;
@@ -500,8 +478,21 @@ export default {
         ],
       };
       this.chartDom.setOption(option);
-      const { minX, maxX, minY, maxY } = this.getBoundaryValGrid(1);
-      // console.log(minX, maxX, minY, maxY);
+      this.renderGraphicList();
+    },
+    renderChart() {
+      console.log('renderchart');
+      this?.chartDom.setOption({
+        series: [
+          {
+            id: 'point',
+            data: this.chartDatas,
+          },
+        ],
+      });
+      this.renderGraphicList();
+    },
+    renderGraphicList() {
       const graphicList = echarts.util.map(
         this.chartDatas,
         (dataItem, dataIndex) => {
@@ -511,13 +502,6 @@ export default {
             shape: {
               r: that.symbolSize,
             },
-            // style: {
-            //   fill: '#fff',
-            //   stroke: '#fff',
-            //   lineWidth: 0,
-            // },
-            // 用 transform 的方式对圆点进行定位。position: [x, y] 表示将圆点平移到 [x, y] 位置。
-            // convertToPixel获取每个圆点的位置
             position: that.chartDom?.convertToPixel('grid', dataItem),
             // 圆点不可见
             invisible: true,
@@ -532,73 +516,33 @@ export default {
                 });
               }, 0);
             },
-            // onclick: () => {
-            //   console.log(that.chartDom?.convertToPixel('grid', dataItem));
-            //   if (dataIndex > that.chartDatas.length) return;
-            //   const minIndex =
-            //     dataIndex + 1 >= that.chartDatas.length
-            //       ? that.chartDatas.length - 1
-            //       : dataIndex + 1;
-            //   const maxIndex = dataIndex - 1 > 0 ? dataIndex - 1 : 0;
-            //   let minX, minY, maxX, maxY;
-            //   if (dataIndex === 0) {
-            //     [minX, minY] = that.chartDom?.convertToPixel(
-            //       'grid',
-            //       [-100, -100]
-            //     );
-            //   } else {
-            //     [minX, minY] = that.chartDom?.convertToPixel(
-            //       'grid',
-            //       that.chartDatas[minIndex]
-            //     );
-            //   }
-            //   if (dataIndex + 1 === that.chartDatas.length) {
-            //     [maxX, maxY] = that.chartDom?.convertToPixel('grid', [0, 0]);
-            //   } else {
-            //     [maxX, maxY] = that.chartDom?.convertToPixel(
-            //       'grid',
-            //       that.chartDatas[maxIndex]
-            //     );
-            //   }
-            //   console.log([minX, minY], [maxX, maxY]);
-            // },
+
             ondrag: echarts.util.curry(function (dataIndex) {
               // 这里要改 具体每个点可拖动范围等确定
-
+              const { minX, minY, maxX, maxY } = that.drcVal;
               if (dataIndex > that.chartDatas.length) return;
               that.activeIndex = dataIndex;
-              if (this.position[0] > maxX) {
-                this.position[0] = maxX;
-              } else if (this.position[0] < minX) {
-                this.position[0] = minX;
-              }
-              if (this.position[1] > minY) {
-                this.position[1] = minY;
-              } else if (this.position[1] < maxY) {
-                this.position[1] = maxY;
-              }
+
               // 实时获取拖动的点位信息并根据此信息重新画图
-              const [newPosX, newPosY] = that.chartDom.convertFromPixel(
-                'grid',
-                [parseInt(this.position[0]), parseInt(this.position[1])]
-              );
-              // newPosY 加了parseInt之后，不能约束边界。。。
-              that.chartDatas[dataIndex] = [parseInt(newPosX), newPosY];
-              that.updateBandsData(that.chartDatas);
+              let [newPosX, newPosY] = that.chartDom.convertFromPixel('grid', [
+                parseInt(this.position[0]),
+                parseInt(this.position[1]),
+              ]);
+              newPosX = newPosX < minX ? minX : newPosX;
+              newPosX = newPosX >= maxX ? maxX : newPosX;
+              newPosY = newPosY <= minY ? minY : newPosY;
+              newPosY = newPosY >= maxY ? maxY : newPosY;
               that.mutex = true;
-              that.chartDom.setOption({
-                series: [
-                  {
-                    id: 'point',
-                    data: that.chartDatas,
-                  },
-                ],
-              });
+              that.chartDatas[dataIndex] = [newPosX, newPosY];
+              that.updateBandsData(that.chartDatas);
+              that.renderChart();
             }, dataIndex),
+            ondragend: function () {
+              that.mutex = false;
+            },
           };
         }
       );
-      console.log(graphicList);
       this.chartDom.setOption({
         graphic: graphicList,
       });
