@@ -97,10 +97,9 @@
             <el-input-number
               v-model="rms"
               controls-position="right"
-              :min="0.3"
-              :max="10"
-              :precision="1"
-              :step="0.1"
+              :min="0"
+              :max="100"
+              :step="1"
               size="mini"
             ></el-input-number>
             <i>ms</i>
@@ -162,6 +161,7 @@ export default {
         minX: -100,
         defaultW: 3,
       },
+
       ranges: {},
       chartDatas: [
         [0, 0],
@@ -186,7 +186,7 @@ export default {
       seg: 5, //段数
       at: 10, //启动时间
       rt: 500, //释放时间
-      rms: 0.02, //检测时间
+      rms: 10, //检测时间
       mode: 0, //类型
       show: this.visible,
       chartDom: null,

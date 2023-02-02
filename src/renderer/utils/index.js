@@ -118,10 +118,10 @@ export const setParams = (type, data) => {
       data_buf.writeInt(data.enable);
       data_buf.writeFloat(data.sr);
       data_buf.writeFloat(data.vol);
-      data.mono_gains && data.mono_gains.forEach(gain => {
-        data_buf.writeInt(gain[0]);
-        data_buf.writeFloat(gain[1]);
-      });
+      // data.mono_gains && data.mono_gains.forEach(gain => {
+      //   data_buf.writeInt(gain[0]);
+      //   data_buf.writeFloat(gain[1]);
+      // });
       break;
     case 'bass_boost':
       data_buf.writeInt(data.enable);
@@ -297,15 +297,15 @@ const parseAgc = (buf) => {
   data.enable = Boolean(buf.readInt32LE(0 * 4));
   data.sr = parseFloat(buf.readFloatLE(1 * 4).toFixed(3));
   data.vol = parseFloat(buf.readFloatLE(2 * 4).toFixed(3));
-  data.mono_gains = [];
-  let offset = 3 * 4;
-  while (buf.length > offset) {
-    data.mono_gains.push([
-      Boolean(buf.readInt32LE(offset)),
-      parseFloat(buf.readFloatLE(offset + 4).toFixed(3)),
-    ]);
-    offset += 8;
-  }
+  // data.mono_gains = [];
+  // let offset = 3 * 4;
+  // while (buf.length > offset) {
+  //   data.mono_gains.push([
+  //     Boolean(buf.readInt32LE(offset)),
+  //     parseFloat(buf.readFloatLE(offset + 4).toFixed(3)),
+  //   ]);
+  //   offset += 8;
+  // }
   return data;
 };
 

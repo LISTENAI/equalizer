@@ -1,7 +1,7 @@
 const state = {
   project: {},
   params: {},
-  reset: false,
+  reset: false
 };
 
 const mutations = {

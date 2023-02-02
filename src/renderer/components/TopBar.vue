@@ -72,6 +72,7 @@
 import ProjectModal from './CreateProjectModal';
 import { mapState } from 'vuex';
 const LogoImg = require('@/assets/imgs/lsAudio.png');
+import defaultConfig from '../utils/config';
 export default {
   name: 'TopBar',
   components: { ProjectModal },
@@ -120,6 +121,7 @@ export default {
     }),
   },
   mounted() {
+    console.log(defaultConfig);
     //保存打开新建项目之后 都会给渲染进程发送最新的项目信息
     this.$electron.ipcRenderer.on(
       'projectInfo',
@@ -250,16 +252,12 @@ export default {
       this.projectModalVisible = false;
     },
     saveHandle(data) {
-      console.log(
-        Object.assign({}, data, {
-          configJson: this.projectModalType === '新建' ? {} : this.params,
-        })
-      );
       this.$electron.ipcRenderer
         .invoke(
           'create-project',
           Object.assign({}, data, {
-            configJson: this.projectModalType === '新建' ? {} : this.params,
+            configJson:
+              this.projectModalType === '新建' ? defaultConfig : this.params,
           })
         )
         .then((res) => {
@@ -271,7 +269,7 @@ export default {
                 'saveProject',
                 JSON.parse(JSON.stringify(data))
               );
-              this.$store.dispatch('saveParams', {});
+              this.$store.dispatch('saveParams', defaultConfig);
             }
             this.$message.success(`${this.projectModalType}成功`);
             this.confirmVisible = false;

@@ -112,26 +112,13 @@ export default {
       this.closeHandle();
       const params = { enable: !this.enable };
       if (this.detail.type === 'agc') {
-        const { sr, vol, item } = this.detail;
-        // data = {
-        //   enable: true,
-        //   sr: 16000,
-        //   vol: 24,
-        //   mono_gains: [
-        //     [true, 10],
-        //     [true, 20],
-        //   ],
-        // };
+        const { value, sr } = this.detail?.item[0];
         params.sr = sr;
-        params.vol = vol;
-        params.mono_gains = [];
-        item &&
-          item.map((item) => {
-            params.mono_gains.push([true, parseInt(item.value)]);
-          });
+        params.vol = value;
       } else {
         this.detail.item &&
           this.detail.item.map((item) => {
+            params.fs = item.fs;
             params[item.type] = parseInt(item.value);
           });
       }
@@ -176,7 +163,7 @@ export default {
       line-height: 18px;
     }
     .slider {
-      width: 220px;
+      width: 195px;
     }
   }
   .dialog-footer {

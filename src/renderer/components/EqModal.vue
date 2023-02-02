@@ -38,16 +38,16 @@
           <el-input-number
             v-model="item.fc"
             controls-position="right"
-            :min="20"
-            :max="20000"
+            :min="boundaryVal.minFC"
+            :max="boundaryVal.maxFC"
             size="mini"
             :disabled="!item.enable"
           ></el-input-number>
           <el-input-number
             v-model="item.gain"
             controls-position="right"
-            :min="-18"
-            :max="18"
+            :min="boundaryVal.mindB"
+            :max="boundaryVal.maxdB"
             :precision="1"
             :step="0.1"
             size="mini"
@@ -56,8 +56,8 @@
           <el-input-number
             v-model="item.q"
             controls-position="right"
-            :min="0.3"
-            :max="10.0"
+            :min="boundaryVal.minQ"
+            :max="boundaryVal.maxQ"
             :precision="1"
             :step="0.1"
             size="mini"
@@ -104,7 +104,6 @@
 <script>
 import * as echarts from 'echarts';
 import _ from 'lodash';
-
 export default {
   name: 'EqModal',
   props: {
@@ -140,12 +139,14 @@ export default {
       activeIndex: null,
       type: 'eq',
       enable: this.checkable,
-      symbolSize: 9, // 通过拖动是可以实时改变这里的值的
+      symbolSize: 20, // 通过拖动是可以实时改变这里的值的
       boundaryVal: {
-        maxdB: 18,
-        mindB: -18,
+        maxdB: 30,
+        mindB: -30,
         maxFC: 20000,
         minFC: 20,
+        minQ: 0.3,
+        maxQ: 10,
       },
       pointsData: [],
       linesData: [],
@@ -180,6 +181,7 @@ export default {
       show: this.visible,
       detail: {},
       chartDom: null,
+      mutex: false,
     };
   },
   watch: {
@@ -193,6 +195,7 @@ export default {
     bandsData: {
       handler(val) {
         const that = this;
+        // console.log(this.mutex);
         this.updateBandsData(that, val);
       },
       deep: true,
@@ -206,22 +209,24 @@ export default {
     },
   },
   mounted() {
+    setTimeout(this.initChart, 0);
     this.parseEqData(JSON.parse(JSON.stringify(this.eqData)));
   },
   beforeDestroy() {
     // off(window, 'resize', this.resize);
   },
   methods: {
-    updateBandsData: _.debounce((that, val) => {
-      console.log('bandsData更新', val);
-      const newVal = JSON.parse(JSON.stringify(val));
-      that.pointsData = that.getPointsData(newVal);
-      that.linesData = that.getLinesData(newVal);
-      setTimeout(that.renderChart, 0);
-      setTimeout(that.resetTypeSelect, 0);
-    }, 400),
+    updateBandsData: _.debounce(async (that, val) => {
+      if (!that.mutex) {
+        const newVal = JSON.parse(JSON.stringify(val));
+        that.getPointsData(newVal);
+        await that.getLinesData(newVal);
+        setTimeout(that.resetTypeSelect, 0);
+        setTimeout(that.renderChart, 0);
+      }
+    }, 1000 / 60),
 
-    parseEqData(data) {
+    async parseEqData(data) {
       const filters = data.map((item) => {
         const [enable, type, dSampleRateHz, q, gain, fc] = item;
         return {
@@ -234,8 +239,8 @@ export default {
         };
       });
       this.bandsData = this.getBandsData(filters);
-      this.pointsData = this.getPointsData(filters);
-      this.linesData = this.getLinesData(filters);
+      this.getPointsData(filters);
+      await this.getLinesData(filters);
       setTimeout(this.renderChart, 0);
       setTimeout(this.resetTypeSelect, 0);
     },
@@ -249,39 +254,43 @@ export default {
       const arr = data.map((item) => {
         return [item.fc, item.gain];
       });
-      console.log('获取point', arr);
+      this.pointsData = arr;
+      return arr;
+    },
 
-      return arr;
-    },
-    getLinesData(data) {
-      const arr = JSON.parse(JSON.stringify(this.pointsData));
-      arr.map((item) => {
-        item[0] = item[0] * 3;
-        item[1] = item[1] + 2;
-        return item;
-      });
-      console.log('获取line', arr);
-      return arr;
-      //调用算法拿到line的数据
-    },
-    getBoundaryValGrid() {
+    async getLinesData(data) {
       const { maxdB, mindB, maxFC, minFC } = this.boundaryVal;
-      const maxArr = this.convertToPixel([maxFC, maxdB]);
-      const minArr = this.convertToPixel([minFC, mindB]);
-      return {
-        maxX: maxArr[0],
-        minX: minArr[0],
-        maxY: maxArr[1],
-        minY: minArr[1],
+      const filters = JSON.parse(JSON.stringify(data));
+      filters.map((item) => (item.enable = item.enable ? 1 : 0));
+      const params = {
+        enable: !this.enable,
+        filters,
       };
+      const options = {
+        startFreq: minFC,
+        endFreq: maxFC,
+        startGain: mindB,
+        endGain: maxdB,
+        xNum: 840,
+        yNum: 370,
+      };
+      // console.log(params, options);
+      const res = await this.$electron.ipcRenderer.invoke(
+        'eq-draw',
+        params,
+        options
+      );
+      this.linesData = res.points;
+      return res.points;
     },
     convertToPixel(dataItem) {
       return this.chartDom && this.chartDom.convertToPixel('grid', dataItem);
     },
-    renderChart() {
+
+    initChart() {
       const that = this;
       this.chartDom = echarts && echarts.init(this.$refs.dom);
-      if (!this.chartDom) return;
+
       const option = {
         grid: {
           left: 50,
@@ -328,14 +337,14 @@ export default {
         yAxis: {
           min: this.boundaryVal.mindB,
           max: this.boundaryVal.maxdB,
-          interval: 4,
+          splitNumber: 6,
           minInterval: 1,
           type: 'value',
           // boundaryGap: [0, '30%'],
           axisLabel: {
             color: '#ccc',
             formatter(value) {
-              return value + ' dB';
+              return parseInt(value) + ' dB';
             },
           },
           axisLine: {
@@ -351,6 +360,17 @@ export default {
             },
           },
         },
+        // dataZoom: [
+        //   {
+        //     startValue: this.boundaryVal.mindB,
+        //     endValue: this.boundaryVal.maxdB,
+        //     type: 'inside',
+        //     yAxisIndex: 0,
+        //     moveOnMouseMove: 'shift',
+        //     // preventDefaultMouseMove: false,
+        //     filterMode: 'none',
+        //   },
+        // ],
         series: [
           {
             id: 'point',
@@ -401,8 +421,6 @@ export default {
         ],
       };
       this.chartDom.setOption(option);
-      const { minX, maxX, minY, maxY } = this.getBoundaryValGrid();
-      // console.log(minX, maxX, minY, maxY);
       const graphicList = echarts.util.map(
         this.pointsData,
         (dataItem, dataIndex) => {
@@ -424,56 +442,148 @@ export default {
             invisible: true,
             draggable: true,
             z: 100,
+            onclick: function () {
+              console.log(this.position);
+            },
             onmousemove: function () {
               that.showTooltip(dataIndex);
             },
             onmouseout: function () {
               that.hideTooltip(dataIndex);
             },
-            ondrag: echarts.util.curry(function (dataIndex) {
-              // position:[x,y]坐标 限制边界
-              if (this.position[0] > maxX) {
-                this.position[0] = maxX;
-              } else if (this.position[0] < minX) {
-                this.position[0] = minX;
-              }
-              if (this.position[1] > minY) {
-                this.position[1] = minY;
-              } else if (this.position[1] < maxY) {
-                this.position[1] = maxY;
-              }
+            ondrag: echarts.util.curry(async function (dataIndex) {
+              console.log(1);
+              const { maxdB, mindB, maxFC, minFC } = that.boundaryVal;
               // 实时获取拖动的点位信息并根据此信息重新画图
-              let [fc, gain] = that.chartDom.convertFromPixel('grid', [
-                this.position[0],
-                this.position[1],
-              ]);
-              fc = parseInt(fc);
-              that.$set(
-                that.bandsData,
-                dataIndex,
-                Object.assign(that.bandsData[dataIndex], {
-                  fc,
-                  gain,
-                })
+              let [fc, gain] = that.chartDom.convertFromPixel(
+                'grid',
+                this.position
               );
-              // const linesData = that.getLinesData(that, that.bandsData);
+              fc = fc < minFC ? minFC : fc;
+              fc = fc >= maxFC ? maxFC : fc;
+              gain = gain <= mindB ? mindB : gain;
+              gain = gain >= maxdB ? maxdB : gain;
+              // fc = parseInt(fc);
+              console.log(fc, gain);
+              const newData = JSON.parse(JSON.stringify(that.bandsData));
+              newData[dataIndex] = Object.assign(newData[dataIndex], {
+                fc,
+                gain,
+              });
+              that.mutex = true;
+              that.bandsData = newData;
+              const pointsData = that.getPointsData(newData);
+              // const linesData = await that.getLinesData(newData);
               that.chartDom.setOption({
                 series: [
                   {
                     id: 'point',
-                    data: that.pointsData,
+                    data: pointsData,
                   },
                   {
                     id: 'line',
-                    data: that.linesData,
+                    data: pointsData,
                   },
                 ],
               });
             }, dataIndex),
+            ondragend: function () {
+              that.mutex = false;
+            },
           };
         }
       );
-      // console.log(graphicList);
+      this.chartDom.setOption({
+        graphic: graphicList,
+      });
+    },
+    renderChart() {
+      console.log('renderchart', this.pointsData);
+      if (!this.chartDom) return;
+      this?.chartDom.setOption({
+        series: [
+          {
+            id: 'point',
+            data: this.pointsData,
+          },
+          {
+            id: 'line',
+            data: this.pointsData,
+          },
+        ],
+      });
+      const graphicList = echarts.util.map(
+        this.pointsData,
+        (dataItem, dataIndex) => {
+          const that = this;
+          return {
+            type: 'circle',
+            shape: {
+              r: that.symbolSize,
+            },
+            // style: {
+            //   fill: '#fff',
+            //   stroke: '#fff',
+            //   lineWidth: 0,
+            // },
+            // 用 transform 的方式对圆点进行定位。position: [x, y] 表示将圆点平移到 [x, y] 位置。
+            // convertToPixel获取每个圆点的位置
+            position: that.chartDom.convertToPixel('grid', dataItem),
+            // 圆点不可见
+            invisible: true,
+            draggable: true,
+            z: 100,
+            onclick: function () {
+              console.log(this.position);
+            },
+            onmousemove: function () {
+              that.showTooltip(dataIndex);
+            },
+            onmouseout: function () {
+              that.hideTooltip(dataIndex);
+            },
+            ondrag: echarts.util.curry(async function (dataIndex) {
+              console.log(1);
+              const { maxdB, mindB, maxFC, minFC } = that.boundaryVal;
+              // 实时获取拖动的点位信息并根据此信息重新画图
+              let [fc, gain] = that.chartDom.convertFromPixel(
+                'grid',
+                this.position
+              );
+              fc = fc < minFC ? minFC : fc;
+              fc = fc >= maxFC ? maxFC : fc;
+              gain = gain <= mindB ? mindB : gain;
+              gain = gain >= maxdB ? maxdB : gain;
+              // fc = parseInt(fc);
+              console.log(fc, gain);
+              const newData = JSON.parse(JSON.stringify(that.bandsData));
+              newData[dataIndex] = Object.assign(newData[dataIndex], {
+                fc,
+                gain,
+              });
+              that.mutex = true;
+              that.bandsData = newData;
+              const pointsData = that.getPointsData(newData);
+              // const linesData = await that.getLinesData(newData);
+              that.chartDom.setOption({
+                series: [
+                  {
+                    id: 'point',
+                    data: pointsData,
+                  },
+                  {
+                    id: 'line',
+                    data: pointsData,
+                  },
+                ],
+              });
+            }, dataIndex),
+            ondragend: function () {
+              that.mutex = false;
+            },
+          };
+        }
+      );
       this.chartDom.setOption({
         graphic: graphicList,
       });

@@ -74,6 +74,8 @@
         </div>
       </div>
     </div>
+    <p>project--->{{ project }}</p>
+    <p>params--->{{ params }}</p>
     <div class="container flex" v-loading="loading || writing">
       <div class="progress flex">
         <div class="step text">输入</div>
@@ -95,6 +97,7 @@
             >
           </div>
         </div>
+
         <div class="step flex arrow-part">
           <div class="flex">
             <img :src="require('@/assets/imgs/' + arrowImgUrl)" class="arrow" />
@@ -161,12 +164,12 @@ export default {
       coms: [],
       rates: [
         {
-          value: '4800',
+          value: 48000,
           label: 'Music Manager 48K',
         },
       ],
       com: '',
-      rate: '4800',
+      rate: 48000, //采样率
       comsLoading: false,
       loading: false,
       writing: false,
@@ -213,8 +216,9 @@ export default {
             {
               type: 'gain',
               value: 0,
-              max: 24,
-              min: 0,
+              max: 100,
+              min: -100,
+              fs: 48000,
               desc: '低音增强增益',
               unit: 'dB',
             },
@@ -223,6 +227,7 @@ export default {
               value: 200,
               max: 200,
               min: 40,
+              fs: 48000,
               desc: '低音增强截止频率',
               unit: 'Hz',
             },
@@ -234,16 +239,18 @@ export default {
             {
               type: 'gain',
               value: 0,
-              max: 15,
-              min: 0,
+              max: 100,
+              min: -100,
+              fs: 48000,
               desc: '高音增强增益',
               unit: 'dB',
             },
             {
               type: 'freq',
-              value: 2000,
-              max: 2000,
-              min: 200,
+              value: 1000,
+              max: 20000,
+              min: 1000,
+              fs: 48000,
               desc: '高音增强截止频率',
               unit: 'Hz',
             },
@@ -253,41 +260,34 @@ export default {
           title: '输出',
           item: [
             {
-              type: 'leftGain',
+              type: 'vol',
               value: 0,
-              max: 15,
-              min: 0,
-              desc: '左声道增益',
-              unit: 'dB',
-            },
-            {
-              type: 'rightGain',
-              value: 0,
-              max: 15,
-              min: 0,
-              desc: '右声道增益',
+              max: 0,
+              min: -100,
+              sr: 48000,
+              desc: '增益',
               unit: 'dB',
             },
           ],
         },
         eq: [
-          [1, 2, 4800, 0.5, 0, 26],
-          [1, 0, 4800, 0.7, 0, 40],
-          [1, 2, 4800, 0.7, 0, 63],
-          [1, 2, 4800, 0.7, 0, 80],
-          [1, 2, 4800, 0.7, 0, 125],
-          [1, 2, 4800, 0.7, 0, 250],
-          [1, 2, 4800, 0.7, 0, 500],
-          [1, 2, 4800, 0.7, 0, 1000],
-          [1, 2, 4800, 0.7, 0, 2000],
-          [1, 2, 4800, 0.7, 0, 2500],
+          [1, 2, 48000, 0.5, 0, 26],
+          [1, 0, 48000, 0.7, 0, 40],
+          [1, 2, 48000, 0.7, 0, 63],
+          [1, 2, 48000, 0.7, 0, 80],
+          [1, 2, 48000, 0.7, 0, 125],
+          [1, 2, 48000, 0.7, 0, 250],
+          [1, 2, 48000, 0.7, 0, 500],
+          [1, 2, 48000, 0.7, 0, 1000],
+          [1, 2, 48000, 0.7, 0, 2000],
+          [1, 2, 48000, 0.7, 0, 2500],
         ],
         drc: {
           fs: 48000,
           seg: 5,
           at: 10,
           rt: 500,
-          rms: 0.02,
+          rms: 10,
           mode: 0,
           dots: [],
         },
