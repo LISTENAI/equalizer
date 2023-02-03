@@ -1,18 +1,18 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function (o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
     if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
+        desc = { enumerable: true, get: function () { return m[k]; } };
     }
     Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
+}) : (function (o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     o[k2] = m[k];
 }));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function (o, v) {
     Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
+}) : function (o, v) {
     o["default"] = v;
 });
 var __importStar = (this && this.__importStar) || function (mod) {
@@ -38,12 +38,19 @@ const arch = function () {
             throw new Error('Arch not supported!');
     }
 };
-const binDll = (0, path_1.join)(__dirname, '..', 'dlls', arch(), 'iflytekEqDrcDrawApi.dll');
-console.log(binDll)
+let binDllPath = (0, path_1.join)(__static, 'dlls');;
+const isDevelopment = process.env.NODE_ENV !== "production";
+if (isDevelopment) {
+    binDllPath = binDllPath.replace('\\public\\', '\\');
+} else {
+    binDllPath = binDllPath.replace('\\resources\\app.asar\\', '\\');
+}
+const binDll = (0, path_1.join)(binDllPath, arch(), 'iflytekEqDrcDrawApi.dll');
+console.log(binDll);
 exports.iflytekBinHandle = new ffi.Library(binDll, {
     'writeToBinFile': ['int', ['string', ref.refType(stru_1.struAudioPrm)]],
 });
-const eqDrawDll = (0, path_1.join)(__dirname, '..', 'dlls', arch(), 'eqdrawDLL.dll');
+const eqDrawDll = (0, path_1.join)(binDllPath, arch(), 'eqdrawDLL.dll');
 exports.iflytekEqDraw = new ffi.Library(eqDrawDll, {
     // ====== EQ 绘图函数：函数调用前需要将参数pstEqPrmObj和XYData初始化赋值，并为 Y 申请好相应的空间 ======
     //int EqDraw(pstMonoEqPrm pstEqPrmObj, struUIXYInfo *XYData);

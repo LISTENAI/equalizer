@@ -94,6 +94,12 @@ module.exports = {
         directories: {
           // output: 'build' // 输出文件夹
         },
+        extraResources: [
+          {
+            from: "./dlls",
+            to: "../dlls"
+          },
+        ],
         win: {
           icon: './public/LSAudio256.ico',
           target: ['nsis', 'zip']

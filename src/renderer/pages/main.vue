@@ -74,6 +74,7 @@
         </div>
       </div>
     </div>
+    <!-- {{ params }} -->
     <div class="container flex" v-loading="loading || writing">
       <div class="progress flex">
         <div class="step text">输入</div>
@@ -270,7 +271,7 @@ export default {
         },
         eq: [
           [1, 2, 48000, 0.5, 0, 26],
-          [1, 0, 48000, 0.7, 0, 40],
+          [1, 2, 48000, 0.7, 0, 40],
           [1, 2, 48000, 0.7, 0, 63],
           [1, 2, 48000, 0.7, 0, 80],
           [1, 2, 48000, 0.7, 0, 125],
@@ -318,8 +319,8 @@ export default {
     this.setInitData();
   },
   unmounted() {
-    clearInterval(this.timeId);
-    clearTimeout(this.timeOutid);
+    this.clearInterval();
+    this.clearTimeout();
   },
   computed: {
     ...mapState({
@@ -329,6 +330,11 @@ export default {
     }),
   },
   watch: {
+    connected(v) {
+      if (v) {
+        this.timeOutid && clearTimeout(this.timeOutid);
+      }
+    },
     reset(v) {
       v && this.setInitData();
     },
@@ -359,7 +365,7 @@ export default {
       SerialPortHandle.serialPorEmitter.on('SerialPort', (res) => {
         console.log('data from SerialPort', res);
         // console.log(JSON.stringify(res));
-        const { code, data } = res;
+        const { code, data, message } = res;
         if (this.eName === data.type) {
           this.eDone = true;
         }
@@ -428,6 +434,14 @@ export default {
     open(link) {
       this.$electron.shell.openExternal(link);
     },
+    clearTimeout() {
+      this.timeOutid && clearTimeout(this.timeOutid);
+      this.timeOutid = null;
+    },
+    clearInterval() {
+      this.timeId && clearInterval(this.timeId);
+      this.timeId = null;
+    },
     async connectHandle() {
       try {
         if (this.connected) {
@@ -435,8 +449,7 @@ export default {
           this.connected = false;
           this.writing = false;
           this.loading = false;
-          clearTimeout(this.timeOutid);
-          this.timeOutid = null;
+          this.clearTimeout();
         } else {
           const timeOutid = setTimeout(() => {
             this.connecting = false;
@@ -447,6 +460,7 @@ export default {
           this.timeOutid = timeOutid;
           this.connecting = true;
           await SerialPortHandle.open(this.com);
+
           this.checkConnectHandle();
         }
       } catch (error) {
@@ -454,6 +468,7 @@ export default {
         this.connected = false;
         this.writing = false;
         this.loading = false;
+        this.clearTimeout();
         this.$message.error(error);
       }
     },
@@ -470,7 +485,7 @@ export default {
       // console.log('isok', isOk);
       this.connected = isOk;
       this.connecting = false;
-      clearTimeout(this.timeOutid);
+      this.clearTimeout();
     },
     changeBypass(item) {
       console.log(this.params);
@@ -675,10 +690,7 @@ export default {
       console.log(newParams);
       this.$store.dispatch('saveParams', newParams);
     },
-    clearTime() {
-      this.timeId && clearInterval(this.timeId);
-      this.timeId = undefined;
-    },
+
     //单个写入设置
     async saveParamsHandle(type, data) {
       try {
@@ -700,9 +712,7 @@ export default {
       }
       console.log('写入参数', this.params);
       const timeOutid = setTimeout(() => {
-        clearInterval(this.timeId);
-        this.timeId = null;
-        this.timeOutid = null;
+        this.clearInterval();
         this.writing = false;
         this.$message.error('写入超时，请重试');
       }, 15000);
@@ -710,10 +720,8 @@ export default {
       this.writing = true;
       let timeId = setInterval(async () => {
         if (saveDatas.length === 0) {
-          clearInterval(this.timeId);
-          this.timeId = null;
-          clearTimeout(this.timeOutid);
-          this.timeOutid = null;
+          this.clearInterval();
+          this.clearTimeout();
           this.writing = false;
           return;
         } else {
@@ -736,11 +744,11 @@ export default {
     },
     async getAllParams() {
       const dataTypes = JSON.parse(JSON.stringify(TYPES));
+
       if (!this.connected || this.loading || this.writing) return;
       this.loading = true;
       const timeOutid = setTimeout(() => {
-        clearInterval(this.timeId);
-        this.timeId = null;
+        this.clearInterval();
         this.loading = false;
         this.eName = '';
         this.eDone = false;
@@ -749,10 +757,8 @@ export default {
       this.timeOutid = timeOutid;
       let timeId = setInterval(async () => {
         if (dataTypes.length === 0) {
-          clearInterval(this.timeId);
-          this.timeId = null;
-          clearTimeout(this.timeOutid);
-          this.timeOutid = null;
+          this.clearInterval();
+          this.clearTimeout();
           this.loading = false;
           this.eName = '';
           this.eDone = false;

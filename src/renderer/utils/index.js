@@ -125,11 +125,13 @@ export const setParams = (type, data) => {
       break;
     case 'bass_boost':
       data_buf.writeInt(data.enable);
+      data_buf.writeFloat(data.fs);
       data_buf.writeFloat(data.gain);
       data_buf.writeFloat(data.freq);
       break;
     case 'treble_boost':
       data_buf.writeInt(data.enable);
+      data_buf.writeFloat(data.fs);
       data_buf.writeFloat(data.gain);
       data_buf.writeFloat(data.freq);
       break;
@@ -177,7 +179,6 @@ export const reciveDataDone = (buf) => {
 };
 // 58 46 0B 00 00 57 FF 00 F1 00 10
 export const parseData = (data, bufType) => {
-  // console.log('buf--->', buf2Hex(buf));
   // const data = [];
   // let offset = 0;
   // while (buf.length > offset) {
@@ -238,7 +239,6 @@ export const parseData = (data, bufType) => {
 };
 
 const parseDrc = (buf) => {
-  // console.log('buf--->', buf2Hex(buf));
   let data = {};
   data.enable = Boolean(buf.readInt32LE(0 * 4));
   data.fs = parseFloat(buf.readFloatLE(1 * 4).toFixed(3));
@@ -312,16 +312,18 @@ const parseAgc = (buf) => {
 const parseBassBoost = (buf) => {
   let data = {};
   data.enable = Boolean(buf.readInt32LE(0));
-  data.gain = buf.readFloatLE(4).toFixed(3);
-  data.freq = buf.readFloatLE(8).toFixed(3);
+  data.fs = buf.readFloatLE(4).toFixed(3);
+  data.gain = buf.readFloatLE(8).toFixed(3);
+  data.freq = buf.readFloatLE(12).toFixed(3);
   return data;
 };
 
 const parseTrebleBoost = (buf) => {
   let data = {};
   data.enable = Boolean(buf.readInt32LE(0));
-  data.gain = buf.readFloatLE(4).toFixed(3);
-  data.freq = buf.readFloatLE(8).toFixed(3);
+  data.fs = buf.readFloatLE(4).toFixed(3);
+  data.gain = buf.readFloatLE(8).toFixed(3);
+  data.freq = buf.readFloatLE(12).toFixed(3);
   return data;
 };
 

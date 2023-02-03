@@ -182,22 +182,21 @@ export default {
         </div>
         `;
     },
-    toOpen() {
-      this.$electron.ipcRenderer.invoke('open-project').then((res) => {
-        const { code, data, msg } = res;
-        if (code === 0) {
-          if (!data) return;
-          this.$store.dispatch('changeReset', true);
-          this.$store.dispatch('saveProject', JSON.parse(JSON.stringify(data)));
-          this.$store.dispatch(
-            'saveParams',
-            JSON.parse(JSON.stringify(data.configJson))
-          );
-        } else {
-          this.$message.error(msg);
-          this.$store.dispatch('saveProject', {});
-        }
-      });
+    async toOpen() {
+      const res = await this.$electron.ipcRenderer.invoke('open-project');
+      const { code, data, msg } = res;
+      if (code === 0) {
+        if (!data) return;
+        this.$store.dispatch('changeReset', true);
+        this.$store.dispatch('saveProject', JSON.parse(JSON.stringify(data)));
+        this.$store.dispatch(
+          'saveParams',
+          JSON.parse(JSON.stringify(data.configJson))
+        );
+      } else {
+        this.$message.error(msg);
+        this.$store.dispatch('saveProject', {});
+      }
     },
     toCreate() {
       this.projectModalType = '新建';
@@ -209,35 +208,37 @@ export default {
       this.projectModalVisible = true;
     },
     //保存
-    toSave() {
+    async toSave() {
       if (this.project && Object.keys(this.project).length === 0) {
         return this.toCreate();
       }
       const project = Object.assign({}, this.project, {
         configJson: this.params,
       });
-      this.$electron.ipcRenderer.invoke('save-project', project).then((res) => {
-        const { code, data, msg } = res;
-        if (code === 0) {
-          this.$store.dispatch('saveProject', JSON.parse(JSON.stringify(data)));
-          this.$store.dispatch(
-            'saveParams',
-            JSON.parse(JSON.stringify(data.configJson))
-          );
-          this.$message.success(`保存成功`);
-          this.confirmVisible = false;
-          if (this.isclose) {
-            this.$electron.ipcRenderer.send('window-close');
-          }
-        } else {
-          if (msg === '项目不存在') {
-            this.projectModalType === '保存';
-            this.projectModalVisible = true;
-          }
-          this.$message.error(msg);
-          this.$store.dispatch('saveProject', {});
+      const res = await this.$electron.ipcRenderer.invoke(
+        'save-project',
+        project
+      );
+      const { code, data, msg } = res;
+      if (code === 0) {
+        this.$store.dispatch('saveProject', JSON.parse(JSON.stringify(data)));
+        this.$store.dispatch(
+          'saveParams',
+          JSON.parse(JSON.stringify(data.configJson))
+        );
+        this.$message.success(`保存成功`);
+        this.confirmVisible = false;
+        if (this.isclose) {
+          this.$electron.ipcRenderer.send('window-close');
         }
-      });
+      } else {
+        if (msg === '项目不存在') {
+          this.projectModalType === '保存';
+          this.projectModalVisible = true;
+        }
+        this.$message.error(msg);
+        this.$store.dispatch('saveProject', {});
+      }
     },
     showInfo() {
       const Dom = this.getInfoHtml();
@@ -252,12 +253,22 @@ export default {
       this.projectModalVisible = false;
     },
     saveHandle(data) {
+      let saveParamsObj;
+      if (Object.keys(this.params).length === 0) {
+        saveParamsObj = defaultConfig;
+      } else {
+        saveParamsObj =
+          Object.keys(this.project).length === 0 ? this.params : defaultConfig;
+      }
+
+      console.log(this.projectModalType, this.params, saveParamsObj);
+
       this.$electron.ipcRenderer
         .invoke(
           'create-project',
           Object.assign({}, data, {
             configJson:
-              this.projectModalType === '新建' ? defaultConfig : this.params,
+              this.projectModalType === '新建' ? saveParamsObj : this.params,
           })
         )
         .then((res) => {
@@ -269,7 +280,7 @@ export default {
                 'saveProject',
                 JSON.parse(JSON.stringify(data))
               );
-              this.$store.dispatch('saveParams', defaultConfig);
+              this.$store.dispatch('saveParams', saveParamsObj);
             }
             this.$message.success(`${this.projectModalType}成功`);
             this.confirmVisible = false;
@@ -295,6 +306,7 @@ export default {
           event.preventDefault();
           event.returnValue = false;
           if (event.ctrlKey && event.code === 'KeyS') {
+            console.log('sabe');
             this.toSave();
           }
           break;

@@ -202,9 +202,9 @@ export default {
         console.log('更新drcData', newVal);
         const { fs, at, rt, mode, rms, seg, dots } = newVal;
         this.fs = fs;
-        this.at = at;
-        this.rt = rt;
-        this.rms = rms;
+        this.at = at * 1000;
+        this.rt = rt * 1000;
+        this.rms = rms * 1000;
         this.seg = seg;
         this.mode = mode;
         this.dots = dots;
@@ -222,7 +222,6 @@ export default {
     bandsData: {
       handler(newVal) {
         if (!this.mutex && newVal) {
-          console.log('更新bandsdata', newVal);
           this.bandsData = newVal;
           this.chartDatas = this.getChartData(newVal);
           setTimeout(this.renderChart, 0);
@@ -237,18 +236,6 @@ export default {
       this.show = newVal;
       this.enable = this.checkable;
     },
-    // visible: {
-    //   handler(newVal) {
-    //     this.show = newVal;
-    //     if (newVal) {
-    //       this.originBandsData[this.seg] = {
-    //         bands: this.dots,
-    //         charts: this.getChartData(this.dots),
-    //       };
-    //     }
-    //   },
-    //   immediate: true,
-    // },
   },
 
   mounted() {
@@ -270,7 +257,6 @@ export default {
   beforeDestroy() {
     // off(window, 'resize', this.resize);
   },
-  //默认只给几段的数据，在切换的时候其他默认的点都是默认平均分布
   methods: {
     getBandsData(num) {
       if (!num) return [];
@@ -481,7 +467,7 @@ export default {
       this.renderGraphicList();
     },
     renderChart() {
-      console.log('renderchart');
+      // console.log('renderchart');
       this?.chartDom.setOption({
         series: [
           {
@@ -516,24 +502,25 @@ export default {
                 });
               }, 0);
             },
-
             ondrag: echarts.util.curry(function (dataIndex) {
+              setTimeout(() => {
+                that.chartDom?.dispatchAction({
+                  type: 'hideTip',
+                  seriesIndex: 0,
+                  dataIndex,
+                });
+              }, 0);
               // 这里要改 具体每个点可拖动范围等确定
-              const { minX, minY, maxX, maxY } = that.drcVal;
               if (dataIndex > that.chartDatas.length) return;
               that.activeIndex = dataIndex;
 
               // 实时获取拖动的点位信息并根据此信息重新画图
-              let [newPosX, newPosY] = that.chartDom.convertFromPixel('grid', [
-                parseInt(this.position[0]),
-                parseInt(this.position[1]),
+              let positions = that.chartDom.convertFromPixel('grid', [
+                this.position[0],
+                this.position[1],
               ]);
-              newPosX = newPosX < minX ? minX : newPosX;
-              newPosX = newPosX >= maxX ? maxX : newPosX;
-              newPosY = newPosY <= minY ? minY : newPosY;
-              newPosY = newPosY >= maxY ? maxY : newPosY;
-              that.mutex = true;
-              that.chartDatas[dataIndex] = [newPosX, newPosY];
+              const newData = that.getPointRange(dataIndex, positions);
+              that.chartDatas[dataIndex] = newData;
               that.updateBandsData(that.chartDatas);
               that.renderChart();
             }, dataIndex),
@@ -547,8 +534,27 @@ export default {
         graphic: graphicList,
       });
     },
-    resize() {
-      // this.dom.resize();
+    getPointRange(index, positions) {
+      const { minX, minY, maxX, maxY } = this.drcVal;
+      let [newPosX, newPosY] = positions;
+      const len = this.chartDatas.length;
+      let nextX, nextY, preX, preY;
+      if (index + 1 === len) {
+        [nextX, nextY] = [maxX, maxY];
+      } else {
+        [nextX, nextY] = this.chartDatas[index + 1];
+      }
+      if (index === 0) {
+        [preX, preY] = [minX, minY];
+      } else {
+        [preX, preY] = this.chartDatas[index - 1];
+      }
+
+      newPosX = newPosX < preX ? preX : newPosX;
+      newPosX = newPosX >= nextX ? nextX : newPosX;
+      newPosY = newPosY <= preY ? preY : newPosY;
+      newPosY = newPosY >= nextY ? nextY : newPosY;
+      return [newPosX, newPosY];
     },
     saveHandle() {
       const { enable, bandsData, mode, at, rt, rms, fs, seg } = this;
@@ -558,9 +564,9 @@ export default {
         seg,
         dots: bandsData.map((item) => [item.x, item.y, item.w]),
         mode,
-        at,
-        rt,
-        rms,
+        at: at / 1000,
+        rt: rt / 1000,
+        rms: rms / 1000,
       };
       this.$emit('save', this.type, params);
       this.closeHandle();

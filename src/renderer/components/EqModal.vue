@@ -213,7 +213,7 @@ export default {
     this.parseEqData(JSON.parse(JSON.stringify(this.eqData)));
   },
   beforeDestroy() {
-    // off(window, 'resize', this.resize);
+    this?.chartDom.clear();
   },
   methods: {
     updateBandsData: _.debounce(async (that, val) => {
@@ -288,7 +288,6 @@ export default {
     initChart() {
       const that = this;
       this.chartDom = echarts && echarts.init(this.$refs.dom);
-
       const option = {
         grid: {
           left: 50,
@@ -308,7 +307,7 @@ export default {
               data[0].toFixed(0) +
               'Hz' +
               '<br>增益: ' +
-              data[1].toFixed(0) +
+              data[1] +
               'dB' +
               '<br>宽广度: ' +
               item.q
@@ -420,6 +419,9 @@ export default {
       };
       this.chartDom.setOption(option);
       this.renderGraphicList();
+      this?.chartDom?.on('datazoom', () => {
+        this.renderGraphicList();
+      });
     },
     renderGraphicList() {
       const graphicList = echarts.util.map(
@@ -453,6 +455,7 @@ export default {
               that.hideTooltip(dataIndex);
             },
             ondrag: echarts.util.curry(async function (dataIndex) {
+              that.hideTooltip(dataIndex);
               const { maxdB, mindB, maxFC, minFC } = that.boundaryVal;
               // 实时获取拖动的点位信息并根据此信息重新画图
               let [fc, gain] = that.chartDom.convertFromPixel(
@@ -497,7 +500,7 @@ export default {
       });
     },
     renderChart() {
-      console.log('renderchart');
+      // console.log('renderchart');
       if (!this.chartDom) return;
       this?.chartDom.setOption({
         series: [

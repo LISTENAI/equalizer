@@ -86,10 +86,9 @@ export default {
   },
   mounted() {},
   methods: {
-    selsectDict() {
-      this.$electron.ipcRenderer.invoke('open-dict').then((res) => {
-        if (res) this.formData.pathStr = res;
-      });
+    async selsectDict() {
+      const res = await this.$electron.ipcRenderer.invoke('open-dict');
+      if (res) this.formData.pathStr = res;
     },
     saveHandle() {
       this.$refs['project-form'].validate((valid) => {

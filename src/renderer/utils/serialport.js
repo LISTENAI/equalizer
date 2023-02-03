@@ -57,16 +57,10 @@ export default class SerialPortHandle {
                     }
                 }, 200);
             });
-            // port.on('data', (buf) => {
-            //     const str = buf && buf2Hex(buf).replace(/\s/g, '');
-            //     const allData = Buffer.from(str, 'hex');
-            //     const res = parseData(allData, this.type);
-            //     console.log('读取串口数据成功', res);
-            //     this.serialPorEmitter.emit('SerialPort', res);
-            // });
+
             port.on('error', (err) => {
                 this.clear();
-                this.serialPorEmitter.emit('SerialPort', { code: -1, data: { type: 'error', message: err.message || '请重新连接串口' } });
+                this.serialPorEmitter.emit('SerialPort', { code: -1, data: { type: 'error' }, message: err.message || '请重新连接串口' });
             });
         });
     }
