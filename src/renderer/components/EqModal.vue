@@ -270,7 +270,7 @@ export default {
         endFreq: maxFC,
         startGain: mindB,
         endGain: maxdB,
-        xNum: 840,
+        xNum: 1024,
         yNum: 370,
       };
       const res = await this.$electron.ipcRenderer.invoke(
