@@ -6,7 +6,7 @@
     class="eq-dialog"
     :destroy-on-close="true"
     :close-on-click-modal="false"
-    @close="closeHandle"
+    @close="beforeCloseHandle"
   >
     <div class="container">
       <div ref="dom" id="chart" class="charts chart-bar"></div>
@@ -258,29 +258,31 @@ export default {
       return arr;
     },
     async getLinesData(data) {
-      const { maxdB, mindB, maxFC, minFC } = this.boundaryVal;
-      const filters = JSON.parse(JSON.stringify(data));
-      filters.map((item) => (item.enable = item.enable ? 1 : 0));
-      const params = {
-        enable: !this.enable,
-        filters,
-      };
-      const options = {
-        startFreq: minFC,
-        endFreq: maxFC,
-        startGain: mindB,
-        endGain: maxdB,
-        xNum: 840,
-        yNum: 370,
-      };
-      const res = await this.$electron.ipcRenderer.invoke(
-        'eq-draw',
-        params,
-        options
-      );
-      this.linesData = res.points;
-      // console.log(res.points);
-      return res.points;
+      console.log('getLinesData');
+      // const { maxdB, mindB, maxFC, minFC } = this.boundaryVal;
+      // const filters = JSON.parse(JSON.stringify(data));
+      // filters.map((item) => (item.enable = item.enable ? 1 : 0));
+      // const params = {
+      //   enable: !this.enable,
+      //   filters,
+      // };
+      // const options = {
+      //   startFreq: minFC,
+      //   endFreq: maxFC,
+      //   startGain: mindB,
+      //   endGain: maxdB,
+      //   xNum: 840,
+      //   yNum: 370,
+      // };
+      // const res = await this.$electron.ipcRenderer.invoke(
+      //   'eq-draw',
+      //   params,
+      //   options
+      // );
+      // this.linesData = res.points;
+      // return res.points;
+      this.linesData = this.pointsData;
+      return this.pointsData;
     },
     convertToPixel(dataItem) {
       return this.chartDom && this.chartDom.convertToPixel('grid', dataItem);
@@ -307,7 +309,7 @@ export default {
               data[0].toFixed(0) +
               'Hz' +
               '<br>增益: ' +
-              data[1] +
+              data[1].toFixed(1) +
               'dB' +
               '<br>宽广度: ' +
               item.q
@@ -472,22 +474,22 @@ export default {
                 fc,
                 gain,
               });
-              // that.mutex = true;
+              that.mutex = true;
               that.bandsData = newData;
-              // const pointsData = that.getPointsData(newData);
-              // const linesData = await that.getLinesData(newData);
-              // that.chartDom.setOption({
-              //   series: [
-              //     {
-              //       id: 'point',
-              //       data: pointsData,
-              //     },
-              //     {
-              //       id: 'line',
-              //       data: linesData,
-              //     },
-              //   ],
-              // });
+              const pointsData = that.getPointsData(newData);
+              const linesData = await that.getLinesData(newData);
+              that.chartDom.setOption({
+                series: [
+                  {
+                    id: 'point',
+                    data: pointsData,
+                  },
+                  {
+                    id: 'line',
+                    data: linesData,
+                  },
+                ],
+              });
             }, dataIndex),
             ondragend: function () {
               that.mutex = false;
@@ -527,6 +529,19 @@ export default {
       });
       const params = { enable: !this.enable, filters: data };
       this.$emit('save', this.type, params);
+    },
+    beforeCloseHandle() {
+      this.$confirm('是否确定关闭?', '', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      })
+        .then(() => {
+          this.closeHandle();
+        })
+        .catch(() => {
+          return;
+        });
     },
     closeHandle() {
       // this.resetHandle();

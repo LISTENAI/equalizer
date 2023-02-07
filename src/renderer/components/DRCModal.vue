@@ -6,7 +6,7 @@
     class="drc-dialog"
     :destroy-on-close="true"
     :close-on-click-modal="false"
-    @close="closeHandle"
+    @close="beforeCloseHandle"
   >
     <div class="container flex">
       <div ref="dom" id="chart" class="charts chart-bar"></div>
@@ -33,6 +33,7 @@
             <span>X</span>
             <el-input-number
               v-model="item.x"
+              :disabled="key === 0 || key === bandsData.length - 1"
               controls-position="right"
               :min="-100"
               :max="0"
@@ -75,7 +76,7 @@
               v-model="rt"
               controls-position="right"
               :min="0"
-              :max="5000"
+              :max="1000"
               size="mini"
             ></el-input-number>
             <i>ms</i>
@@ -185,7 +186,7 @@ export default {
       fs: 48000, //采样率
       seg: 5, //段数
       at: 10, //启动时间
-      rt: 500, //释放时间
+      rt: 100, //释放时间
       rms: 10, //检测时间
       mode: 0, //类型
       show: this.visible,
@@ -272,11 +273,18 @@ export default {
       const bandArr = [];
       const chartArr = [];
       for (let i = num; i >= 0; i--) {
-        bandArr.push({
-          x: Xrange * i,
-          y: Yrange * i,
-          w: defaultW,
-        });
+        i === num
+          ? bandArr.push({
+              x: -100,
+              y: -100,
+              w: defaultW,
+            })
+          : bandArr.push({
+              x: Xrange * i,
+              y: Yrange * i,
+              w: defaultW,
+            });
+
         chartArr.push([Xrange * i, Yrange * i]);
       }
       return { charts: chartArr, bands: bandArr };
@@ -519,10 +527,19 @@ export default {
                 this.position[0],
                 this.position[1],
               ]);
+              this.mutex=true
               const newData = that.getPointRange(dataIndex, positions);
               that.chartDatas[dataIndex] = newData;
+              that?.chartDom.setOption({
+                series: [
+                  {
+                    id: 'point',
+                    data: that.chartDatas,
+                  },
+                ],
+              });
               that.updateBandsData(that.chartDatas);
-              that.renderChart();
+              // that.renderChart();
             }, dataIndex),
             ondragend: function () {
               that.mutex = false;
@@ -535,7 +552,8 @@ export default {
       });
     },
     getPointRange(index, positions) {
-      const { minX, minY, maxX, maxY } = this.drcVal;
+      let { minX, minY, maxX, maxY } = this.drcVal;
+
       let [newPosX, newPosY] = positions;
       const len = this.chartDatas.length;
       let nextX, nextY, preX, preY;
@@ -549,11 +567,19 @@ export default {
       } else {
         [preX, preY] = this.chartDatas[index - 1];
       }
+      preY = -100;
+      nextY = 0;
 
       newPosX = newPosX < preX ? preX : newPosX;
       newPosX = newPosX >= nextX ? nextX : newPosX;
       newPosY = newPosY <= preY ? preY : newPosY;
       newPosY = newPosY >= nextY ? nextY : newPosY;
+      if (index === 0) {
+        newPosX = -100;
+      }
+      if (index + 1 === len) {
+        newPosX = 0;
+      }
       return [newPosX, newPosY];
     },
     saveHandle() {
@@ -575,6 +601,19 @@ export default {
       const { bands } = this.getBandsData(this.seg);
       this.mutex = false;
       this.bandsData = JSON.parse(JSON.stringify(bands));
+    },
+    beforeCloseHandle() {
+      this.$confirm('是否确定关闭?', '', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      })
+        .then(() => {
+          this.closeHandle();
+        })
+        .catch(() => {
+          return;
+        });
     },
     closeHandle() {
       this.resetHandle();

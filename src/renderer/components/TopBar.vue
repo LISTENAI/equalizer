@@ -177,7 +177,7 @@ export default {
       return `
         <div class="info-content">
           <img src=${LogoImg} alt="" class="logo" />
-          <p>聆思音频下行工具</p>
+          <p>LSAudio</p>
           <p>${this.version}</p>
         </div>
         `;

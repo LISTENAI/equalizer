@@ -6,7 +6,7 @@
     class="low-dialog"
     :destroy-on-close="true"
     :close-on-click-modal="false"
-    @close="closeHandle"
+    @close="beforeCloseHandle"
   >
     <div class="container">
       <div class="item flex" v-for="(item, index) in detail.item" :key="index">
@@ -123,6 +123,19 @@ export default {
           });
       }
       this.$emit('save', this.detail.type, params);
+    },
+    beforeCloseHandle() {
+      this.$confirm('是否确定关闭?', '', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      })
+        .then(() => {
+          this.closeHandle();
+        })
+        .catch(() => {
+          return;
+        });
     },
     closeHandle() {
       this.$emit('close');

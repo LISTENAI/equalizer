@@ -285,7 +285,7 @@ export default {
           fs: 48000,
           seg: 5,
           at: 10,
-          rt: 500,
+          rt: 100,
           rms: 10,
           mode: 0,
           dots: [],

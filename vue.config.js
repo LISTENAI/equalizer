@@ -87,7 +87,7 @@ module.exports = {
       nodeIntegration: true,
       externals: ['serialport', 'ffi-napi', 'ref-napi'],
       builderOptions: {
-        productName: 'equliazer',
+        productName: 'LSAudio',
         appId: 'listenai.com',
         copyright: 'listenai',
         compression: 'store', // "store" | "normal"| "maximum" 打包压缩情况(store 相对较快)，store 39749kb, maximum 39186kb
@@ -118,7 +118,7 @@ module.exports = {
           installerHeaderIcon: './public/LSAudio256.ico', // 安装时头部图标
           createDesktopShortcut: true, // 创建桌面图标
           createStartMenuShortcut: true, // 创建开始菜单图标
-          shortcutName: 'equliazer' // 图标名称
+          shortcutName: 'LSAudio' // 图标名称
         }
       }
     },
