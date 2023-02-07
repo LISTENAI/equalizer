@@ -284,9 +284,9 @@ export default {
         drc: {
           fs: 48000,
           seg: 5,
-          at: 10,
-          rt: 100,
-          rms: 10,
+          at: 0.1,
+          rt: 0.5,
+          rms: 0.1,
           mode: 0,
           dots: [],
         },

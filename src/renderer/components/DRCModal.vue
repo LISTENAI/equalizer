@@ -185,9 +185,9 @@ export default {
       bandsData: [],
       fs: 48000, //采样率
       seg: 5, //段数
-      at: 10, //启动时间
-      rt: 100, //释放时间
-      rms: 10, //检测时间
+      at: 0.1, //启动时间
+      rt: 0.5, //释放时间
+      rms: 0.1, //检测时间
       mode: 0, //类型
       show: this.visible,
       chartDom: null,
@@ -202,6 +202,7 @@ export default {
         if (!newVal) return;
         console.log('更新drcData', newVal);
         const { fs, at, rt, mode, rms, seg, dots } = newVal;
+        console.log('更新drcData', rt);
         this.fs = fs;
         this.at = at * 1000;
         this.rt = rt * 1000;
@@ -510,7 +511,7 @@ export default {
                 });
               }, 0);
             },
-            ondrag: echarts.util.curry(function (dataIndex) {
+            ondrag: function () {
               setTimeout(() => {
                 that.chartDom?.dispatchAction({
                   type: 'hideTip',
@@ -524,10 +525,10 @@ export default {
 
               // 实时获取拖动的点位信息并根据此信息重新画图
               let positions = that.chartDom.convertFromPixel('grid', [
-                this.position[0],
-                this.position[1],
+                this.x,
+                this.y,
               ]);
-              this.mutex=true
+              that.mutex = true;
               const newData = that.getPointRange(dataIndex, positions);
               that.chartDatas[dataIndex] = newData;
               that?.chartDom.setOption({
@@ -539,10 +540,10 @@ export default {
                 ],
               });
               that.updateBandsData(that.chartDatas);
-              // that.renderChart();
-            }, dataIndex),
+            },
             ondragend: function () {
               that.mutex = false;
+              that.renderChart();
             },
           };
         }
@@ -622,8 +623,8 @@ export default {
     resetHandle() {
       // this.$emit('reset', this.type);
       this.seg = 5;
-      this.at = 10;
-      this.rt = 500;
+      this.at = 0.1;
+      this.rt = 0.1;
       this.rms = 0.02;
       this.mode = 0;
       const { charts, bands } = this.getBandsData(this.seg);

@@ -258,31 +258,29 @@ export default {
       return arr;
     },
     async getLinesData(data) {
-      console.log('getLinesData');
-      // const { maxdB, mindB, maxFC, minFC } = this.boundaryVal;
-      // const filters = JSON.parse(JSON.stringify(data));
-      // filters.map((item) => (item.enable = item.enable ? 1 : 0));
-      // const params = {
-      //   enable: !this.enable,
-      //   filters,
-      // };
-      // const options = {
-      //   startFreq: minFC,
-      //   endFreq: maxFC,
-      //   startGain: mindB,
-      //   endGain: maxdB,
-      //   xNum: 840,
-      //   yNum: 370,
-      // };
-      // const res = await this.$electron.ipcRenderer.invoke(
-      //   'eq-draw',
-      //   params,
-      //   options
-      // );
-      // this.linesData = res.points;
-      // return res.points;
-      this.linesData = this.pointsData;
-      return this.pointsData;
+      const { maxdB, mindB, maxFC, minFC } = this.boundaryVal;
+      const filters = JSON.parse(JSON.stringify(data));
+      filters.map((item) => (item.enable = item.enable ? 1 : 0));
+      const params = {
+        enable: !this.enable,
+        filters,
+      };
+      const options = {
+        startFreq: minFC,
+        endFreq: maxFC,
+        startGain: mindB,
+        endGain: maxdB,
+        xNum: 1024,
+        yNum: 370,
+      };
+      const res = await this.$electron.ipcRenderer.invoke(
+        'eq-draw',
+        params,
+        options
+      );
+      this.linesData = res.points;
+      // console.log(res.points);
+      return res.points;
     },
     convertToPixel(dataItem) {
       return this.chartDom && this.chartDom.convertToPixel('grid', dataItem);
@@ -303,9 +301,12 @@ export default {
           formatter(params) {
             const data = params.data || [0, 0];
             const item = that.bandsData[params.dataIndex];
+            const index = parseInt(params.dataIndex) + 1;
             // console.log(params.dataIndex);
             return (
-              '频率: ' +
+              '频段: ' +
+              index +
+              '<br>频率: ' +
               data[0].toFixed(0) +
               'Hz' +
               '<br>增益: ' +

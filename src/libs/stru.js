@@ -96,7 +96,7 @@ exports.struUIXYInfo = StructType({
     yNum: ref.types.int
 });
 const point = ArrayType(ref.types.double, 2);
-const points = ArrayType(point, 840);
+const points = ArrayType(point, 1024);
 exports.struEqDrawResult = StructType({
     ret: ref.types.int,
     arr_size: ref.types.int,
