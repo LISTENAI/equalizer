@@ -3,6 +3,7 @@
     title="DRC"
     :visible="show"
     width="750px"
+    top="50px"
     class="drc-dialog"
     :destroy-on-close="true"
     :close-on-click-modal="false"
@@ -115,7 +116,7 @@
         <el-checkbox v-model="enable">Bypass</el-checkbox>
       </div>
       <el-button type="primary" @click="saveHandle">确 定</el-button>
-      <el-button @click="closeHandle">取消</el-button>
+      <el-button @click="beforeCloseHandle">取 消</el-button>
     </span>
   </el-dialog>
 </template>
@@ -503,26 +504,19 @@ export default {
             draggable: true,
             z: 100,
             onmousemove: () => {
-              setTimeout(() => {
-                that.chartDom?.dispatchAction({
-                  type: 'showTip', // 根据 tooltip 的配置项显示提示框。
-                  seriesIndex: 0,
-                  dataIndex,
-                });
-              }, 0);
+              !that.draging &&
+                setTimeout(() => {
+                  that.chartDom?.dispatchAction({
+                    type: 'showTip', // 根据 tooltip 的配置项显示提示框。
+                    seriesIndex: 0,
+                    dataIndex,
+                  });
+                }, 0);
             },
             ondrag: function () {
-              setTimeout(() => {
-                that.chartDom?.dispatchAction({
-                  type: 'hideTip',
-                  seriesIndex: 0,
-                  dataIndex,
-                });
-              }, 0);
-              // 这里要改 具体每个点可拖动范围等确定
+              that.draging = true;
               if (dataIndex > that.chartDatas.length) return;
               that.activeIndex = dataIndex;
-
               // 实时获取拖动的点位信息并根据此信息重新画图
               let positions = that.chartDom.convertFromPixel('grid', [
                 this.x,
@@ -543,6 +537,7 @@ export default {
             },
             ondragend: function () {
               that.mutex = false;
+              that.draging = false;
               that.renderChart();
             },
           };

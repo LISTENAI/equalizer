@@ -40,7 +40,7 @@
         <el-checkbox v-model="enable">Bypass</el-checkbox>
       </div>
       <el-button type="primary" @click="saveHandle">确 定</el-button>
-      <el-button @click="closeHandle">取 消</el-button>
+      <el-button @click="beforeCloseHandle">取 消</el-button>
     </span>
   </el-dialog>
 </template>

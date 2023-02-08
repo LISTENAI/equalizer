@@ -27,7 +27,7 @@ const eqDrawPoints = (eqData, chartConf) => {
         endFreq: chartConf.endFreq,
         startGain: chartConf.startGain,
         endGain: chartConf.endGain,
-        xNum: 1024,
+        xNum: chartConf.xNum,
         yNum: chartConf.yNum
     });
     let eqdrawdata = (capi_1.iflytekEqDraw.eqDrawPoints(monoEqPrm.ref(), xyData.ref())).deref();

@@ -3,6 +3,7 @@
     title="EQ均衡器"
     :visible="show"
     width="880px"
+    top="40px"
     class="eq-dialog"
     :destroy-on-close="true"
     :close-on-click-modal="false"
@@ -96,7 +97,7 @@
         <el-checkbox v-model="enable">Bypass</el-checkbox>
       </div>
       <el-button type="primary" @click="saveHandle">确 定</el-button>
-      <el-button @click="closeHandle">取消</el-button>
+      <el-button @click="beforeCloseHandle">取 消</el-button>
     </span>
   </el-dialog>
 </template>
@@ -213,18 +214,24 @@ export default {
     this.parseEqData(JSON.parse(JSON.stringify(this.eqData)));
   },
   beforeDestroy() {
-    this?.chartDom.clear();
+    this?.chartDom.dispose();
   },
   methods: {
-    updateBandsData: _.debounce(async (that, val) => {
-      if (!that.mutex) {
-        const newVal = JSON.parse(JSON.stringify(val));
-        that.getPointsData(newVal);
-        await that.getLinesData(newVal);
-        setTimeout(that.resetTypeSelect, 0);
-        setTimeout(that.renderChart, 0);
+    updateBandsData: _.debounce(
+      async (that, val) => {
+        if (!that.mutex) {
+          const newVal = JSON.parse(JSON.stringify(val));
+          that.getPointsData(newVal);
+          await that.getLinesData(newVal);
+          setTimeout(that.resetTypeSelect, 0);
+          setTimeout(that.renderChart, 0);
+        }
+      },
+      1000 / 60,
+      {
+        leading: true,
       }
-    }, 1000 / 60),
+    ),
 
     async parseEqData(data) {
       const filters = data.map((item) => {
@@ -270,7 +277,7 @@ export default {
         endFreq: maxFC,
         startGain: mindB,
         endGain: maxdB,
-        xNum: 1024,
+        xNum: 380,
         yNum: 370,
       };
       const res = await this.$electron.ipcRenderer.invoke(
@@ -282,6 +289,25 @@ export default {
       // console.log(res.points);
       return res.points;
     },
+    dragHandle: _.debounce(async (that, data) => {
+      that.mutex = true;
+      const pointsData = that.getPointsData(data);
+      const linesData = await that.getLinesData(data);
+      that.chartDom.setOption({
+        series: [
+          {
+            id: 'point',
+            data: pointsData,
+          },
+          {
+            id: 'line',
+            data: linesData,
+          },
+        ],
+      });
+      that.bandsData = data;
+    }, 1000 / 60),
+
     convertToPixel(dataItem) {
       return this.chartDom && this.chartDom.convertToPixel('grid', dataItem);
     },
@@ -452,13 +478,13 @@ export default {
               console.log(this.position);
             },
             onmousemove: function () {
-              that.showTooltip(dataIndex);
+              !that.draging && that.showTooltip(dataIndex);
             },
             onmouseout: function () {
               that.hideTooltip(dataIndex);
             },
             ondrag: echarts.util.curry(async function (dataIndex) {
-              that.hideTooltip(dataIndex);
+              that.draging = true;
               const { maxdB, mindB, maxFC, minFC } = that.boundaryVal;
               // 实时获取拖动的点位信息并根据此信息重新画图
               let [fc, gain] = that.chartDom.convertFromPixel(
@@ -470,30 +496,34 @@ export default {
               gain = gain <= mindB ? mindB : gain;
               gain = gain >= maxdB ? maxdB : gain;
               fc = parseInt(fc);
-              const newData = JSON.parse(JSON.stringify(that.bandsData));
-              newData[dataIndex] = Object.assign(newData[dataIndex], {
+              const data = JSON.parse(JSON.stringify(that.bandsData));
+              data[dataIndex] = Object.assign(data[dataIndex], {
                 fc,
                 gain,
               });
-              that.mutex = true;
-              that.bandsData = newData;
-              const pointsData = that.getPointsData(newData);
-              const linesData = await that.getLinesData(newData);
-              that.chartDom.setOption({
-                series: [
-                  {
-                    id: 'point',
-                    data: pointsData,
-                  },
-                  {
-                    id: 'line',
-                    data: linesData,
-                  },
-                ],
-              });
+
+              that.dragHandle(that, data);
+              // that.mutex = true;
+              // const pointsData = that.getPointsData(data);
+              // const linesData = await that.getLinesData(data);
+              // that.chartDom.setOption({
+              //   series: [
+              //     {
+              //       id: 'point',
+              //       data: pointsData,
+              //     },
+              //     {
+              //       id: 'line',
+              //       data: linesData,
+              //     },
+              //   ],
+              // });
+              // that.bandsData = data;
             }, dataIndex),
             ondragend: function () {
               that.mutex = false;
+              that.draging = false;
+              that.renderChart();
             },
           };
         }

@@ -2,10 +2,10 @@ import { ProjectHandle } from './projectHandle';
 import { ipcMain, dialog } from 'electron';
 async function openProject() {
     const res = dialog.showOpenDialogSync({
-        properties: ['openDirectory']
+        properties: ['openFile'],
+        filters: [{ name: 'custom File Type', extensions: ['lsaudio'] }]
     });
     if (res) {
-        console.log(res);
         const data = await ProjectHandle.checkProject(res[0]);
         return data;
     } else {
