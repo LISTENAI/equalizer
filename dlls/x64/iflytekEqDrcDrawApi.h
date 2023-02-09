@@ -46,34 +46,41 @@
 #define IFLYTEK_PEQ_LOWSHELF_FILTER   (3)
 #define IFLYTEK_PEQ_HIGHSHELF_FILTER  (4)
 #define IFLYTEK_PEQ_BANDPASS_FILTER   (5)
+//一个声道的滤波器组数量
+#define IFLYTEK_PEQ_FILTER_BANK_NUM   (10) 
 
 //采样率
-#define IFLYTEK_EQ_SAMPLE_RATE				(48000.0)
-#define IFLYTEK_EQ_SAMPLE_RATE_16000        (16000.0)
+#define IFLYTEK_PEQ_SAMPLE_RATE       (48000.0f)
+#define IFLYTEK_PEQ_SAMPLE_RATE_16000 (16000.0f)
 //品质因子
-#define IFLYTEK_EQ_MAX_Q             (10.0)
-#define IFLYTEK_EQ_MIN_Q             (0.3)
+#define IFLYTEK_PEQ_MAX_Q             (10.0f)
+#define IFLYTEK_PEQ_MIN_Q             (0.3f)
 //增益
-#define IFLYTEK_EQ_MAX_GAIN          (30.0)
-#define IFLYTEK_EQ_MIN_GAIN          (-30.0)
+#define IFLYTEK_PEQ_MAX_GAIN          (30.0f)
+#define IFLYTEK_PEQ_MIN_GAIN          (-30.0f)
 //中心/截止频率
-#define IFLYTEK_EQ_MAX_FREQ          (20000.0)
-#define IFLYTEK_EQ_MIN_FREQ          (20.0)
+#define IFLYTEK_PEQ_MAX_FREQ          (20000.0f)
+#define IFLYTEK_PEQ_MAX_FREQ_16000    (8000.0f)
+#define IFLYTEK_PEQ_MIN_FREQ          (20.0f)
 //声道数
 #define IFLYTEK_PEQ_PROCESS_CHAN      (2)
-
 //滤波器类型
-#define LOWPASS_FILTER                (0)
-#define HIGHPASS_FILTER               (1)
-#define PEAK_FILTER					  (2)
-#define LOWSHELF_FILTER               (3)
-#define HIGHSHELF_FILTER              (4)
+#define LOWPASS_FILTER           (0)
+#define HIGHPASS_FILTER          (1)
+#define PEAK_FILTER              (2)
+#define LOWSHELF_FILTER          (3)
+#define HIGHSHELF_FILTER         (4)
 
 //支持的采样率
 typedef enum {
 	PEQ_SAMPLERATE_16000 = 16000,
 	PEQ_SAMPLERATE_48000 = 48000
 }PEQ_SAMPLERATE_E;
+
+//UI参数范围
+#define IFLYTEK_PEQ_UI_MAX_FREQ		  (30000.0f)
+#define IFLYTEK_PEQ_UI_MAX_GAIN		  (30.0f)
+#define IFLYTEK_PEQ_UI_MIN_GAIN		  (-30.0f)
 
 /***********参数结构体定义*************/
 typedef struct
@@ -187,15 +194,28 @@ int EqDraw(pstMonoEqPrm pstEqPrm, struUIXYInfo *XYData, double *Y);
 
 #define IFLYTEK_AUTOVOLUME_SAMPLERATE                                    (48000.0)
 #define IFLYTEK_AUTOVOLUME_MAX_POINT_VALUE                                     (0)
-#define IFLYTEK_AUTOVOLUME_MIN_POINT_VALUE                                  (-100)
+#define IFLYTEK_AUTOVOLUME_MIN_POINT_VALUE                                  (-100.0f)
 
-#define IFLYTEK_AUTOVOLUME_MAX_OUTPUT_DB                                     (100)
-#define IFLYTEK_AUTOVOLUME_MIN_OUTPUT_DB                                    (-100)
+#define IFLYTEK_AUTOVOLUME_MAX_OUTPUT_DB                                     (100.0f)
+#define IFLYTEK_AUTOVOLUME_MIN_OUTPUT_DB                                    (-100.0f)
 
-#define IFLYTEK_AUTOVOLUME_USEPOINTS_MAX_NUM                                   (6)
+#define IFLYTEK_AUTOVOLUME_MAX_ATT_TIME                                  (0.10001f)
+#define IFLYTEK_AUTOVOLUME_MIN_ATT_TIME                                  (0.0f)
+
+#define IFLYTEK_AUTOVOLUME_USEPOINTS_MAX_NUM                                   (7)
 #define IFLYTEK_AUTOVOLUME_USEPOINTS_MIN_NUM                                   (2)
 
-#define IFLYTTEK_MAX_DOT													   (6)
+#define IFLYTEK_AUTOVOLUME_MAX_REL_TIME                                  (1.00001f)
+#define IFLYTEK_AUTOVOLUME_MIN_REL_TIME                                  (0.0f)
+
+#define IFLYTEK_DRC_MAX_RMS_TIME                                         (0.10001f)
+#define IFLYTEK_DRC_MIN_RMS_TIME                                         (0.0f)
+
+#define IFLYTEK_DRC_MAX_W                                                (20.00001f)
+#define IFLYTEK_DRC_MIN_W                                                (0.0f)
+
+#define IFLYTTEK_MAX_DOT													   (7)
+#define IFLYTEK_FRAME_SHIFT                                                    (512)
 /***********参数结构体定义*************/
 
 //支持的采样率
@@ -228,12 +248,12 @@ typedef struct _tagDrcPrm
 	struDrcDot Dot[IFLYTTEK_MAX_DOT];
 }struDrcPrm, *pstDrcPrm;
 
-
 typedef struct _tagAutoVolumePrm2
 {
-	struDrcPrm AutoVolumePrmLr;			//左右声道
-	struDrcPrm AutoVolumePrmLfe;		//Lfe声道
+	struDrcPrm pstDrcPrm;			
+	struDrcPrm ModifiedDrcPrm;	
 }struDrcPrm2, *pstDrcPrm2;
+
 
 typedef struct
 {
@@ -245,11 +265,13 @@ typedef struct
 	float endYGain;
 }struUIDrcInfo;
 
-void DrcDraw(struDrcPrm * pstDrcPrm, struUIDrcInfo* XYData, float* Y);
-float DrcCalcYToDb(struUIDrcInfo* XYData, int y);		//增加DRC前缀
+//int DrcDraw(struDrcPrm2 * pstDrcPrm, struUIDrcInfo* XYData, float* Y);
+int DrcDraw(const struDrcPrm* pstDrcPrm, const struUIDrcInfo* XYData, float* Y, struDrcPrm* ModifiedDrcPrm);
+float DrcCalcYToDb(struUIDrcInfo* XYData, int y);		//����DRCǰ׺
 float DrcCalcXToDb(struUIDrcInfo* XYData, int x);
 int DrcCalcDbToY(struUIDrcInfo* XYData, float fdBGain);
 int DrcCalcDbToX(struUIDrcInfo* XYData, float fdBGain);
+int DrcDrawGet(struDrcPrm2 *pstObj, struDrcPrm *pstPrm);		//��������TT0206
 
 /*************************** Drc End ***************************/
 

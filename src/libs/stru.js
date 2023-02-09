@@ -23,7 +23,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.struEqDrawResult = exports.struUIXYInfo = exports.struAudioPrm = exports.struMonoEqPrm = exports.StruFiltersPrm = exports.struFilterPrm = exports.struGainPrm = exports.struTrebleBoostPrm = exports.struBassBoostPrm = exports.struDrcPrm = exports.struDots = exports.struDrcDot = void 0;
+exports.struDrcDrawResult = exports.struEqDrawResult = exports.struUIDrcInfo = exports.struUIXYInfo = exports.struAudioPrm = exports.struMonoEqPrm = exports.StruFiltersPrm = exports.struFilterPrm = exports.struGainPrm = exports.struTrebleBoostPrm = exports.struBassBoostPrm = exports.struDrcPrm = exports.struDots = exports.struDrcDot = void 0;
 const ref = __importStar(require("ref-napi"));
 const StructType = require('ref-struct-di')(ref);
 const ArrayType = require('ref-array-di')(ref);
@@ -33,7 +33,7 @@ exports.struDrcDot = StructType({
     Y: ref.types.float,
     W: ref.types.float
 });
-exports.struDots = ArrayType(exports.struDrcDot, 6); //TODO: length should be dynamically defined in variable file
+exports.struDots = ArrayType(exports.struDrcDot, 7); //TODO: length should be dynamically defined in variable file
 exports.struDrcPrm = StructType({
     iEnable: ref.types.int,
     Fs: ref.types.float,
@@ -86,7 +86,7 @@ exports.struAudioPrm = StructType({
     DrcPrm: exports.struDrcPrm,
     GainPrm: exports.struGainPrm
 });
-// === 曲线图 结构体 ===
+// === eq曲线图 结构体 ===
 exports.struUIXYInfo = StructType({
     startFreq: ref.types.double,
     endFreq: ref.types.double,
@@ -95,10 +95,27 @@ exports.struUIXYInfo = StructType({
     xNum: ref.types.int,
     yNum: ref.types.int
 });
+exports.struUIDrcInfo = StructType({
+    WidthX: ref.types.int,
+    HeightY: ref.types.int,
+    startXGain: ref.types.float,
+    endXGain: ref.types.float,
+    startYGain: ref.types.float,
+    endYGain: ref.types.float
+});
 const point = ArrayType(ref.types.double, 2);
-const points = ArrayType(point, 1024);
+const points = ArrayType(point, 840);
+const drcPoints = ArrayType(point, 315);
 exports.struEqDrawResult = StructType({
     ret: ref.types.int,
     arr_size: ref.types.int,
     points: points
+});
+exports.struDrcDrawResult = StructType({
+    ret: ref.types.int,
+    arr_size: ref.types.int,
+    dot_size: ref.types.int,
+    points: drcPoints,
+    fs: ref.types.float,
+    dots: exports.struDots
 });

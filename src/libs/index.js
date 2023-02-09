@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.writeToBinFile = exports.eqDrawPoints = void 0;
+exports.writeToBinFile = exports.drcDrawPoints = exports.eqDrawPoints = void 0;
 const capi_1 = require("./capi");
 const stru_1 = require("./stru");
 const stru_2 = require("./stru");
@@ -27,7 +27,7 @@ const eqDrawPoints = (eqData, chartConf) => {
         endFreq: chartConf.endFreq,
         startGain: chartConf.startGain,
         endGain: chartConf.endGain,
-        xNum: chartConf.xNum,
+        xNum: 840,
         yNum: chartConf.yNum
     });
     let eqdrawdata = (capi_1.iflytekEqDraw.eqDrawPoints(monoEqPrm.ref(), xyData.ref())).deref();
@@ -44,6 +44,52 @@ const eqDrawPoints = (eqData, chartConf) => {
     return data;
 };
 exports.eqDrawPoints = eqDrawPoints;
+const drcDrawPoints = (drcData, chartConf) => {
+    const dotprms = new stru_3.struDots();
+    drcData.dots.forEach((dot, index) => {
+        dotprms[index] = new stru_3.struDrcDot({
+            X: dot[0],
+            Y: dot[1],
+            W: dot[2]
+        });
+    });
+    const monoDrcPrm = new stru_3.struDrcPrm({
+        iEnable: Number(drcData.enable),
+        Fs: drcData.fs,
+        At: drcData.at,
+        Rt: drcData.rt,
+        Type: drcData.mode,
+        RmsTime: drcData.rms,
+        SegNum: drcData.seg,
+        Dot: dotprms
+    });
+    const xyData = new stru_3.struUIDrcInfo({
+        WidthX: chartConf.WidthX,
+        HeightY: chartConf.HeightY,
+        startXGain: chartConf.startXGain,
+        endXGain: chartConf.endXGain,
+        startYGain: chartConf.startYGain,
+        endYGain: chartConf.endYGain
+    });
+    let drcDrawdata = (capi_1.iflytekEqDraw.drcDrawPoints(monoDrcPrm.ref(), xyData.ref())).deref();
+    const json = {
+        ret: drcDrawdata.ret,
+        arr_size: drcDrawdata.arr_size,
+        dot_size: drcDrawdata.dot_size,
+        points: [],
+        dots: []
+    };
+    for (let i = 0; i < drcDrawdata.arr_size; i++) {
+        json.points.push([parseFloat((drcDrawdata.points)[i][0].toFixed(6)), parseFloat((drcDrawdata.points)[i][1].toFixed(6))]);
+    }
+    for (let i = 0; i < drcDrawdata.dot_size; i++) {
+        json.dots.push([parseFloat((drcDrawdata.dots)[i].X.toFixed(6)), parseFloat((drcDrawdata.dots)[i].Y.toFixed(6)), parseFloat((drcDrawdata.dots)[i].W.toFixed(6))]);
+    }
+    const data = JSON.parse(JSON.stringify(json));
+    capi_1.iflytekEqDraw.freeDrcPoints(drcDrawdata.ref());
+    return data;
+};
+exports.drcDrawPoints = drcDrawPoints;
 const writeToBinFile = (binfile, audioConf) => {
     const bassBoost = new stru_2.struBassBoostPrm({
         iEnable: Number(audioConf.bass_boost.enable),
