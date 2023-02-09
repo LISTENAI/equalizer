@@ -83,7 +83,7 @@ const drcDrawPoints = (drcData, chartConf) => {
         json.points.push([parseFloat((drcDrawdata.points)[i][0].toFixed(6)), parseFloat((drcDrawdata.points)[i][1].toFixed(6))]);
     }
     for (let i = 0; i < drcDrawdata.dot_size; i++) {
-        json.dots.push([parseFloat((drcDrawdata.dots)[i].X.toFixed(6)), parseFloat((drcDrawdata.dots)[i].Y.toFixed(6)), parseFloat((drcDrawdata.dots)[i].W.toFixed(6))]);
+        json.dots.push([parseFloat((drcDrawdata.dots)[i].X.toFixed(0)), parseFloat((drcDrawdata.dots)[i].Y.toFixed(0)), parseFloat((drcDrawdata.dots)[i].W.toFixed(0))]);
     }
     const data = JSON.parse(JSON.stringify(json));
     capi_1.iflytekEqDraw.freeDrcPoints(drcDrawdata.ref());
