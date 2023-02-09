@@ -181,9 +181,9 @@ export default {
         [-50, -50],
         [-75, -75],
         [-100, -100],
-      ],//拖动点的数据
-      bandsData: [],//右侧操作频段的数据
-      linesData: [],//曲线的数据
+      ], //拖动点的数据
+      bandsData: [], //右侧操作频段的数据
+      linesData: [], //曲线的数据
       fs: 48000, //采样率
       seg: 5, //段数
       at: 0.1, //启动时间
@@ -225,11 +225,12 @@ export default {
     bandsData: {
       async handler(val) {
         if (!this.mutex && val) {
-          console.log('bandsData change')
+          console.log('bandsData change', val);
           const newVal = JSON.parse(JSON.stringify(val));
           this.getPointsData(newVal);
-          await this.getLinesData(newVal)
+          await this.getLinesData(newVal);
           setTimeout(this.renderChart, 0);
+          this.mutex = false;
         }
       },
       deep: true,
@@ -247,7 +248,7 @@ export default {
     console.log('mounted', this.seg, this.dots);
     if (this.dots?.length) {
       const dots = JSON.parse(JSON.stringify(this.dots));
-      const points = this.getPointsData(dots)
+      const points = this.getPointsData(dots);
       this.originBandsData[this.seg] = {
         bands: dots,
         charts: points,
@@ -300,48 +301,53 @@ export default {
       this.pointsData = arr;
       return arr;
     },
-    getDotsData(data){
-      return data.map(item=>[item.x,item.y,item.w])
+    getDotsData(data) {
+      return data.map((item) => [item.x, item.y, item.w]);
     },
-    async getLinesData(data) {
+    async getLinesData(val) {
       const { maxX, minX, maxY, minY } = this.drcVal;
-      const dots = this.getDotsData(JSON.parse(JSON.stringify(data))) ;
-      console.log(dots)
+      const data = JSON.parse(JSON.stringify(val));
+      const dots = this.getDotsData(data);
+      // console.log(data);
+      // console.log(dots);
 
-      let {fs,enable,at,rt,mode,rms,seg} = this
+      let { fs, enable, at, rt, mode, rms, seg } = this;
       const params = {
         enable: !enable,
-          fs: fs,
-          at:at/1000,
-          rt:rt/1000,
-          mode,
-          rms:rms/1000,
-          seg,
-          dots
+        fs: fs,
+        at: at / 1000,
+        rt: rt / 1000,
+        mode,
+        rms: rms / 1000,
+        seg,
+        dots,
       };
       const options = {
         WidthX: 100,
         HeightY: 315,
         startXGain: minX,
         endXGain: maxX,
-        startYGain:  minY,
+        startYGain: minY,
         endYGain: maxY,
       };
-      // console.log(params);
+      console.log(params);
       // console.log(options);
       const res = await this.$electron.ipcRenderer.invoke(
         'drc-draw',
         params,
         options
       );
-      
+
       this.linesData = res.points;
       this.mutex = true;
-      const arr =[]
-       res.dots.forEach(item=>{arr.push( {x:item[0],y:item[2],w:item[1]})})
-      this.bandsData = arr;
-      this.pointsData = res.points;
-      console.log(res)
+      const arr = [];
+      const pointsArr = [];
+      res.dots.forEach((item) => {
+        arr.push({ x: item[1], y: item[2], w: item[0] });
+        // pointsArr.push([item[1], item[2], item[0]]);
+      });
+      // this.bandsData = arr;
+      console.log(res);
       return res.points;
     },
     updateBandsData(data) {
@@ -356,7 +362,7 @@ export default {
       return this?.chartDom.convertToPixel('grid', dataItem);
     },
     dragHandle: _.debounce(async (that, data) => {
-      console.log(data)
+      console.log('drag', data);
       that.mutex = true;
       const pointsData = that.getPointsData(data);
       const linesData = await that.getLinesData(data);
@@ -376,6 +382,9 @@ export default {
     }, 1000 / 60),
     initChart() {
       const that = this;
+      // console.log(this.pointsData);
+      // console.log(this.linesData);
+
       this.chartDom = echarts && echarts.init(this.$refs.dom);
       if (!this.chartDom) return;
       const option = {
@@ -512,20 +521,19 @@ export default {
             type: 'line',
             smooth: true,
             symbol: 'circle',
-            symbolSize:this.symbolSize,
+            symbolSize: this.symbolSize,
             lineStyle: {
-              color: '#1D99FF',
-              width: 1,
+              color: '#ccc',
+              width: 0,
             },
             itemStyle: {
               // 设置symbol的颜色
               color: 'rgba(255,255,255,0.5)',
             },
-            // areaStyle: {},
-            areaStyle: {
-              origin: 'start',
-              color: 'rgba(5,104,255,0.2)',
-            },
+            // areaStyle: {
+            //   origin: 'start',
+            //   color: 'rgba(5,104,255,0.2)',
+            // },
             label: {
               show: true,
               color: '#ccc',
@@ -571,7 +579,7 @@ export default {
     renderChart() {
       // console.log('renderchart');
       this?.chartDom.setOption({
-       series: [
+        series: [
           {
             id: 'point',
             data: this.pointsData,
@@ -618,14 +626,12 @@ export default {
                 this.x,
                 this.y,
               ]);
-              const [x,y] = that.getPointRange(dataIndex, positions);
+              const [x, y] = that.getPointRange(dataIndex, positions);
               const data = JSON.parse(JSON.stringify(that.bandsData));
-              console.log(data)
-              // data[dataIndex] = Object.assign(data[dataIndex], {
-              //   x,
-              //   y
-              // });
-              // console.log(data)
+              data[dataIndex] = Object.assign(data[dataIndex], {
+                x,
+                y,
+              });
               that.dragHandle(that, data);
             },
             ondragend: function () {
