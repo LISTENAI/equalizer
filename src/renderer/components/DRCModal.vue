@@ -28,7 +28,7 @@
             v-for="(item, key) in bandsData"
             :key="key"
             :class="activeIndex === key ? 'active' : ''"
-            @mouseenter="() => showToolTip(key)"
+            @mouseenter="() => showTooltip(key)"
           >
             <span>{{ key + 1 }}.</span>
             <span>X</span>
@@ -36,8 +36,8 @@
               v-model="item.x"
               :disabled="key === 0 || key === bandsData.length - 1"
               controls-position="right"
-              :min="-100"
-              :max="0"
+              :min="bandsData[key - 1]?.x"
+              :max="bandsData[key + 1]?.x"
               size="mini"
             ></el-input-number>
             <span>Y</span>
@@ -181,9 +181,9 @@ export default {
         [-50, -50],
         [-75, -75],
         [-100, -100],
-      ],//拖动点的数据
-      bandsData: [],//右侧操作频段的数据
-      linesData: [],//曲线的数据
+      ], //拖动点的数据
+      bandsData: [], //右侧操作频段的数据
+      linesData: [], //曲线的数据
       fs: 48000, //采样率
       seg: 5, //段数
       at: 0.1, //启动时间
@@ -198,42 +198,42 @@ export default {
   },
   watch: {
     // bands改变 更新 chart  chart改变band，但是band不需要再
+    //dots就是pointsData
     drcData: {
       handler(newVal) {
         if (!newVal) return;
-        console.log('更新drcData', newVal);
         const { fs, at, rt, mode, rms, seg, dots } = newVal;
-        console.log('更新drcData', rt);
         this.fs = fs;
         this.at = at * 1000;
         this.rt = rt * 1000;
         this.rms = rms * 1000;
         this.seg = seg;
         this.mode = mode;
-        this.dots = dots;
+        this.mutex = false;
         if (dots?.length) {
-          this.bandsData = dots;
+          this.bandsData = JSON.parse(JSON.stringify(dots));
         } else {
           const { bands } = this.getBandsData(this.seg || 5);
           this.bandsData = bands;
         }
-        this.mutex = false;
       },
       deep: true,
       immediate: true,
     },
+    //bandsData改了之后 算法拿新的bandsData 和 linesData ,bandsData变了之后 pointData也要变
+
     bandsData: {
       async handler(val) {
         if (!this.mutex && val) {
-          console.log('bandsData change')
           const newVal = JSON.parse(JSON.stringify(val));
-          this.getPointsData(newVal);
-          await this.getLinesData(newVal)
+          // this.getPointsData(newVal);
+          await this.getLinesData(newVal);
           setTimeout(this.renderChart, 0);
-          this.mutex =false
+          this.mutex = false;
         }
       },
       deep: true,
+      immediate: true,
     },
     checkable: function (newVal) {
       this.enable = newVal;
@@ -245,23 +245,10 @@ export default {
   },
 
   mounted() {
-    console.log('mounted', this.seg, this.dots);
-    if (this.dots?.length) {
-      const dots = JSON.parse(JSON.stringify(this.dots));
-      const points = this.getPointsData(dots)
-      this.originBandsData[this.seg] = {
-        bands: dots,
-        charts: points,
-      };
-      // this.bandsData = dots;
-    } else {
-      const { bands } = this.getBandsData(this.seg);
-      this.bandsData = bands;
-    }
     setTimeout(this.initChart, 0);
   },
   beforeDestroy() {
-    // off(window, 'resize', this.resize);
+    this?.chartDom.dispose();
   },
   methods: {
     getBandsData(num) {
@@ -294,6 +281,7 @@ export default {
       }
       return { charts: chartArr, bands: bandArr };
     },
+    // params:bandsData
     getPointsData(data) {
       const arr = data.map((item) => {
         return [item.x, item.y];
@@ -301,50 +289,48 @@ export default {
       this.pointsData = arr;
       return arr;
     },
-    getDotsData(data){
-      return data.map(item=>[item.x,item.y,item.w])
+    // params:bandsData
+    getDotsData(data) {
+      return data.map((item) => [item.x, item.y, item.w]);
     },
+    // params:bandsData
     async getLinesData(data) {
+      // console.log('getLinesData--->');
       const { maxX, minX, maxY, minY } = this.drcVal;
-      const dots = this.getDotsData(JSON.parse(JSON.stringify(data))) ;
-      console.log(dots)
-
-      let {fs,enable,at,rt,mode,rms,seg} = this
+      const dots = this.getDotsData(JSON.parse(JSON.stringify(data)));
+      let { fs, enable, at, rt, mode, rms, seg } = this;
       const params = {
         enable: !enable,
-          fs: fs,
-          at:at/1000,
-          rt:rt/1000,
-          mode,
-          rms:rms/1000,
-          seg,
-          dots
+        fs: fs,
+        at: at / 1000,
+        rt: rt / 1000,
+        mode,
+        rms: rms / 1000,
+        seg,
+        dots,
       };
       const options = {
         WidthX: 100,
         HeightY: 100,
         startXGain: minX,
         endXGain: maxX,
-        startYGain:  minY,
+        startYGain: minY,
         endYGain: maxY,
       };
       // console.log(params);
-      // console.log(options);
       const res = await this.$electron.ipcRenderer.invoke(
         'drc-draw',
         params,
         options
       );
-      
-      this.linesData = res.points;
+      // console.log(res);
       this.mutex = true;
-      const arr = [];
-      const pointsArr = [];
-      res.dots.forEach((item) => {
-        arr.push({ x: item[0], y: item[1], w: item[2] });
+      const arr = res.dots.map((item) => {
+        return { x: item[0], y: item[1], w: item[2] };
       });
       this.bandsData = arr;
-      console.log(res)
+      this.linesData = res.points;
+      this.getPointsData(arr);
       return res.points;
     },
     updateBandsData(data) {
@@ -359,7 +345,6 @@ export default {
       return this?.chartDom.convertToPixel('grid', dataItem);
     },
     dragHandle: _.debounce(async (that, data) => {
-      console.log(data)
       that.mutex = true;
       const pointsData = that.getPointsData(data);
       const linesData = await that.getLinesData(data);
@@ -428,7 +413,7 @@ export default {
         },
         tooltip: {
           show: true,
-          trigger: 'axis', // 设置成坐标轴触发之后，设置crossStyle只有x轴的线生效
+          // trigger: 'axis',
           axisPointer: {
             type: 'cross',
             crossStyle: {
@@ -440,10 +425,13 @@ export default {
             return [pos[0] - 40, pos[1] - 95];
           },
           formatter(params) {
-            const data = params[0].data || [0, 0];
-            const dataIndex = params[0].dataIndex;
+            const data = params.data || [0, 0];
+            const dataIndex = params.dataIndex;
             const wVal =
-              that.bandsData[dataIndex] && that.bandsData[dataIndex].w;
+              (that.bandsData[dataIndex] && that.bandsData[dataIndex].w) ===
+              undefined
+                ? ''
+                : that.bandsData[dataIndex] && that.bandsData[dataIndex].w;
             return (
               'X: ' +
               data[0].toFixed(0) +
@@ -470,7 +458,6 @@ export default {
               return value === 0 ? value + '(db)' : value;
             },
           },
-
           axisTick: { show: false }, // 不显示坐标轴刻度线
           axisLine: { show: false }, // 不显示坐标轴线
           splitLine: {
@@ -495,7 +482,6 @@ export default {
               return value === -100 ? value + '(db)' : value;
             },
           },
-
           axisLine: {
             show: false,
             lineStyle: {
@@ -513,9 +499,8 @@ export default {
           {
             id: 'point',
             type: 'line',
-            smooth: true,
             symbol: 'circle',
-            symbolSize:this.symbolSize,
+            symbolSize: this.symbolSize,
             lineStyle: {
               color: '#1D99FF',
               width: 0,
@@ -525,7 +510,7 @@ export default {
               color: 'rgba(255,255,255,0.5)',
             },
             // areaStyle: {},
-      
+
             label: {
               show: true,
               color: '#ccc',
@@ -540,7 +525,7 @@ export default {
           {
             id: 'line',
             type: 'line',
-            smooth: true,
+            // smooth: true,
             symbolSize: 0,
             lineStyle: {
               color: '#1D99FF',
@@ -550,16 +535,7 @@ export default {
             // areaStyle: {},
             areaStyle: {
               origin: 'start',
-              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                {
-                  offset: 0,
-                  color: 'rgba(5,104,255,0.3)',
-                },
-                {
-                  offset: 1,
-                  color: 'rgba(5,104,255,0)',
-                },
-              ]),
+              color: 'rgba(5, 104, 255, 0.20)',
             },
             data: this.linesData,
           },
@@ -569,9 +545,9 @@ export default {
       this.renderGraphicList();
     },
     renderChart() {
-      // console.log('renderchart');
       this?.chartDom.setOption({
-       series: [
+        tooltip: { show: true },
+        series: [
           {
             id: 'point',
             data: this.pointsData,
@@ -599,15 +575,14 @@ export default {
             invisible: true,
             draggable: true,
             z: 100,
-            onmousemove: () => {
+            onmousemove: function () {
               !that.draging &&
                 setTimeout(() => {
-                  that.chartDom?.dispatchAction({
-                    type: 'showTip', // 根据 tooltip 的配置项显示提示框。
-                    seriesIndex: 0,
-                    dataIndex,
-                  });
+                  that.showTooltip(dataIndex);
                 }, 0);
+            },
+            onmouseout: function () {
+              that.hideTooltip(dataIndex);
             },
             ondrag: function () {
               that.draging = true;
@@ -618,13 +593,17 @@ export default {
                 this.x,
                 this.y,
               ]);
-              const [x,y] = that.getPointRange(dataIndex, positions);
+              const [x, y] = that.getPointRange(dataIndex, positions);
               const data = JSON.parse(JSON.stringify(that.bandsData));
               data[dataIndex] = Object.assign(data[dataIndex], {
                 x,
-                y
+                y,
               });
-              // console.log(data)
+              that.chartDom.setOption({
+                tooltip: {
+                  show: false,
+                },
+              });
               that.dragHandle(that, data);
             },
             ondragend: function () {
@@ -720,12 +699,27 @@ export default {
       this.originBandsData = {};
       this.mutex = false;
     },
-    showToolTip(key) {
-      this.chartDom?.dispatchAction({
-        type: 'showTip',
-        seriesIndex: 0,
-        dataIndex: key,
-      });
+    showTooltip(key) {
+      if (key === undefined) {
+        return;
+      }
+      this.chartDom &&
+        this.chartDom.dispatchAction({
+          type: 'showTip',
+          seriesIndex: 0,
+          dataIndex: key,
+        });
+    },
+    hideTooltip(key) {
+      if (!key) {
+        return;
+      }
+      this.chartDom &&
+        this.chartDom.dispatchAction({
+          type: 'hideTip',
+          seriesIndex: 0,
+          dataIndex: key,
+        });
     },
   },
 };

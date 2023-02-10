@@ -501,24 +501,7 @@ export default {
                 fc,
                 gain,
               });
-
               that.dragHandle(that, data);
-              // that.mutex = true;
-              // const pointsData = that.getPointsData(data);
-              // const linesData = await that.getLinesData(data);
-              // that.chartDom.setOption({
-              //   series: [
-              //     {
-              //       id: 'point',
-              //       data: pointsData,
-              //     },
-              //     {
-              //       id: 'line',
-              //       data: linesData,
-              //     },
-              //   ],
-              // });
-              // that.bandsData = data;
             }, dataIndex),
             ondragend: function () {
               that.mutex = false;
