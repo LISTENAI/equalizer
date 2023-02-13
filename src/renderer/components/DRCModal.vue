@@ -28,7 +28,8 @@
             v-for="(item, key) in bandsData"
             :key="key"
             :class="activeIndex === key ? 'active' : ''"
-            @mouseenter="() => showTooltip(key)"
+            @mouseover="() => activeHandle(key, true)"
+            @mouseleave="() => activeHandle(key, false)"
           >
             <span>{{ key + 1 }}.</span>
             <span>X</span>
@@ -155,7 +156,7 @@ export default {
       activeIndex: null,
       bandNums: [3, 4, 5],
       type: 'drc',
-      symbolSize: 9, // 通过拖动是可以实时改变这里的值的
+      symbolSize: 10,
       drcVal: {
         maxY: 0,
         minY: -100,
@@ -220,10 +221,10 @@ export default {
       deep: true,
       immediate: true,
     },
-    //bandsData改了之后 算法拿新的bandsData 和 linesData ,bandsData变了之后 pointData也要变
 
     bandsData: {
       async handler(val) {
+        // console.log(this.mutex);
         if (!this.mutex && val) {
           const newVal = JSON.parse(JSON.stringify(val));
           // this.getPointsData(newVal);
@@ -361,6 +362,7 @@ export default {
         ],
       });
       that.bandsData = data;
+      that.mutex = false;
     }, 1000 / 60),
     initChart() {
       const that = this;
@@ -720,6 +722,15 @@ export default {
           seriesIndex: 0,
           dataIndex: key,
         });
+    },
+    activeHandle(key, isActive) {
+      if (isActive) {
+        this.activeIndex = key;
+        this.showTooltip(key);
+      } else {
+        this.activeIndex = null;
+        this.hideTooltip(key);
+      }
     },
   },
 };

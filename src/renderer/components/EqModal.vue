@@ -43,6 +43,7 @@
             :max="boundaryVal.maxFC"
             size="mini"
             :disabled="!item.enable"
+            @change="() => (this.mutex = false)"
           ></el-input-number>
           <el-input-number
             v-model="item.gain"
@@ -53,6 +54,7 @@
             :step="0.1"
             size="mini"
             :disabled="!item.enable"
+            @change="() => (this.mutex = false)"
           ></el-input-number>
           <el-input-number
             v-model="item.q"
@@ -63,6 +65,7 @@
             :step="0.1"
             size="mini"
             :disabled="!item.enable"
+            @change="() => (this.mutex = false)"
           ></el-input-number>
           <el-select
             v-model="item.type"
@@ -187,17 +190,23 @@ export default {
   },
   watch: {
     eqData: {
-      handler(val) {
+      async handler(val) {
         const newVal = JSON.parse(JSON.stringify(val));
-        this.parseEqData(newVal);
+        await this.parseEqData(newVal);
+        this.mutex = false;
       },
       deep: true,
     },
     bandsData: {
-      handler(val) {
-        const that = this;
-        // console.log(this.mutex);
-        this.updateBandsData(that, val);
+      async handler(val) {
+        if (!this.mutex && val) {
+          const newVal = JSON.parse(JSON.stringify(val));
+          this.getPointsData(newVal);
+          await this.getLinesData(newVal);
+          setTimeout(this.resetTypeSelect, 0);
+          setTimeout(this.renderChart, 0);
+          this.mutex = false;
+        }
       },
       deep: true,
     },
@@ -217,22 +226,13 @@ export default {
     this?.chartDom.dispose();
   },
   methods: {
-    updateBandsData: _.debounce(
-      async (that, val) => {
-        if (!that.mutex) {
-          const newVal = JSON.parse(JSON.stringify(val));
-          that.getPointsData(newVal);
-          await that.getLinesData(newVal);
-          setTimeout(that.resetTypeSelect, 0);
-          setTimeout(that.renderChart, 0);
-        }
-      },
-      1000 / 60,
-      {
-        leading: true,
-      }
-    ),
-
+    async updateBandsData(that, val) {
+      const newVal = JSON.parse(JSON.stringify(val));
+      that.getPointsData(newVal);
+      await that.getLinesData(newVal);
+      setTimeout(that.resetTypeSelect, 0);
+      setTimeout(that.renderChart, 0);
+    },
     async parseEqData(data) {
       const filters = data.map((item) => {
         const [enable, type, dSampleRateHz, q, gain, fc] = item;
@@ -250,6 +250,7 @@ export default {
       await this.getLinesData(filters);
       setTimeout(this.renderChart, 0);
       setTimeout(this.resetTypeSelect, 0);
+      this.mutex = false;
     },
     getBandsData(data) {
       return data.map((item) => {
@@ -286,7 +287,6 @@ export default {
         options
       );
       this.linesData = res.points;
-      // console.log(res.points);
       return res.points;
     },
     dragHandle: _.debounce(async (that, data) => {
@@ -306,6 +306,7 @@ export default {
         ],
       });
       that.bandsData = data;
+      // that.mutex = false;
     }, 1000 / 60),
 
     convertToPixel(dataItem) {
@@ -501,7 +502,24 @@ export default {
                 fc,
                 gain,
               });
+
               that.dragHandle(that, data);
+              // that.mutex = true;
+              // const pointsData = that.getPointsData(data);
+              // const linesData = await that.getLinesData(data);
+              // that.chartDom.setOption({
+              //   series: [
+              //     {
+              //       id: 'point',
+              //       data: pointsData,
+              //     },
+              //     {
+              //       id: 'line',
+              //       data: linesData,
+              //     },
+              //   ],
+              // });
+              // that.bandsData = data;
             }, dataIndex),
             ondragend: function () {
               that.mutex = false;
@@ -563,6 +581,7 @@ export default {
     },
     resetHandle() {
       this.$emit('reset', this.type);
+      this.mutex = false;
     },
     resetTypeSelect() {
       this.bandsData.map((item, index) => {
@@ -584,6 +603,7 @@ export default {
         );
     },
     changeType(e, key) {
+      this.mutex = false;
       const item = this.types.find((item) => item.val === e);
       const img = item?.imgUrl && require('@/assets/imgs/' + item.imgUrl);
       this.$refs['select' + key][0].$el.children[0].children[0].setAttribute(
