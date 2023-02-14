@@ -343,6 +343,7 @@ export default {
         console.log('params--->', val);
         const data = JSON.parse(JSON.stringify(val));
         Object.keys(data).forEach((key) => {
+          // console.log(key, data[key]);
           this.parseData(key, data[key]);
         });
       },
@@ -669,6 +670,7 @@ export default {
     },
     //修改主页Bypass
     enableVoice(type, val) {
+      // console.log(type, val);
       let index;
       let voiceItem;
       this.originOptions.map((item, id) => {
@@ -790,16 +792,17 @@ export default {
       const pathStr = await this.$electron.ipcRenderer.invoke('open-dict');
       if (pathStr) {
         console.log(this.params);
+        const binPath = this.project?.manifestJson?.name
+          ? this.project?.manifestJson?.name + '.bin'
+          : '未命名-1.bin';
         const res = await this.$electron.ipcRenderer.invoke(
           'write-bin',
           pathStr,
-          this.project?.manifestJson?.name
-            ? this.project?.manifestJson?.name + '.bin'
-            : 'euqlizer.bin',
+          binPath,
           this.params
         );
         if (res === 0) {
-          this.$message.success('导出成功');
+          this.$message.success(`${binPath}导出成功`);
         } else {
           this.$message.error('导出失败');
         }

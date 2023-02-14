@@ -221,13 +221,11 @@ export default {
       );
       const { code, data, msg } = res;
       if (code === 0) {
-        this.$store.dispatch('saveProject', JSON.parse(JSON.stringify(data)));
-        this.$store.dispatch(
-          'saveParams',
-          JSON.parse(JSON.stringify(data.configJson))
-        );
         this.$message.success(`保存成功`);
         this.confirmVisible = false;
+        this.$store.dispatch('saveProject', _.cloneDeep(data));
+        // console.log('更新params2', data.configJson);
+        this.$store.dispatch('saveParams', _.cloneDeep(data.configJson));
         if (this.isclose) {
           this.$electron.ipcRenderer.send('window-close');
         }
@@ -261,35 +259,30 @@ export default {
           Object.keys(this.project).length === 0 ? this.params : defaultConfig;
       }
 
-      console.log(this.projectModalType, this.params, saveParamsObj);
-
+      const params = Object.assign({}, data, {
+        configJson:
+          this.projectModalType === '新建' ? saveParamsObj : this.params,
+      });
+      console.log(this.projectModalType, params);
       this.$electron.ipcRenderer
-        .invoke(
-          'create-project',
-          Object.assign({}, data, {
-            configJson:
-              this.projectModalType === '新建' ? saveParamsObj : this.params,
-          })
-        )
+        .invoke('create-project', params)
         .then((res) => {
           const { code, data, msg } = res;
           if (code === 0) {
-            //新建之后直接打开项目
-            if (this.projectModalType === '新建') {
-              this.$store.dispatch(
-                'saveProject',
-                JSON.parse(JSON.stringify(data))
-              );
-              this.$store.dispatch('saveParams', saveParamsObj);
-            }
             this.$message.success(`${this.projectModalType}成功`);
+            this.$store.dispatch('saveProject', _.cloneDeep(data));
+            // console.log('更新params1', data.configJson);
+            this.$store.dispatch('saveParams', _.cloneDeep(data.configJson));
             this.confirmVisible = false;
             if (this.isclose) {
               this.$electron.ipcRenderer.send('window-close');
             }
-          } else {
+          } else if (code === -1) {
             this.$message.error(msg);
             this.$store.dispatch('saveProject', {});
+          } else {
+            //-2 保存项目名字冲突取消保存
+            return;
           }
         });
     },
@@ -306,7 +299,7 @@ export default {
           event.preventDefault();
           event.returnValue = false;
           if (event.ctrlKey && event.code === 'KeyS') {
-            console.log('sabe');
+            console.log('save');
             this.toSave();
           }
           break;

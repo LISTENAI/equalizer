@@ -40,6 +40,7 @@
               :min="bandsData[key - 1]?.x"
               :max="bandsData[key + 1]?.x"
               size="mini"
+              @change="mutex = false"
             ></el-input-number>
             <span>Y</span>
             <el-input-number
@@ -48,6 +49,7 @@
               :min="-100"
               :max="0"
               size="mini"
+              @change="mutex = false"
             ></el-input-number>
             <span>W</span>
             <el-input-number
@@ -56,6 +58,7 @@
               :min="0"
               :max="20"
               size="mini"
+              @change="mutex = false"
             ></el-input-number>
             <span>dB</span>
           </div>
@@ -198,7 +201,6 @@ export default {
     };
   },
   watch: {
-    // bands改变 更新 chart  chart改变band，但是band不需要再
     //dots就是pointsData
     drcData: {
       handler(newVal) {
@@ -212,7 +214,7 @@ export default {
         this.mode = mode;
         this.mutex = false;
         if (dots?.length) {
-          this.bandsData = JSON.parse(JSON.stringify(dots));
+          this.bandsData = _.cloneDeep(dots);
         } else {
           const { bands } = this.getBandsData(this.seg || 5);
           this.bandsData = bands;
@@ -224,13 +226,11 @@ export default {
 
     bandsData: {
       async handler(val) {
-        // console.log(this.mutex);
         if (!this.mutex && val) {
-          const newVal = JSON.parse(JSON.stringify(val));
+          const newVal = _.cloneDeep(val);
           // this.getPointsData(newVal);
           await this.getLinesData(newVal);
           setTimeout(this.renderChart, 0);
-          this.mutex = false;
         }
       },
       deep: true,
@@ -296,9 +296,10 @@ export default {
     },
     // params:bandsData
     async getLinesData(data) {
-      // console.log('getLinesData--->');
+      console.log('getlinesData');
+      this.mutex = true;
       const { maxX, minX, maxY, minY } = this.drcVal;
-      const dots = this.getDotsData(JSON.parse(JSON.stringify(data)));
+      const dots = _.cloneDeep(this.getDotsData(data));
       let { fs, enable, at, rt, mode, rms, seg } = this;
       const params = {
         enable: !enable,
@@ -318,20 +319,17 @@ export default {
         startYGain: minY,
         endYGain: maxY,
       };
-      // console.log(params);
       const res = await this.$electron.ipcRenderer.invoke(
         'drc-draw',
         params,
         options
       );
-      // console.log(res);
-      this.mutex = true;
       const arr = res.dots.map((item) => {
         return { x: item[0], y: item[1], w: item[2] };
       });
       this.bandsData = arr;
       this.linesData = res.points;
-      this.getPointsData(arr);
+      this.pointsData = res.dots;
       return res.points;
     },
     updateBandsData(data) {
@@ -346,23 +344,15 @@ export default {
       return this?.chartDom.convertToPixel('grid', dataItem);
     },
     dragHandle: _.debounce(async (that, data) => {
-      that.mutex = true;
-      const pointsData = that.getPointsData(data);
       const linesData = await that.getLinesData(data);
       that?.chartDom.setOption({
         series: [
-          {
-            id: 'point',
-            data: pointsData,
-          },
           {
             id: 'line',
             data: linesData,
           },
         ],
       });
-      that.bandsData = data;
-      that.mutex = false;
     }, 1000 / 60),
     initChart() {
       const that = this;
@@ -423,7 +413,7 @@ export default {
               type: 'solid',
             },
           },
-          position: function (pos, params, dom, rect, size) {
+          position: function (pos) {
             return [pos[0] - 40, pos[1] - 95];
           },
           formatter(params) {
@@ -577,6 +567,9 @@ export default {
             invisible: true,
             draggable: true,
             z: 100,
+            onclick: function () {
+              console.log(dataIndex, that.bandsData.length);
+            },
             onmousemove: function () {
               !that.draging &&
                 setTimeout(() => {
@@ -588,7 +581,11 @@ export default {
             },
             ondrag: function () {
               that.draging = true;
-              if (dataIndex > that.pointsData.length) return;
+              that.mutex = true;
+              if (dataIndex >= that.bandsData.length) {
+                dataIndex = that.bandsData.length - 1;
+              }
+
               that.activeIndex = dataIndex;
               // 实时获取拖动的点位信息并根据此信息重新画图
               let positions = that.chartDom.convertFromPixel('grid', [
@@ -596,22 +593,33 @@ export default {
                 this.y,
               ]);
               const [x, y] = that.getPointRange(dataIndex, positions);
-              const data = JSON.parse(JSON.stringify(that.bandsData));
-              data[dataIndex] = Object.assign(data[dataIndex], {
+              const data = _.cloneDeep(that.pointsData);
+              const bandsData = _.cloneDeep(that.bandsData);
+              bandsData[dataIndex] = Object.assign(bandsData[dataIndex], {
                 x,
                 y,
               });
+              that.bandsData = bandsData;
+              data[dataIndex] = [x, y];
+              that.pointsData = data;
               that.chartDom.setOption({
-                tooltip: {
-                  show: false,
-                },
+                series: [
+                  {
+                    id: 'point',
+                    data: data,
+                  },
+                ],
               });
-              that.dragHandle(that, data);
+              // that.chartDom.setOption({
+              //   tooltip: {
+              //     show: false,
+              //   },
+              // });
+              that.dragHandle(that, bandsData);
             },
             ondragend: function () {
-              that.mutex = false;
               that.draging = false;
-              that.renderChart();
+              // that.renderChart();
             },
           };
         }
@@ -625,8 +633,9 @@ export default {
 
       let [newPosX, newPosY] = positions;
       const len = this.pointsData.length;
+
       let nextX, nextY, preX, preY;
-      if (index + 1 === len) {
+      if (index + 1 >= len) {
         [nextX, nextY] = [maxX, maxY];
       } else {
         [nextX, nextY] = this.pointsData[index + 1];
@@ -669,7 +678,7 @@ export default {
     changeBandNums() {
       const { bands } = this.getBandsData(this.seg);
       this.mutex = false;
-      this.bandsData = JSON.parse(JSON.stringify(bands));
+      this.bandsData = _.cloneDeep(bands);
     },
     beforeCloseHandle() {
       this.$confirm('是否确定关闭?', '', {

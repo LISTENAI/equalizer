@@ -1,4 +1,4 @@
-import { eqDrawPoints,drcDrawPoints, writeToBinFile } from '../libs/index';
+import { eqDrawPoints, drcDrawPoints, writeToBinFile } from '../libs/index';
 import { join } from 'path';
 const iconv = require("iconv-lite");
 export default (ipcMain) => {

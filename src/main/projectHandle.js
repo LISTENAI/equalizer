@@ -1,15 +1,25 @@
 import { pathExists, readJSON, writeJson } from 'fs-extra';
 import { join } from 'path';
+import { dialog } from "electron";
 export const ProjectHandle = {
     async createProject(option) {
         try {
             console.log(option);
-            let { pathStr, name, configJson } = option;
+            let { pathStr, name, configJson, isSave } = option;
             if (!await pathExists(pathStr)) { return { code: -1, msg: `${pathStr}目录不存在` }; }
             const projectPath = join(pathStr, `${name}.lsaudio`);
             console.log(projectPath);
-            if (await pathExists(projectPath)) {
-                return { code: -1, msg: `【${projectPath}】项目已存在` };
+            if (await pathExists(projectPath) && !isSave) {
+                const choice = dialog.showMessageBoxSync({
+                    type: "info",
+                    buttons: ["确认", "取消"],
+                    title: "另存为？",
+                    message: `【${projectPath}】项目已存在,是否替换现有文件？`,
+                    defaultId: 0,
+                    cancelId: 1
+                });
+                if (choice === 1) return { code: -2, msg: `` };
+
             }
             // await mkdirs(projectPath);
             // const configFile = join(projectPath, 'config.json');

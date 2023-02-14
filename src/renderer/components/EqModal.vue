@@ -43,7 +43,7 @@
             :max="boundaryVal.maxFC"
             size="mini"
             :disabled="!item.enable"
-            @change="() => (this.mutex = false)"
+            @change="mutex = false"
           ></el-input-number>
           <el-input-number
             v-model="item.gain"
@@ -54,7 +54,7 @@
             :step="0.1"
             size="mini"
             :disabled="!item.enable"
-            @change="() => (this.mutex = false)"
+            @change="mutex = false"
           ></el-input-number>
           <el-input-number
             v-model="item.q"
@@ -65,7 +65,7 @@
             :step="0.1"
             size="mini"
             :disabled="!item.enable"
-            @change="() => (this.mutex = false)"
+            @change="mutex = false"
           ></el-input-number>
           <el-select
             v-model="item.type"
@@ -191,21 +191,19 @@ export default {
   watch: {
     eqData: {
       async handler(val) {
-        const newVal = JSON.parse(JSON.stringify(val));
+        const newVal = _.cloneDeep(val);
         await this.parseEqData(newVal);
-        this.mutex = false;
       },
       deep: true,
     },
     bandsData: {
       async handler(val) {
         if (!this.mutex && val) {
-          const newVal = JSON.parse(JSON.stringify(val));
+          const newVal = _.cloneDeep(val);
           this.getPointsData(newVal);
           await this.getLinesData(newVal);
           setTimeout(this.resetTypeSelect, 0);
           setTimeout(this.renderChart, 0);
-          this.mutex = false;
         }
       },
       deep: true,
@@ -219,7 +217,6 @@ export default {
     },
   },
   mounted() {
-    setTimeout(this.initChart, 0);
     this.parseEqData(JSON.parse(JSON.stringify(this.eqData)));
   },
   beforeDestroy() {
@@ -227,15 +224,18 @@ export default {
   },
   methods: {
     async updateBandsData(that, val) {
-      const newVal = JSON.parse(JSON.stringify(val));
+      const newVal = _.cloneDeep(val);
       that.getPointsData(newVal);
       await that.getLinesData(newVal);
       setTimeout(that.resetTypeSelect, 0);
       setTimeout(that.renderChart, 0);
     },
     async parseEqData(data) {
+      this.mutex = true;
+      const points = [];
       const filters = data.map((item) => {
         const [enable, type, dSampleRateHz, q, gain, fc] = item;
+        points.push([fc, gain]);
         return {
           enable: !!enable,
           type,
@@ -245,14 +245,14 @@ export default {
           fc,
         };
       });
-      this.bandsData = this.getBandsData(filters);
-      this.getPointsData(filters);
+      this.bandsData = _.cloneDeep(filters);
+      this.pointsData = points;
       await this.getLinesData(filters);
-      setTimeout(this.renderChart, 0);
+      setTimeout(this.initChart, 0);
       setTimeout(this.resetTypeSelect, 0);
-      this.mutex = false;
     },
-    getBandsData(data) {
+    getBandsData(val) {
+      const data = _.cloneDeep(val);
       return data.map((item) => {
         item.enable = item.enable === undefined ? true : !!item.enable;
         return item;
@@ -278,7 +278,7 @@ export default {
         endFreq: maxFC,
         startGain: mindB,
         endGain: maxdB,
-        xNum: 380,
+        xNum: 280,
         yNum: 370,
       };
       const res = await this.$electron.ipcRenderer.invoke(
@@ -290,24 +290,16 @@ export default {
       return res.points;
     },
     dragHandle: _.debounce(async (that, data) => {
-      that.mutex = true;
-      const pointsData = that.getPointsData(data);
       const linesData = await that.getLinesData(data);
       that.chartDom.setOption({
         series: [
-          {
-            id: 'point',
-            data: pointsData,
-          },
           {
             id: 'line',
             data: linesData,
           },
         ],
       });
-      that.bandsData = data;
-      // that.mutex = false;
-    }, 1000 / 60),
+    }, 100),
 
     convertToPixel(dataItem) {
       return this.chartDom && this.chartDom.convertToPixel('grid', dataItem);
@@ -463,15 +455,7 @@ export default {
             shape: {
               r: that.symbolSize,
             },
-            // style: {
-            //   fill: '#fff',
-            //   stroke: '#fff',
-            //   lineWidth: 0,
-            // },
-            // 用 transform 的方式对圆点进行定位。position: [x, y] 表示将圆点平移到 [x, y] 位置。
-            // convertToPixel获取每个圆点的位置
             position: that.chartDom.convertToPixel('grid', dataItem),
-            // 圆点不可见
             invisible: true,
             draggable: true,
             z: 100,
@@ -486,6 +470,7 @@ export default {
             },
             ondrag: echarts.util.curry(async function (dataIndex) {
               that.draging = true;
+              that.mutex = true;
               const { maxdB, mindB, maxFC, minFC } = that.boundaryVal;
               // 实时获取拖动的点位信息并根据此信息重新画图
               let [fc, gain] = that.chartDom.convertFromPixel(
@@ -497,34 +482,35 @@ export default {
               gain = gain <= mindB ? mindB : gain;
               gain = gain >= maxdB ? maxdB : gain;
               fc = parseInt(fc);
-              const data = JSON.parse(JSON.stringify(that.bandsData));
-              data[dataIndex] = Object.assign(data[dataIndex], {
+              //拖动点的时候 实时更新点的位置 延缓更新线
+              // 设置 pointsData bandsData
+              const data = _.cloneDeep(that.pointsData);
+              const bandsData = _.cloneDeep(that.bandsData);
+              bandsData[dataIndex] = Object.assign(bandsData[dataIndex], {
                 fc,
                 gain,
               });
+              that.bandsData = bandsData;
+              data[dataIndex] = [fc, gain];
+              that.pointsData = data;
+              that.chartDom.setOption({
+                series: [
+                  {
+                    id: 'point',
+                    data: data,
+                  },
+                  // {
+                  //   id: 'line',
+                  //   data: data,
+                  // },
+                ],
+              });
 
-              that.dragHandle(that, data);
-              // that.mutex = true;
-              // const pointsData = that.getPointsData(data);
-              // const linesData = await that.getLinesData(data);
-              // that.chartDom.setOption({
-              //   series: [
-              //     {
-              //       id: 'point',
-              //       data: pointsData,
-              //     },
-              //     {
-              //       id: 'line',
-              //       data: linesData,
-              //     },
-              //   ],
-              // });
-              // that.bandsData = data;
+              that.dragHandle(that, bandsData);
             }, dataIndex),
             ondragend: function () {
-              that.mutex = false;
               that.draging = false;
-              that.renderChart();
+              // that.renderChart();
             },
           };
         }
@@ -593,7 +579,9 @@ export default {
       const opacity = item.enable ? 1 : 0.5;
       const img = typeObj?.imgUrl && require('@/assets/imgs/' + typeObj.imgUrl);
       img &&
-        this.$refs['select' + key][0].$el.children[0].children[0].setAttribute(
+        this.$refs[
+          'select' + key
+        ][0]?.$el.children[0]?.children[0].setAttribute(
           'style',
           'background-image:url(' +
             img +
@@ -614,11 +602,9 @@ export default {
       );
     },
     changeenable(v, key) {
-      const item = this.bandsData[key];
-      item.enable = v;
-      this.$set(this.bandsData, key, item);
-      this.changeTypeImg(key, item);
-      this.renderChart();
+      this.mutex = false;
+      this.bandsData[key].enable = v;
+      this.changeTypeImg(key, this.bandsData[key]);
     },
     showTooltip(key) {
       if (key === undefined) {

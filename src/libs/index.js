@@ -91,20 +91,20 @@ const drcDrawPoints = (drcData, chartConf) => {
 };
 exports.drcDrawPoints = drcDrawPoints;
 const writeToBinFile = (binfile, audioConf) => {
-    const bassBoost = new stru_2.struBassBoostPrm({
+    const bassBoost = audioConf.bass_boost && new stru_2.struBassBoostPrm({
         iEnable: Number(audioConf.bass_boost.enable),
         fFs: audioConf.bass_boost.fs,
         fDbGain: audioConf.bass_boost.gain,
         fFreqHz: audioConf.bass_boost.freq,
     });
-    const trebleoost = new stru_2.struTrebleBoostPrm({
+    const trebleoost = audioConf.treble_boost && new stru_2.struTrebleBoostPrm({
         iEnable: Number(audioConf.treble_boost.enable),
         fFs: audioConf.treble_boost.fs,
         fDbGain: audioConf.treble_boost.gain,
         fFreqHz: audioConf.treble_boost.freq,
     });
-    const filterprms = new stru_1.StruFiltersPrm();
-    audioConf.eq.filters.forEach((filter, index) => {
+    const filterprms = audioConf.eq && new stru_1.StruFiltersPrm();
+    audioConf.eq && audioConf.eq.filters.forEach((filter, index) => {
         filterprms[index] = new stru_1.struFilterPrm({
             FilterEnable: filter.enable,
             FilterType: filter.type,
@@ -114,19 +114,19 @@ const writeToBinFile = (binfile, audioConf) => {
             fFreqHz: filter.fc,
         });
     });
-    const monoEqPrm = new stru_1.struMonoEqPrm({
+    const monoEqPrm = audioConf.eq && new stru_1.struMonoEqPrm({
         Enable: Number(audioConf.eq.enable),
         FilterPrm: filterprms
     });
     const dots = new stru_3.struDots();
-    audioConf.drc.dots.forEach((dot, index) => {
+    audioConf.drc && audioConf.drc.dots.forEach((dot, index) => {
         dots[index] = new stru_3.struDrcDot({
             X: dot[0],
             Y: dot[1],
             W: dot[2]
         });
     });
-    const drc = new stru_3.struDrcPrm({
+    const drc = audioConf.drc && new stru_3.struDrcPrm({
         iEnable: Number(audioConf.drc.enable),
         Fs: audioConf.drc.fs,
         At: audioConf.drc.at,
@@ -136,7 +136,7 @@ const writeToBinFile = (binfile, audioConf) => {
         SegNum: audioConf.drc.seg,
         Dot: dots
     });
-    const gain = new stru_2.struGainPrm({
+    const gain = audioConf.agc && new stru_2.struGainPrm({
         iEnable: Number(audioConf.agc.enable),
         dSampleRate: audioConf.agc.sr,
         dVolume: audioConf.agc.vol
