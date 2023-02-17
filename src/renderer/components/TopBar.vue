@@ -32,7 +32,7 @@
         <svg-icon icon-class="win_min"></svg-icon>
       </div>
       <div class="icon" @click="max">
-        <svg-icon :icon-class="isMax ? 'win_max' : 'win_resize'"></svg-icon>
+        <svg-icon :icon-class="isMax ? 'win_resize' : 'win_max'"></svg-icon>
       </div>
       <div class="icon close" @click="close">
         <svg-icon icon-class="r_cross"></svg-icon>

@@ -61,8 +61,8 @@
             controls-position="right"
             :min="boundaryVal.minQ"
             :max="boundaryVal.maxQ"
-            :precision="1"
-            :step="0.1"
+            :precision="3"
+            :step="0.001"
             size="mini"
             :disabled="!item.enable"
             @change="mutex = false"
@@ -193,6 +193,7 @@ export default {
       async handler(val) {
         const newVal = _.cloneDeep(val);
         await this.parseEqData(newVal);
+        this.enable = this.checkable;
       },
       deep: true,
     },
@@ -308,6 +309,7 @@ export default {
       const that = this;
       this.chartDom = echarts && echarts.init(this.$refs.dom);
       const option = {
+        // animation: false,
         grid: {
           left: 50,
           right: 10,

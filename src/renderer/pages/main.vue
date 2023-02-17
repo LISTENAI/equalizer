@@ -181,31 +181,31 @@ export default {
           type: 'bass_boost',
           text: '低音增强',
           imageUrl: 'low.png',
-          enable: false,
+          enable: true,
         },
         {
           type: 'treble_boost',
           text: '高音增强',
           imageUrl: 'high.png',
-          enable: false,
+          enable: true,
         },
         {
           type: 'eq',
           text: 'EQ均衡器',
           imageUrl: 'eq.png',
-          enable: false,
+          enable: true,
         },
         {
           type: 'drc',
           text: 'DRC',
           imageUrl: 'drc.png',
-          enable: false,
+          enable: true,
         },
         {
           type: 'agc',
           text: '输出增益',
           imageUrl: 'out.png',
-          enable: false,
+          enable: true,
         },
       ],
       voiceType: {
@@ -270,24 +270,24 @@ export default {
           ],
         },
         eq: [
-          [1, 2, 48000, 0.5, 0, 26],
-          [1, 2, 48000, 0.7, 0, 40],
-          [1, 2, 48000, 0.7, 0, 63],
-          [1, 2, 48000, 0.7, 0, 80],
-          [1, 2, 48000, 0.7, 0, 125],
-          [1, 2, 48000, 0.7, 0, 250],
-          [1, 2, 48000, 0.7, 0, 500],
-          [1, 2, 48000, 0.7, 0, 1000],
-          [1, 2, 48000, 0.7, 0, 2000],
-          [1, 2, 48000, 0.7, 0, 2500],
+          [0, 3, 48000, 0.717, 0, 26],
+          [0, 3, 48000, 0.717, 0, 40],
+          [0, 3, 48000, 0.717, 0, 63],
+          [0, 3, 48000, 0.717, 0, 80],
+          [0, 3, 48000, 0.717, 0, 125],
+          [0, 3, 48000, 0.717, 0, 250],
+          [0, 3, 48000, 0.717, 0, 500],
+          [0, 3, 48000, 0.717, 0, 1000],
+          [0, 3, 48000, 0.717, 0, 2000],
+          [0, 3, 48000, 0.717, 0, 2500],
         ],
         drc: {
           fs: 48000,
-          seg: 5,
+          seg: 4,
           at: 0.1,
           rt: 0.5,
           rms: 0.1,
-          mode: 0,
+          mode: 1,
           dots: [],
         },
       },
@@ -296,13 +296,13 @@ export default {
       eqType: {},
       currentModalType: '',
       voiceVisible: false,
-      voiceCheckable: false, // 低音/高音/输出 bypass
+      voiceCheckable: true, // 低音/高音/输出 bypass
       voiceData: {}, // 低音/高音/输出 数据
       eqVisible: false,
-      eqCheckable: false, // EQ bypass
+      eqCheckable: true, // EQ bypass
       eqData: [], // EQ 数据
       drcVisible: false,
-      drcCheckable: false, // drc bypass
+      drcCheckable: true, // drc bypass
       drcData: null, // drc 数据
       // allParams: {}, //最终写入的参数
       eName: '',
@@ -340,7 +340,6 @@ export default {
     },
     params: {
       handler(val) {
-        console.log('params--->', val);
         const data = JSON.parse(JSON.stringify(val));
         Object.keys(data).forEach((key) => {
           // console.log(key, data[key]);
@@ -356,9 +355,6 @@ export default {
       TYPES.forEach((item) => {
         this.resetModalData(item);
       });
-      this.eqCheckable = false;
-      this.drcCheckable = false;
-      this.voiceCheckable = false;
       this.$store.dispatch('changeReset', false);
     },
 
@@ -456,7 +452,15 @@ export default {
             this.connecting = false;
             this.writing = false;
             this.loading = false;
-            this.$message.error('连接超时，请重试');
+            this.$confirm('连接超时，请重试', '', {
+              showCancelButton: false,
+              showClose: false,
+              closeOnClickModal: false,
+              confirmButtonText: '确定',
+              type: 'warning',
+            }).then(() => {
+              return;
+            });
           }, 10000);
           this.timeOutid = timeOutid;
           this.connecting = true;
@@ -470,7 +474,15 @@ export default {
         this.writing = false;
         this.loading = false;
         this.clearTimeout();
-        this.$message.error(error);
+        this.$confirm(error, '', {
+          showCancelButton: false,
+          showClose: false,
+          closeOnClickModal: false,
+          confirmButtonText: '确定',
+          type: 'warning',
+        }).then(() => {
+          return;
+        });
       }
     },
     async checkConnectHandle() {
@@ -646,20 +658,20 @@ export default {
     resetModalData(type) {
       const voiceData = JSON.parse(JSON.stringify(this.originVoiceType[type]));
       // console.log('reset', type, voiceData);
-      this.enableVoice(type, false);
+      this.enableVoice(type, true);
       switch (type) {
         case 'eq':
           this.eqData = voiceData;
-          this.eqCheckable = false;
+          this.eqCheckable = true;
           break;
         case 'drc':
           this.drcData = voiceData;
-          this.drcCheckable = false;
+          this.drcCheckable = true;
           break;
         default: //'bass_boost'|'treble_boost'|'agc'
           voiceData.type = type;
           this.voiceData[type] = voiceData;
-          this.voiceCheckable = false;
+          this.voiceCheckable = true;
           break;
       }
     },
@@ -716,7 +728,15 @@ export default {
       const timeOutid = setTimeout(() => {
         this.clearInterval();
         this.writing = false;
-        this.$message.error('写入超时，请重试');
+        this.$confirm('写入超时，请重试', '', {
+          showCancelButton: false,
+          showClose: false,
+          closeOnClickModal: false,
+          confirmButtonText: '确定',
+          type: 'warning',
+        }).then(() => {
+          return;
+        });
       }, 15000);
       this.timeOutid = timeOutid;
       this.writing = true;
@@ -725,6 +745,7 @@ export default {
           this.clearInterval();
           this.clearTimeout();
           this.writing = false;
+          this.$message.success('写入参数成功');
           return;
         } else {
           const type = saveDatas[0];
@@ -754,7 +775,15 @@ export default {
         this.loading = false;
         this.eName = '';
         this.eDone = false;
-        this.$message.error('获取超时，请重试');
+        this.$confirm('获取超时，请重试', '', {
+          showCancelButton: false,
+          showClose: false,
+          closeOnClickModal: false,
+          confirmButtonText: '确定',
+          type: 'warning',
+        }).then(() => {
+          return;
+        });
       }, 15000);
       this.timeOutid = timeOutid;
       let timeId = setInterval(async () => {
@@ -766,6 +795,7 @@ export default {
           this.eDone = false;
           console.log('所有参数', this.voiceData, this.eqData);
           console.log(this.params);
+          this.$message.success('获取参数成功');
           return;
         } else {
           const type = dataTypes[0];

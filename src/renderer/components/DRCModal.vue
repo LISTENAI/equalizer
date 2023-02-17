@@ -213,6 +213,7 @@ export default {
         this.seg = seg;
         this.mode = mode;
         this.mutex = false;
+        this.enable = this.checkable;
         if (dots?.length) {
           this.bandsData = _.cloneDeep(dots);
         } else {
@@ -359,6 +360,7 @@ export default {
       this.chartDom = echarts && echarts.init(this.$refs.dom);
       if (!this.chartDom) return;
       const option = {
+        // animation: false,
         title: [
           {
             left: 'center',
@@ -699,15 +701,7 @@ export default {
     },
     resetHandle() {
       // this.$emit('reset', this.type);
-      this.seg = 5;
-      this.at = 0.1;
-      this.rt = 0.1;
-      this.rms = 0.02;
-      this.mode = 0;
-      const { charts, bands } = this.getBandsData(this.seg);
-      this.pointsData = charts;
-      this.bandsData = bands;
-      this.originBandsData = {};
+      this.$emit('reset', this.type);
       this.mutex = false;
     },
     showTooltip(key) {

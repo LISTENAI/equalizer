@@ -95,6 +95,7 @@ export default {
       handler(newVal) {
         console.log('更新', this.voiceData.type, newVal);
         this.detail = JSON.parse(JSON.stringify(newVal));
+        this.enable = this.checkable;
       },
       deep: true,
     },

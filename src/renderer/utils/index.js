@@ -282,7 +282,7 @@ const parseEq = (buf) => {
         buf.readInt32LE(offset),
         buf.readInt32LE(offset + 4),
         parseFloat(buf.readFloatLE(offset + 8).toFixed(3)),
-        parseFloat(buf.readFloatLE(offset + 12).toFixed(3)),
+        parseFloat(fixedNumber(buf.readFloatLE(offset + 12), 3)),
         parseFloat(buf.readFloatLE(offset + 16).toFixed(3)),
         parseFloat(buf.readFloatLE(offset + 20).toFixed(3)),
       ]
@@ -325,6 +325,13 @@ const parseTrebleBoost = (buf) => {
   data.gain = buf.readFloatLE(8).toFixed(3);
   data.freq = buf.readFloatLE(12).toFixed(3);
   return data;
+};
+
+const fixedNumber = (num, i) => {
+  let temp = Number(num);
+  temp = Math.floor(temp * 1000) / 1000;
+  temp = temp.toFixed(i);
+  return temp;
 };
 
 // // 58 46 0A 00 01 57 F0 00 01 0F
