@@ -8,7 +8,7 @@ const stru_3 = require("./stru");
 const stru_4 = require("./stru");
 const eqDrawPoints = (eqData, chartConf) => {
     const filterprms = new stru_1.StruFiltersPrm();
-    eqData.filters.forEach((filter, index) => {
+    eqData.filters && eqData.filters.forEach((filter, index) => {
         filterprms[index] = new stru_1.struFilterPrm({
             FilterEnable: filter.enable,
             FilterType: filter.type,
@@ -46,7 +46,7 @@ const eqDrawPoints = (eqData, chartConf) => {
 exports.eqDrawPoints = eqDrawPoints;
 const drcDrawPoints = (drcData, chartConf) => {
     const dotprms = new stru_3.struDots();
-    drcData.dots.forEach((dot, index) => {
+    drcData.dots && drcData.dots.forEach((dot, index) => {
         dotprms[index] = new stru_3.struDrcDot({
             X: dot[0],
             Y: dot[1],
@@ -104,7 +104,7 @@ const writeToBinFile = (binfile, audioConf) => {
         fFreqHz: audioConf.treble_boost.freq,
     });
     const filterprms = audioConf.eq && new stru_1.StruFiltersPrm();
-    audioConf.eq && audioConf.eq.filters.forEach((filter, index) => {
+    audioConf.eq && audioConf.eq.filters && audioConf.eq.filters.forEach((filter, index) => {
         filterprms[index] = new stru_1.struFilterPrm({
             FilterEnable: filter.enable,
             FilterType: filter.type,
@@ -119,7 +119,7 @@ const writeToBinFile = (binfile, audioConf) => {
         FilterPrm: filterprms
     });
     const dots = new stru_3.struDots();
-    audioConf.drc && audioConf.drc.dots.forEach((dot, index) => {
+    audioConf.drc && audioConf.drc.dots && audioConf.drc.dots.forEach((dot, index) => {
         dots[index] = new stru_3.struDrcDot({
             X: dot[0],
             Y: dot[1],

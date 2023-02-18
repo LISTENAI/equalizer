@@ -155,6 +155,8 @@ import DRCModal from 'components/DRCModal.vue';
 import SerialPortHandle from '../utils/serialport';
 import { checkConnect, setParams, getParams, TYPES } from '../utils/index';
 import { mapState } from 'vuex';
+// import defaultConfig from '../utils/config';
+
 export default {
   name: 'main-page',
   components: { VoiceModal, EQModal, DRCModal },
@@ -270,16 +272,16 @@ export default {
           ],
         },
         eq: [
-          [0, 3, 48000, 0.717, 0, 26],
-          [0, 3, 48000, 0.717, 0, 40],
-          [0, 3, 48000, 0.717, 0, 63],
-          [0, 3, 48000, 0.717, 0, 80],
-          [0, 3, 48000, 0.717, 0, 125],
-          [0, 3, 48000, 0.717, 0, 250],
-          [0, 3, 48000, 0.717, 0, 500],
-          [0, 3, 48000, 0.717, 0, 1000],
-          [0, 3, 48000, 0.717, 0, 2000],
-          [0, 3, 48000, 0.717, 0, 2500],
+          [0, 3, 48000, 0.707, 0, 26],
+          [0, 3, 48000, 0.707, 0, 40],
+          [0, 3, 48000, 0.707, 0, 63],
+          [0, 3, 48000, 0.707, 0, 80],
+          [0, 3, 48000, 0.707, 0, 125],
+          [0, 3, 48000, 0.707, 0, 250],
+          [0, 3, 48000, 0.707, 0, 500],
+          [0, 3, 48000, 0.707, 0, 1000],
+          [0, 3, 48000, 0.707, 0, 2000],
+          [0, 3, 48000, 0.707, 0, 2500],
         ],
         drc: {
           fs: 48000,
@@ -352,6 +354,14 @@ export default {
   methods: {
     //没有获取参数之前赋默认值
     setInitData() {
+      // const initData = _.cloneDeep(defaultConfig)
+      // for(let key in initData){
+      //   this.parseData(key, initData[key]);
+      //   const newParams = JSON.parse(JSON.stringify(this.params));
+      //   newParams[key] = initData[key];
+      //   console.log(newParams);
+      //   this.$store.dispatch('saveParams', newParams);
+      // }
       TYPES.forEach((item) => {
         this.resetModalData(item);
       });
