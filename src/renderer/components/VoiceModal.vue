@@ -113,13 +113,11 @@ export default {
       this.closeHandle();
       const params = { enable: !this.enable };
       if (this.detail.type === 'agc') {
-        const { value, sr } = this.detail?.item[0];
-        params.sr = sr;
+        const { value } = this.detail?.item[0];
         params.vol = value;
       } else {
         this.detail.item &&
           this.detail.item.map((item) => {
-            params.fs = item.fs;
             params[item.type] = parseInt(item.value);
           });
       }

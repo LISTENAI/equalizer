@@ -354,13 +354,14 @@ export default {
           },
         ],
       });
+      that.renderGraphicList();
     }, 1000 / 60),
     initChart() {
       const that = this;
       this.chartDom = echarts && echarts.init(this.$refs.dom);
       if (!this.chartDom) return;
       const option = {
-        // animation: false,
+        animation: false,
         title: [
           {
             left: 'center',
@@ -696,7 +697,7 @@ export default {
         });
     },
     closeHandle() {
-      this.resetHandle();
+      // this.resetHandle();
       this.$emit('close');
     },
     resetHandle() {

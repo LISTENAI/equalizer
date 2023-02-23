@@ -108,6 +108,8 @@
 <script>
 import * as echarts from 'echarts';
 import _ from 'lodash';
+import { mapState } from 'vuex';
+
 export default {
   name: 'EqModal',
   props: {
@@ -216,6 +218,18 @@ export default {
       this.show = newVal;
       this.enable = this.checkable;
     },
+    rate: {
+      handler(v) {
+        const maxFC = v === 48000 ? 20000 : 8000;
+        this.boundaryVal.maxFC = maxFC;
+      },
+      immediate: true,
+    },
+  },
+  computed: {
+    ...mapState({
+      rate: (state) => state.Project.rate,
+    }),
   },
   mounted() {
     this.parseEqData(JSON.parse(JSON.stringify(this.eqData)));
@@ -300,6 +314,7 @@ export default {
           },
         ],
       });
+      that.renderGraphicList();
     }, 100),
 
     convertToPixel(dataItem) {
@@ -309,7 +324,7 @@ export default {
       const that = this;
       this.chartDom = echarts && echarts.init(this.$refs.dom);
       const option = {
-        // animation: false,
+        animation: false,
         grid: {
           left: 50,
           right: 10,

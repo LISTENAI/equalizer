@@ -118,6 +118,7 @@ export default {
     ...mapState({
       project: (state) => state.Project.project,
       params: (state) => state.Project.params,
+      rate: (state) => state.Project.rate,
     }),
   },
   mounted() {
@@ -193,6 +194,8 @@ export default {
           'saveParams',
           JSON.parse(JSON.stringify(data.configJson))
         );
+        this.$store.dispatch('changeFsReset', false);
+        this.$store.dispatch('changeRate', data?.configJson?.drc?.fs || 48000);
       } else {
         this.$message.error(msg);
         this.$store.dispatch('saveProject', {});
@@ -209,11 +212,15 @@ export default {
     },
     //保存
     async toSave() {
+      //保存的时候给没有设置的模块默认参数
+      const defaultParams = defaultConfig(this.rate);
+      const finalParams = _.merge(_.cloneDeep(defaultParams), this.params);
+      console.log('save', finalParams);
       if (this.project && Object.keys(this.project).length === 0) {
         return this.toCreate();
       }
       const project = Object.assign({}, this.project, {
-        configJson: this.params,
+        configJson: finalParams,
       });
       const res = await this.$electron.ipcRenderer.invoke(
         'save-project',
@@ -251,17 +258,19 @@ export default {
       this.projectModalVisible = false;
     },
     saveHandle(data) {
+      const defaultParams = defaultConfig(this.rate);
+      const finalParams = _.merge(_.cloneDeep(defaultParams), this.params);
       let saveParamsObj;
       if (Object.keys(this.params).length === 0) {
-        saveParamsObj = defaultConfig;
+        saveParamsObj = defaultParams;
       } else {
         saveParamsObj =
-          Object.keys(this.project).length === 0 ? this.params : defaultConfig;
+          Object.keys(this.project).length === 0 ? finalParams : defaultParams;
       }
 
       const params = Object.assign({}, data, {
         configJson:
-          this.projectModalType === '新建' ? saveParamsObj : this.params,
+          this.projectModalType === '新建' ? saveParamsObj : finalParams,
       });
       console.log(this.projectModalType, params);
       this.$electron.ipcRenderer

@@ -37,9 +37,14 @@
         </span>
       </div>
       <div class="right flex">
-        <el-select v-model="rate" placeholder="请选择" size="middle">
+        <el-select
+          :value="fs"
+          placeholder="请选择"
+          size="middle"
+          @change="changeFsHandle"
+        >
           <el-option
-            v-for="item in rates"
+            v-for="item in SampleRates"
             :key="item.value"
             :label="item.label"
             :value="item.value"
@@ -74,7 +79,8 @@
         </div>
       </div>
     </div>
-    <!-- {{ params }} -->
+    <!-- <p>页面的参数:{{ params }}</p>
+    <p>{{ originVoiceType }}</p> -->
     <div class="container flex" v-loading="loading || writing">
       <div class="progress flex">
         <div class="step text">输入</div>
@@ -155,7 +161,7 @@ import DRCModal from 'components/DRCModal.vue';
 import SerialPortHandle from '../utils/serialport';
 import { checkConnect, setParams, getParams, TYPES } from '../utils/index';
 import { mapState } from 'vuex';
-// import defaultConfig from '../utils/config';
+import defaultConfig from '../utils/config';
 
 export default {
   name: 'main-page',
@@ -163,14 +169,18 @@ export default {
   data() {
     return {
       coms: [],
-      rates: [
+      SampleRates: [
+        {
+          value: 16000,
+          label: 'Music Manager 16K',
+        },
         {
           value: 48000,
           label: 'Music Manager 48K',
         },
       ],
+      fs: this.rate, //采样率
       com: '',
-      rate: 48000, //采样率
       comsLoading: false,
       loading: false,
       writing: false,
@@ -219,7 +229,6 @@ export default {
               value: 0,
               max: 100,
               min: -100,
-              fs: 48000,
               desc: '低音增强增益',
               unit: 'dB',
             },
@@ -228,7 +237,6 @@ export default {
               value: 200,
               max: 200,
               min: 40,
-              fs: 48000,
               desc: '低音增强截止频率',
               unit: 'Hz',
             },
@@ -242,7 +250,6 @@ export default {
               value: 0,
               max: 100,
               min: -100,
-              fs: 48000,
               desc: '高音增强增益',
               unit: 'dB',
             },
@@ -251,7 +258,6 @@ export default {
               value: 1000,
               max: 20000,
               min: 1000,
-              fs: 48000,
               desc: '高音增强截止频率',
               unit: 'Hz',
             },
@@ -265,26 +271,24 @@ export default {
               value: 0,
               max: 0,
               min: -100,
-              sr: 48000,
               desc: '增益',
               unit: 'dB',
             },
           ],
         },
         eq: [
-          [0, 3, 48000, 0.707, 0, 26],
-          [0, 3, 48000, 0.707, 0, 40],
-          [0, 3, 48000, 0.707, 0, 63],
-          [0, 3, 48000, 0.707, 0, 80],
-          [0, 3, 48000, 0.707, 0, 125],
-          [0, 3, 48000, 0.707, 0, 250],
-          [0, 3, 48000, 0.707, 0, 500],
-          [0, 3, 48000, 0.707, 0, 1000],
-          [0, 3, 48000, 0.707, 0, 2000],
-          [0, 3, 48000, 0.707, 0, 2500],
+          [0, 3, this.fs, 0.707, 0, 26],
+          [0, 3, this.fs, 0.707, 0, 40],
+          [0, 3, this.fs, 0.707, 0, 63],
+          [0, 3, this.fs, 0.707, 0, 80],
+          [0, 3, this.fs, 0.707, 0, 125],
+          [0, 3, this.fs, 0.707, 0, 250],
+          [0, 3, this.fs, 0.707, 0, 500],
+          [0, 3, this.fs, 0.707, 0, 1000],
+          [0, 3, this.fs, 0.707, 0, 2000],
+          [0, 3, this.fs, 0.707, 0, 2500],
         ],
         drc: {
-          fs: 48000,
           seg: 4,
           at: 0.1,
           rt: 0.5,
@@ -314,8 +318,6 @@ export default {
     };
   },
   mounted() {
-    this.originOptions = JSON.parse(JSON.stringify(this.options));
-    this.originVoiceType = JSON.parse(JSON.stringify(this.voiceType));
     this.getComs();
     this.serialPorEmitterHandle();
     this.setInitData();
@@ -329,6 +331,8 @@ export default {
       project: (state) => state.Project.project,
       params: (state) => state.Project.params,
       reset: (state) => state.Project.reset,
+      rate: (state) => state.Project.rate,
+      fsMutex: (state) => state.Project.fsMutex,
     }),
   },
   watch: {
@@ -344,24 +348,45 @@ export default {
       handler(val) {
         const data = JSON.parse(JSON.stringify(val));
         Object.keys(data).forEach((key) => {
-          // console.log(key, data[key]);
           this.parseData(key, data[key]);
         });
       },
       deep: true,
     },
+    // 采样率修改会有以下影响：
+    // 1：所有模块的下发fs参数
+    // 2：eq和高音增强的频率
+    //      eq的频率范围 48KHZ (20-20k) 16KHZ (20-8k)
+    //      高音增强的截止频率 48KHZ (1k-20k) 16KHZ (1k-8k)
+    // 3：需要重置已设置的参数（打开文件和获取固件的参数同步界面采样率，不需要重置页面数据）
+    rate: {
+      handler(v) {
+        const maxFC = v === 48000 ? 20000 : 8000;
+        this.fs = v;
+        this.voiceType.treble_boost.item.map((obj) => {
+          if (obj.type === 'freq') {
+            obj.max = maxFC;
+          }
+          return obj;
+        });
+        if (this.fsMutex) {
+          this.$store.dispatch('saveParams', {});
+          this.setInitData();
+        }
+      },
+      immediate: true,
+    },
+    fs(v) {
+      this.$store.dispatch('changeRate', v);
+    },
   },
   methods: {
-    //没有获取参数之前赋默认值
+    //赋默认值
     setInitData() {
-      // const initData = _.cloneDeep(defaultConfig)
-      // for(let key in initData){
-      //   this.parseData(key, initData[key]);
-      //   const newParams = JSON.parse(JSON.stringify(this.params));
-      //   newParams[key] = initData[key];
-      //   console.log(newParams);
-      //   this.$store.dispatch('saveParams', newParams);
-      // }
+      this.voiceType?.eq?.map((item) => (item[2] = this.rate));
+      this.originOptions = JSON.parse(JSON.stringify(this.options));
+      this.originVoiceType = JSON.parse(JSON.stringify(this.voiceType));
+      // console.log('重置页面参数');
       TYPES.forEach((item) => {
         this.resetModalData(item);
       });
@@ -373,7 +398,7 @@ export default {
         console.log('data from SerialPort', res);
         // console.log(JSON.stringify(res));
         const { code, data, message } = res;
-        if (this.eName === data.type) {
+        if (this.eName === data.type && code === 0) {
           this.eDone = true;
         }
         switch (data.type) {
@@ -390,11 +415,12 @@ export default {
             this.$message.error(message);
             break;
           default:
+            //获取参数|写入参数
             if (TYPES.includes(data.type)) {
               this.parseData(data.type, data.data);
               const newParams = JSON.parse(JSON.stringify(this.params));
               newParams[data.type] = data.data;
-              console.log(newParams);
+              // console.log(newParams);
               this.$store.dispatch('saveParams', newParams);
             }
             break;
@@ -409,19 +435,11 @@ export default {
       try {
         console.log('getData-->', type);
         const params = getParams(type);
+        SerialPortHandle.type = `${type}`;
         await this.writeSerialPortHandle(params);
       } catch (error) {
         console.error(error);
       }
-      //依次获取5
-      // ['bass_boost'].map(async (type) => {
-      //   try {
-      //     const params = getParams(type);
-      //     await this.writeSerialPortHandle(params);
-      //   } catch (error) {
-      //     console.error(error);
-      //   }
-      // });
     },
 
     async writeSerialPortHandle(params, errorCb) {
@@ -505,13 +523,11 @@ export default {
       }
     },
     async changeConnectHandle(isOk) {
-      // console.log('isok', isOk);
       this.connected = isOk;
       this.connecting = false;
       this.clearTimeout();
     },
     changeBypass(item) {
-      console.log(this.params);
       const params = JSON.parse(JSON.stringify(this.params));
       if (params[item.type]) {
         params[item.type].enable = !item.enable;
@@ -575,6 +591,7 @@ export default {
     },
     parseEQData(data) {
       let modalData = JSON.parse(JSON.stringify(this.voiceType['eq']));
+      modalData.map((item) => (item[2] = this.fs));
       if (data) {
         let { filters, enable } = data;
         this.eqCheckable = !enable;
@@ -600,10 +617,11 @@ export default {
       // };
 
       let modalData = JSON.parse(JSON.stringify(this.voiceType['drc']));
+      modalData.fs = this.fs;
       if (data) {
-        const { fs, at, rt, rms, mode, seg, dots, enable } = data;
+        let { fs, at, rt, rms, mode, seg, dots, enable } = data;
         this.drcCheckable = !enable;
-        if (fs)
+        if (at)
           modalData = {
             fs,
             at,
@@ -637,6 +655,7 @@ export default {
       //   ],
       // };
       let modalData = this.voiceType['agc'];
+      modalData.item[0].sr = this.fs;
       modalData.type = 'agc';
       if (data) {
         const { sr, vol } = data;
@@ -663,11 +682,12 @@ export default {
           return voice;
         });
       }
+      modalData.fs = data.fs || this.fs;
       this.voiceData[type] = modalData;
     },
     resetModalData(type) {
       const voiceData = JSON.parse(JSON.stringify(this.originVoiceType[type]));
-      // console.log('reset', type, voiceData);
+      // console.log('reset', voiceData);
       this.enableVoice(type, true);
       switch (type) {
         case 'eq':
@@ -707,7 +727,11 @@ export default {
       }
     },
     async saveHandle(type, data) {
-      console.log(data);
+      if (type === 'agc') {
+        data.sr = this.fs;
+      } else {
+        data.fs = this.fs;
+      }
       this.parseData(type, data);
       const newParams = JSON.parse(JSON.stringify(this.params));
       newParams[type] = data;
@@ -729,12 +753,14 @@ export default {
     },
     //写入所有参数
     async saveAllParamsHandle() {
-      const saveDatas = Object.keys(this.params);
+      let saveDatas = Object.keys(this.params);
       if (!this.connected || this.loading || this.writing) return;
       if (saveDatas.length === 0) {
         return this.$message.error('请先设置参数');
       }
-      console.log('写入参数', this.params);
+      const defaultParams = defaultConfig(this.fs);
+      const finalParams = _.merge(_.cloneDeep(defaultParams), this.params);
+      console.log('写入参数', finalParams);
       const timeOutid = setTimeout(() => {
         this.clearInterval();
         this.writing = false;
@@ -769,7 +795,7 @@ export default {
           } else {
             this.eName = `save-${type}`;
             this.eDone = false;
-            await this.saveParamsHandle(type, this.params[type]);
+            await this.saveParamsHandle(type, finalParams[type]);
           }
         }
       }, 400);
@@ -777,7 +803,6 @@ export default {
     },
     async getAllParams() {
       const dataTypes = JSON.parse(JSON.stringify(TYPES));
-
       if (!this.connected || this.loading || this.writing) return;
       this.loading = true;
       const timeOutid = setTimeout(() => {
@@ -803,9 +828,13 @@ export default {
           this.loading = false;
           this.eName = '';
           this.eDone = false;
-          console.log('所有参数', this.voiceData, this.eqData);
-          console.log(this.params);
+          // 设置页面的采样率为获取低音增强的采样率
+          this.$store.dispatch('changeFsReset', false);
+          this.params?.drc?.fs &&
+            this.$store.dispatch('changeRate', parseInt(this.params?.drc?.fs));
           this.$message.success('获取参数成功');
+          console.log('所有参数');
+          console.log(this.params);
           return;
         } else {
           const type = dataTypes[0];
@@ -829,9 +858,11 @@ export default {
       if (Object.keys(this.params).length === 0) {
         return;
       }
+      const defaultParams = defaultConfig(this.fs);
+      const finalParams = _.merge(_.cloneDeep(defaultParams), this.params);
       const pathStr = await this.$electron.ipcRenderer.invoke('open-dict');
+      console.log('导出', finalParams);
       if (pathStr) {
-        console.log(this.params);
         const binPath = this.project?.manifestJson?.name
           ? this.project?.manifestJson?.name + '.bin'
           : '未命名-1.bin';
@@ -839,7 +870,7 @@ export default {
           'write-bin',
           pathStr,
           binPath,
-          this.params
+          finalParams
         );
         if (res === 0) {
           this.$message.success(`${binPath}导出成功`);
@@ -847,6 +878,29 @@ export default {
           this.$message.error('导出失败');
         }
       }
+    },
+    changeFsHandle(v) {
+      if (Object.keys(this.params).length === 0) {
+        this.$store.dispatch('changeFsReset', true);
+        this.fs = v;
+        return;
+      }
+      this.$confirm(
+        '切换采样率会重置参数，如有修改请先保存现有编辑参数',
+        '是否确定切换采样率',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning',
+        }
+      )
+        .then(() => {
+          this.$store.dispatch('changeFsReset', true);
+          this.fs = v;
+        })
+        .catch(() => {
+          return;
+        });
     },
   },
 };

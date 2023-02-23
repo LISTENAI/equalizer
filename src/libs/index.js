@@ -106,12 +106,12 @@ const writeToBinFile = (binfile, audioConf) => {
     const filterprms = audioConf.eq && new stru_1.StruFiltersPrm();
     audioConf.eq && audioConf.eq.filters && audioConf.eq.filters.forEach((filter, index) => {
         filterprms[index] = new stru_1.struFilterPrm({
-            FilterEnable: filter.enable,
-            FilterType: filter.type,
-            fSampleRateHz: filter.dSampleRateHz,
-            fQ: filter.q,
-            fDbGain: filter.gain,
-            fFreqHz: filter.fc,
+            FilterEnable: filter[0],
+            FilterType: filter[1],
+            fSampleRateHz: filter[2],
+            fQ: filter[3],
+            fDbGain: filter[4],
+            fFreqHz: filter[5],
         });
     });
     const monoEqPrm = audioConf.eq && new stru_1.struMonoEqPrm({

@@ -49,10 +49,17 @@ export default class SerialPortHandle {
                         const { code, data } = reciveDataDone(allData);
                         isEnd = code;
                         all = data;
+                        if (code) {
+                            clearInterval(timeid);
+                            timeid = null;
+                            // console.log('串口数据读取完毕');
+                            all?.length && this.read(all);
+                            this.cacheData = [];
+                        }
                     } else {
                         clearInterval(timeid);
                         timeid = null;
-                        this.read(all);
+                        all?.length && this.read(all);
                         this.cacheData = [];
                     }
                 }, 200);
