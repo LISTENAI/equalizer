@@ -3,7 +3,9 @@ const state = {
   params: {}, //界面参数
   reset: false,//打开新项目之后是否重置界面参数
   rate: 48000, //默认采样率
-  fsMutex: false//采样率修改是否重置界面参数
+  fsMutex: false,//采样率修改是否重置界面参数
+  connect: false//是否连接固件
+
 };
 
 const mutations = {
@@ -22,6 +24,9 @@ const mutations = {
   CHANGE_RATE(state, val) {
     state.rate = val;
   },
+  CHANGE_CONNECT(state, val) {
+    state.connect = val;
+  }
 };
 
 const actions = {
@@ -39,6 +44,9 @@ const actions = {
   },
   changeRate({ commit }, data) {
     commit('CHANGE_RATE', data);
+  },
+  changeConnect({ commit }, data) {
+    commit('CHANGE_CONNECT', data);
   }
 };
 

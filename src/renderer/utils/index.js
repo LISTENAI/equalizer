@@ -196,16 +196,28 @@ export const parseData = (data, bufType) => {
     type: '',
     data: {}
   };
+  //0xFF 0x00 0x01 
   data.forEach(buf => {
     const data_buf = buf.subarray(6, buf.length);
-    // 相应帧: 0xff 0x00
+    // 响应帧: 0xff=255  0x00 
     if (data_buf.readInt16LE(0) === 255) {
       if (data_buf.readUInt8(2) === 241) {
-        // 返回状态: 0xf1
+        // 返回状态: 0xf1 = 241
         res_code = data_buf.readInt8(3);
-        if (bufType) res_data.type = bufType;
+        // if (bufType && bufType !== 'connect') res_data.type = bufType;
+        //这里有问题 获取eq曲线的时候code返回-1 要排查以下
+        // ---------测试代码待固件提供删除以下，释放上面---------
+        res_data.type = bufType;
+        // ---------测试代码待固件提供删除以下，释放上面---------
+      } else if (data_buf.readUInt8(2) === 1) {
+        // 返回采样率: 0x01 = 1 收到采样率之后才判定连接成功
+        //0xff 0x00 0x01 采样率（四个字节）
+        res_data.type = 'connect';
+        const fs = parseFloat(data_buf.readFloatLE(3).toFixed(3));
+        console.log('采样率是', fs);
+        res_data.data = { fs };
       } else if (data_buf.readUInt8(2) === 242) {
-        // 返回参数: 0xf2
+        // 返回参数: 0xf2 = 242
         const type = TYPES[data_buf.readInt8(3) - 1];
         res_data.type = `${type}`;
         // console.log('parseData-->', type);

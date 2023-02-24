@@ -42,6 +42,7 @@
           placeholder="请选择"
           size="middle"
           @change="changeFsHandle"
+          :disabled="connected || connecting"
         >
           <el-option
             v-for="item in SampleRates"
@@ -81,6 +82,7 @@
     </div>
     <!-- <p>页面的参数:{{ params }}</p>
     <p>{{ originVoiceType }}</p> -->
+
     <div class="container flex" v-loading="loading || writing">
       <div class="progress flex">
         <div class="step text">输入</div>
@@ -323,9 +325,11 @@ export default {
     this.setInitData();
   },
   unmounted() {
+    SerialPortHandle.close();
     this.clearInterval();
     this.clearTimeout();
   },
+
   computed: {
     ...mapState({
       project: (state) => state.Project.project,
@@ -333,12 +337,21 @@ export default {
       reset: (state) => state.Project.reset,
       rate: (state) => state.Project.rate,
       fsMutex: (state) => state.Project.fsMutex,
+      connect: (state) => state.Project.connect,
     }),
   },
   watch: {
+    connect: {
+      handler(v) {
+        this.connected = v;
+      },
+      immediate: true,
+    },
     connected(v) {
       if (v) {
         this.timeOutid && clearTimeout(this.timeOutid);
+      } else {
+        this.com = '';
       }
     },
     reset(v) {
@@ -394,7 +407,7 @@ export default {
     },
 
     serialPorEmitterHandle() {
-      SerialPortHandle.serialPorEmitter.on('SerialPort', (res) => {
+      SerialPortHandle.serialPorEmitter.on('SerialPort', async (res) => {
         console.log('data from SerialPort', res);
         // console.log(JSON.stringify(res));
         const { code, data, message } = res;
@@ -403,7 +416,14 @@ export default {
         }
         switch (data.type) {
           case 'connect':
-            this.changeConnectHandle(code === 0);
+            //这里的采样率需要从固件获取
+            await this.changeConnectHandle(code === 0, data?.data?.fs || 48000);
+            break;
+          case 'disconnect':
+            this.connecting = false;
+            this.$store.dispatch('changeConnect', false);
+            this.com = '';
+            this.clearTimeout();
             break;
           case 'save':
             if (code === 0) {
@@ -471,7 +491,8 @@ export default {
       try {
         if (this.connected) {
           await SerialPortHandle.close();
-          this.connected = false;
+          // this.connected = false;
+          this.$store.dispatch('changeConnect', false);
           this.writing = false;
           this.loading = false;
           this.clearTimeout();
@@ -498,7 +519,9 @@ export default {
         }
       } catch (error) {
         this.connecting = false;
-        this.connected = false;
+        // this.connected = false;
+        this.$store.dispatch('changeConnect', false);
+
         this.writing = false;
         this.loading = false;
         this.clearTimeout();
@@ -519,11 +542,37 @@ export default {
         SerialPortHandle.type = 'connect';
         await this.writeSerialPortHandle(params);
       } catch (error) {
-        this.changeConnectHandle(false);
+        await this.changeConnectHandle(false);
       }
     },
-    async changeConnectHandle(isOk) {
-      this.connected = isOk;
+    async changeConnectHandle(isOk, fs) {
+      //固件上报连接成功，判断固件和界面的采样率是否一致
+      console.log('串口u采样率', fs, this.rate);
+      if (isOk) {
+        if (fs && parseInt(fs) === parseInt(this.rate)) {
+          // this.connected = isOk;
+          this.$store.dispatch('changeConnect', isOk);
+        } else {
+          this.$confirm(
+            '固件采样率和界面不一致，请修改界面采样率后再进行连接',
+            '',
+            {
+              showCancelButton: false,
+              showClose: false,
+              closeOnClickModal: false,
+              confirmButtonText: '确定',
+              type: 'warning',
+            }
+          ).then(async () => {
+            await SerialPortHandle.close();
+            // this.connected = false;
+            this.$store.dispatch('changeConnect', false);
+          });
+        }
+      } else {
+        //串口已经打开，但是固件返回连接状态失败
+        await SerialPortHandle.close();
+      }
       this.connecting = false;
       this.clearTimeout();
     },
@@ -753,13 +802,12 @@ export default {
     },
     //写入所有参数
     async saveAllParamsHandle() {
-      let saveDatas = Object.keys(this.params);
       if (!this.connected || this.loading || this.writing) return;
-      if (saveDatas.length === 0) {
+      if (Object.keys(this.params).length === 0) {
         return this.$message.error('请先设置参数');
       }
-      const defaultParams = defaultConfig(this.fs);
-      const finalParams = _.merge(_.cloneDeep(defaultParams), this.params);
+      const finalParams = this.mergeParams();
+      let saveDatas = Object.keys(finalParams);
       console.log('写入参数', finalParams);
       const timeOutid = setTimeout(() => {
         this.clearInterval();
@@ -858,8 +906,7 @@ export default {
       if (Object.keys(this.params).length === 0) {
         return;
       }
-      const defaultParams = defaultConfig(this.fs);
-      const finalParams = _.merge(_.cloneDeep(defaultParams), this.params);
+      const finalParams = this.mergeParams();
       const pathStr = await this.$electron.ipcRenderer.invoke('open-dict');
       console.log('导出', finalParams);
       if (pathStr) {
@@ -902,13 +949,21 @@ export default {
           return;
         });
     },
+    mergeParams() {
+      //drc.dots不能进行merge ,不同段数dots长度不同
+      const dotsArr = this.params?.drc?.dots;
+      const defaultParams = defaultConfig(this.fs);
+      let finalParams = _.merge(_.cloneDeep(defaultParams), this.params);
+      finalParams.drc.dots = dotsArr?.length ? dotsArr : finalParams.drc.dots;
+      return finalParams;
+    },
   },
 };
 </script>
 <style lang="scss" scoped>
 .main-page {
   background-color: $background;
-  min-height: 100%;
+  height: calc(100% - 30px);
   color: $font-color;
   .icon {
     display: block;
@@ -965,7 +1020,7 @@ export default {
   }
   .container {
     width: 100%;
-    height: calc(100vh - 56px);
+    height: calc(100vh - 86px);
     text-align: center;
     justify-content: center;
     align-items: center;

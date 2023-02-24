@@ -119,6 +119,7 @@ export default {
       project: (state) => state.Project.project,
       params: (state) => state.Project.params,
       rate: (state) => state.Project.rate,
+      connect: (state) => state.Project.connect,
     }),
   },
   mounted() {
@@ -188,6 +189,29 @@ export default {
       const { code, data, msg } = res;
       if (code === 0) {
         if (!data) return;
+        //已连接固件状态，打开不一致的采样率项目
+        const fs =
+          data?.configJson?.drc?.fs ||
+          data?.configJson?.bass_boost?.fs ||
+          data?.configJson?.treble_boost?.fs;
+        if (this.connect) {
+          if (parseInt(fs) !== parseInt(this.rate)) {
+            this.$confirm(
+              '该项目和已连接的固件采样率不一致，请打开和固件采样率相同的项目',
+              '',
+              {
+                showCancelButton: false,
+                showClose: false,
+                closeOnClickModal: false,
+                confirmButtonText: '确定',
+                type: 'warning',
+              }
+            ).then(async () => {
+              return;
+            });
+            return;
+          }
+        }
         this.$store.dispatch('changeReset', true);
         this.$store.dispatch('saveProject', JSON.parse(JSON.stringify(data)));
         this.$store.dispatch(
@@ -195,7 +219,7 @@ export default {
           JSON.parse(JSON.stringify(data.configJson))
         );
         this.$store.dispatch('changeFsReset', false);
-        this.$store.dispatch('changeRate', data?.configJson?.drc?.fs || 48000);
+        this.$store.dispatch('changeRate', (fs && parseInt(fs)) || 48000);
       } else {
         this.$message.error(msg);
         this.$store.dispatch('saveProject', {});
@@ -213,8 +237,7 @@ export default {
     //保存
     async toSave() {
       //保存的时候给没有设置的模块默认参数
-      const defaultParams = defaultConfig(this.rate);
-      const finalParams = _.merge(_.cloneDeep(defaultParams), this.params);
+      const finalParams = this.mergeParams();
       console.log('save', finalParams);
       if (this.project && Object.keys(this.project).length === 0) {
         return this.toCreate();
@@ -259,7 +282,7 @@ export default {
     },
     saveHandle(data) {
       const defaultParams = defaultConfig(this.rate);
-      const finalParams = _.merge(_.cloneDeep(defaultParams), this.params);
+      const finalParams = this.mergeParams();
       let saveParamsObj;
       if (Object.keys(this.params).length === 0) {
         saveParamsObj = defaultParams;
@@ -298,21 +321,24 @@ export default {
     handleEvent(event) {
       switch (event.keyCode) {
         case 79:
-          event.preventDefault();
-          event.returnValue = false;
           if (event.ctrlKey && event.code === 'KeyO') {
             this.toOpen();
           }
           break;
         case 83:
-          event.preventDefault();
-          event.returnValue = false;
           if (event.ctrlKey && event.code === 'KeyS') {
-            console.log('save');
             this.toSave();
           }
           break;
       }
+    },
+    mergeParams() {
+      //drc.dots不能进行merge ,不同段数dots长度不同
+      const dotsArr = this.params?.drc?.dots;
+      const defaultParams = defaultConfig(this.rate);
+      let finalParams = _.merge(_.cloneDeep(defaultParams), this.params);
+      finalParams.drc.dots = dotsArr?.length ? dotsArr : finalParams.drc.dots;
+      return finalParams;
     },
   },
 };

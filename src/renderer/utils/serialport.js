@@ -64,7 +64,11 @@ export default class SerialPortHandle {
                     }
                 }, 200);
             });
-
+            port.on('close', () => {
+                console.log('串口断开了');
+                this.clear();
+                this.serialPorEmitter.emit('SerialPort', { code: 0, data: { type: 'disconnect' }, message: '串口已断开' });
+            });
             port.on('error', (err) => {
                 this.clear();
                 this.serialPorEmitter.emit('SerialPort', { code: -1, data: { type: 'error' }, message: err.message || '请重新连接串口' });
