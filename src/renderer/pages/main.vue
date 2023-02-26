@@ -161,10 +161,10 @@ import VoiceModal from 'components/VoiceModal.vue';
 import EQModal from 'components/EqModal.vue';
 import DRCModal from 'components/DRCModal.vue';
 import SerialPortHandle from '../utils/serialport';
-import { checkConnect, setParams, getParams, TYPES } from '../utils/index';
+import { checkConnect, setParams, getParams } from '../utils/index';
 import { mapState } from 'vuex';
 import defaultConfig from '../utils/config';
-
+const TYPES = ['eq', 'bass_boost', 'treble_boost', 'drc', 'agc'];
 export default {
   name: 'main-page',
   components: { VoiceModal, EQModal, DRCModal },
@@ -348,11 +348,13 @@ export default {
       immediate: true,
     },
     connected(v) {
-      if (v) {
-        this.timeOutid && clearTimeout(this.timeOutid);
-      } else {
+      if (!v) {
         this.com = '';
       }
+      this.loading = false;
+      this.connecting = false;
+      this.clearInterval();
+      this.clearTimeout();
     },
     reset(v) {
       v && this.setInitData();
@@ -407,7 +409,7 @@ export default {
     },
 
     serialPorEmitterHandle() {
-      SerialPortHandle.serialPorEmitter.on('SerialPort', async (res) => {
+      SerialPortHandle?.serialPorEmitter?.on('SerialPort', async (res) => {
         console.log('data from SerialPort', res);
         // console.log(JSON.stringify(res));
         const { code, data, message } = res;
@@ -416,8 +418,16 @@ export default {
         }
         switch (data.type) {
           case 'connect':
+            //判断连接状态
+            //连接和采样率逻辑分离，这边验证一下拿到连接状态之后再拿采样率是否有问题
+            if (code !== 0) {
+              await this.changeConnectHandle(false);
+            }
+            break;
+          case 'fs':
             //这里的采样率需要从固件获取
-            await this.changeConnectHandle(code === 0, data?.data?.fs || 48000);
+            //只有确认采样率一致才能进入连接逻辑
+            await this.changeConnectHandle(true, data?.data?.fs || 48000);
             break;
           case 'disconnect':
             this.connecting = false;
@@ -435,8 +445,8 @@ export default {
             this.$message.error(message);
             break;
           default:
-            //获取参数|写入参数
-            if (TYPES.includes(data.type)) {
+            //获取参数
+            if (TYPES.includes(data.type) && !_.isEmpty(data.data)) {
               this.parseData(data.type, data.data);
               const newParams = JSON.parse(JSON.stringify(this.params));
               newParams[data.type] = data.data;
@@ -498,6 +508,7 @@ export default {
           this.clearTimeout();
         } else {
           const timeOutid = setTimeout(() => {
+            this.$store.dispatch('changeConnect', false);
             this.connecting = false;
             this.writing = false;
             this.loading = false;
@@ -514,14 +525,12 @@ export default {
           this.timeOutid = timeOutid;
           this.connecting = true;
           await SerialPortHandle.open(this.com);
-
           this.checkConnectHandle();
         }
       } catch (error) {
         this.connecting = false;
         // this.connected = false;
         this.$store.dispatch('changeConnect', false);
-
         this.writing = false;
         this.loading = false;
         this.clearTimeout();
@@ -547,7 +556,7 @@ export default {
     },
     async changeConnectHandle(isOk, fs) {
       //固件上报连接成功，判断固件和界面的采样率是否一致
-      console.log('串口u采样率', fs, this.rate);
+      console.log('串口采样率', fs, this.rate);
       if (isOk) {
         if (fs && parseInt(fs) === parseInt(this.rate)) {
           // this.connected = isOk;
@@ -853,6 +862,8 @@ export default {
       const dataTypes = JSON.parse(JSON.stringify(TYPES));
       if (!this.connected || this.loading || this.writing) return;
       this.loading = true;
+      // this.clearInterval();
+      // this.clearTimeout();
       const timeOutid = setTimeout(() => {
         this.clearInterval();
         this.loading = false;

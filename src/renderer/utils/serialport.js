@@ -51,18 +51,23 @@ export default class SerialPortHandle {
                         all = data;
                         if (code) {
                             clearInterval(timeid);
+                            clearInterval(this.timeid);
                             timeid = null;
+                            this.timeid = null;
                             // console.log('串口数据读取完毕');
                             all?.length && this.read(all);
                             this.cacheData = [];
                         }
                     } else {
                         clearInterval(timeid);
+                        clearInterval(this.timeid);
                         timeid = null;
+                        this.timeid = null;
                         all?.length && this.read(all);
                         this.cacheData = [];
                     }
-                }, 200);
+                }, 400);
+                this.timeid = timeid;
             });
             port.on('close', () => {
                 console.log('串口断开了');
@@ -120,11 +125,14 @@ export default class SerialPortHandle {
             const res = parseData(data, this.type);
             // console.log('读取串口数据成功', JSON.stringify(res));
             this.serialPorEmitter.emit('SerialPort', res);
+            this.cacheData = [];
         } catch (error) {
             console.log(error);
         }
     }
     static clear() {
+        clearInterval(this.timeid);
+        this.timeid = null;
         this.currentConnection = null;
         this.cacheData = [];
     }

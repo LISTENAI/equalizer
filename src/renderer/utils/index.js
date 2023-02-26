@@ -178,6 +178,7 @@ export const reciveDataDone = (buf) => {
 
 };
 // 58 46 0B 00 00 57 FF 00 F1 00 10
+// 这里有个问题，查询eq参数的指令发送出去后，因为参数帧太长，两个响应帧收到先后有时间间隔，状态帧和参数帧；先拿到状态赋给res_code,data为空。第二个数据帧 没有res_code就是-1，有完整data
 export const parseData = (data, bufType) => {
   // const data = [];
   // let offset = 0;
@@ -204,15 +205,13 @@ export const parseData = (data, bufType) => {
       if (data_buf.readUInt8(2) === 241) {
         // 返回状态: 0xf1 = 241
         res_code = data_buf.readInt8(3);
-        // if (bufType && bufType !== 'connect') res_data.type = bufType;
-        //这里有问题 获取eq曲线的时候code返回-1 要排查以下
-        // ---------测试代码待固件提供删除以下，释放上面---------
-        res_data.type = bufType;
-        // ---------测试代码待固件提供删除以下，释放上面---------
+
+        if (bufType) res_data.type = bufType;
       } else if (data_buf.readUInt8(2) === 1) {
         // 返回采样率: 0x01 = 1 收到采样率之后才判定连接成功
         //0xff 0x00 0x01 采样率（四个字节）
-        res_data.type = 'connect';
+        res_data.type = 'fs';
+        res_data.code = 0;
         const fs = parseFloat(data_buf.readFloatLE(3).toFixed(3));
         console.log('采样率是', fs);
         res_data.data = { fs };
