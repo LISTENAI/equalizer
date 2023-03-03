@@ -152,7 +152,7 @@ export default {
         maxFC: 20000,
         minFC: 20,
         minQ: 0.3,
-        maxQ: 10,
+        maxQ: 30,
       },
       pointsData: [],
       linesData: [],
@@ -320,9 +320,38 @@ export default {
     convertToPixel(dataItem) {
       return this.chartDom && this.chartDom.convertToPixel('grid', dataItem);
     },
+    getMarkLineArr() {
+      const arr = [];
+      let num = this.boundaryVal.minFC;
+      while (num < this.boundaryVal.maxFC) {
+        if (num < 1e2) {
+          num = num + 1e1;
+          arr.push({
+            xAxis: num,
+          });
+        } else if (num >= 1e2 && num < 1e3) {
+          num = num + 1e2;
+          arr.push({
+            xAxis: num,
+          });
+        } else if (num >= 1e3 && num < 1e4) {
+          num = num + 1e3;
+          arr.push({
+            xAxis: num,
+          });
+        } else {
+          num = num + 1e4;
+          arr.push({
+            xAxis: num,
+          });
+        }
+      }
+      return arr;
+    },
     initChart() {
       const that = this;
       this.chartDom = echarts && echarts.init(this.$refs.dom);
+      const markLineArr = this.getMarkLineArr();
       const option = {
         animation: false,
         grid: {
@@ -453,6 +482,18 @@ export default {
               ]),
             },
             data: this.linesData,
+            markLine: {
+              silent: true,
+              symbol: ['none', 'none'], // 去掉箭头
+              label: {
+                show: false,
+              },
+              data: markLineArr,
+              lineStyle: {
+                type: 'solid',
+                color: 'rgba(255,255,255,0.1)',
+              },
+            },
           },
         ],
       };

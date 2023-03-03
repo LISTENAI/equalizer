@@ -53,7 +53,7 @@
 #define IFLYTEK_PEQ_SAMPLE_RATE       (48000.0f)
 #define IFLYTEK_PEQ_SAMPLE_RATE_16000 (16000.0f)
 //品质因子
-#define IFLYTEK_PEQ_MAX_Q             (10.0f)
+#define IFLYTEK_PEQ_MAX_Q             (30.0f)
 #define IFLYTEK_PEQ_MIN_Q             (0.3f)
 //增益
 #define IFLYTEK_PEQ_MAX_GAIN          (30.0f)
