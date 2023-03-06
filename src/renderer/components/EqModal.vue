@@ -314,7 +314,7 @@ export default {
           },
         ],
       });
-      that.renderGraphicList();
+      // that.renderGraphicList();
     }, 100),
 
     convertToPixel(dataItem) {
@@ -568,7 +568,7 @@ export default {
             }, dataIndex),
             ondragend: function () {
               that.draging = false;
-              // that.renderChart();
+              that.renderChart();
             },
           };
         }

@@ -180,11 +180,11 @@ export default {
       ],
       enable: this.checkable,
       pointsData: [
-        [0, 0],
-        [-25, -25],
-        [-50, -50],
-        [-75, -75],
         [-100, -100],
+        [-75, -75],
+        [-50, -50],
+        [-25, -25],
+        [0, 0],
       ], //拖动点的数据
       bandsData: [], //右侧操作频段的数据
       linesData: [], //曲线的数据
@@ -313,7 +313,7 @@ export default {
         dots,
       };
       const options = {
-        WidthX: 100,
+        WidthX: 80,
         HeightY: 100,
         startXGain: minX,
         endXGain: maxX,
@@ -330,7 +330,9 @@ export default {
       });
       this.bandsData = arr;
       this.linesData = res.points;
-      this.pointsData = res.dots;
+      // this.pointsData = res.dots;
+      // console.log('this.pointsData', this.pointsData);
+      // console.log('res.dots', res.dots);
       return res.points;
     },
     updateBandsData(data) {
@@ -354,8 +356,8 @@ export default {
           },
         ],
       });
-      that.renderGraphicList();
-    }, 1000 / 60),
+      // that.renderGraphicList();
+    }, 100),
     initChart() {
       const that = this;
       this.chartDom = echarts && echarts.init(this.$refs.dom);
@@ -395,6 +397,7 @@ export default {
         },
         // 全局坐标轴指示器
         axisPointer: {
+          // show: false,
           type: 'line',
           lineStyle: {
             color: 'rgba(0, 219, 203, 1)',
@@ -582,7 +585,7 @@ export default {
             onmouseout: function () {
               that.hideTooltip(dataIndex);
             },
-            ondrag: function () {
+            ondrag: function (e) {
               that.draging = true;
               that.mutex = true;
               if (dataIndex >= that.bandsData.length) {
@@ -622,7 +625,7 @@ export default {
             },
             ondragend: function () {
               that.draging = false;
-              // that.renderChart();
+              that.renderChart();
             },
           };
         }
@@ -633,7 +636,6 @@ export default {
     },
     getPointRange(index, positions) {
       let { minX, minY, maxX, maxY } = this.drcVal;
-
       let [newPosX, newPosY] = positions;
       const len = this.pointsData.length;
 
@@ -650,7 +652,8 @@ export default {
       }
       preY = -100;
       nextY = 0;
-
+      // newPosX = newPosX < nextX ? nextX : newPosX;
+      // newPosX = newPosX >= preX ? preX : newPosX;
       newPosX = newPosX < preX ? preX : newPosX;
       newPosX = newPosX >= nextX ? nextX : newPosX;
       newPosY = newPosY <= preY ? preY : newPosY;
