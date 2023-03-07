@@ -229,7 +229,7 @@ export default {
       async handler(val) {
         if (!this.mutex && val) {
           const newVal = _.cloneDeep(val);
-          // this.getPointsData(newVal);
+          this.getPointsData(newVal);
           await this.getLinesData(newVal);
           setTimeout(this.renderChart, 0);
         }
@@ -250,7 +250,7 @@ export default {
     setTimeout(this.initChart, 0);
   },
   beforeDestroy() {
-    this?.chartDom.dispose();
+    this?.chartDom?.dispose();
   },
   methods: {
     getBandsData(num) {

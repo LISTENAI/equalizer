@@ -235,7 +235,7 @@ export default {
     this.parseEqData(JSON.parse(JSON.stringify(this.eqData)));
   },
   beforeDestroy() {
-    this?.chartDom.dispose();
+    this?.chartDom?.dispose();
   },
   methods: {
     async updateBandsData(that, val) {
