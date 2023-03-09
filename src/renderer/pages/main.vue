@@ -679,7 +679,7 @@ export default {
       if (data) {
         let { fs, at, rt, rms, mode, seg, dots, enable } = data;
         this.drcCheckable = !enable;
-        if (at)
+        if (seg)
           modalData = {
             fs,
             at,
@@ -687,7 +687,7 @@ export default {
             rms,
             mode,
             seg,
-            dots: dots.map((item) => {
+            dots: dots?.map((item) => {
               return { x: item[0], y: item[1], w: item[2] };
             }),
           };
