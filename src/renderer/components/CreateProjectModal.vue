@@ -103,6 +103,7 @@ export default {
       });
     },
     closeHandle() {
+      this.$refs['project-form'].resetFields();
       this.$emit('close');
     },
   },
