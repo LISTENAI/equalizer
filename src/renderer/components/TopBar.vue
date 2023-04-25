@@ -288,6 +288,7 @@ export default {
         this.$message.error(msg);
         this.$store.dispatch('saveProject', {});
       }
+      this.opening = false;
     },
     toCreate() {
       this.creating = true;
@@ -348,6 +349,7 @@ export default {
         this.$message.error(msg);
         this.$store.dispatch('saveProject', {});
       }
+      this.creating = false;
     },
     showInfo() {
       const Dom = this.getInfoHtml();

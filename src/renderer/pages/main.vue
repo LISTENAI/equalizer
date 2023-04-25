@@ -679,7 +679,11 @@ export default {
       if (data) {
         let { fs, at, rt, rms, mode, seg, dots, enable } = data;
         this.drcCheckable = !enable;
+<<<<<<< HEAD
         if (seg)
+=======
+        if (mode)
+>>>>>>> b131370f83a41bd1cb2d1b920b105d8cbdeb80ea
           modalData = {
             fs,
             at,
