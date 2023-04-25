@@ -79,8 +79,9 @@ export default {
   data() {
     return {
       projectModalVisible: false,
+      originParams: {},
       confirmVisible: false,
-      isclose: false,
+      isCose: false,
       projectModalType: '新建',
       version: '1.0.0',
       menus: [
@@ -89,11 +90,11 @@ export default {
           children: [
             {
               name: '新建',
-              cb: this.toCreate,
+              cb: this.toCreateHandle,
             },
             {
               name: '打开',
-              cb: this.toOpen,
+              cb: this.toOpenHandle,
             },
             {
               name: '保存',
@@ -112,6 +113,10 @@ export default {
         },
       ],
       isMax: false,
+      isCreate: false,
+      isOpen: false,
+      creating: false,
+      opening: false,
     };
   },
   computed: {
@@ -123,6 +128,7 @@ export default {
     }),
   },
   mounted() {
+    this.originParams = _.cloneDeep(this.params);
     window.addEventListener('keydown', this.handleEvent);
     //保存打开新建项目之后 都会给渲染进程发送最新的项目信息
     this.$electron.ipcRenderer.on(
@@ -151,25 +157,72 @@ export default {
       this.$electron.ipcRenderer.send('window-min');
     },
     close() {
+      this.confirmVisibleType = 'close';
       if (this.params && Object.keys(this.params).length !== 0) {
         this.confirmVisible = true;
       } else {
         this.$electron.ipcRenderer.send('window-close');
       }
     },
-    closeHandle(isSave, isClose) {
-      this.isclose = isClose;
-      if (!isSave && !isClose) {
-        this.confirmVisible = false;
+    async closeHandle(isSave, isClose) {
+      //新建弹窗和打开项目不需要关闭工具
+      const isCloseWin = this.confirmVisibleType === 'close';
+      const isCreate = this.confirmVisibleType === 'new';
+      const isOpen = this.confirmVisibleType === 'open';
+      this.isCose = isCloseWin ? isClose : false;
+      this.isCreate = isCreate;
+      this.isOpen = isOpen;
+      this.confirmVisible = false;
+      console.log(
+        'isSave',
+        isSave,
+        'isCreate',
+        isCreate,
+        'isOpen',
+        isOpen,
+        'isCloseWin',
+        isCloseWin
+      );
+      if (isSave) {
+        await this.toSave();
+        if (isCreate) {
+          const timeid = setInterval(() => {
+            if (!this.creating && this.isCreate) {
+              this.toCreate();
+              clearInterval(timeid);
+            }
+          }, 600);
+        }
+        if (isOpen) {
+          const timeid = setInterval(async () => {
+            if (!this.creating && !this.opening && this.isOpen) {
+              await this.toOpen();
+              clearInterval(timeid);
+            }
+          }, 600);
+        }
+        // isOpen && this.toOpen();
+        // isCloseWin && this.$electron.ipcRenderer.send('window-close');
         return;
       }
       if (!isSave && isClose) {
-        this.confirmVisible = false;
-        this.$electron.ipcRenderer.send('window-close');
+        isCreate && this.toCreate();
+        if (isOpen) {
+          const timeid = setInterval(async () => {
+            if (!this.creating && !this.opening) {
+              await this.toOpen();
+              clearInterval(timeid);
+            }
+          }, 600);
+        }
+        // isOpen && this.toOpen();
+        isCloseWin && this.$electron.ipcRenderer.send('window-close');
         return;
       }
-      if (isSave) {
-        this.toSave();
+      if (!isClose) {
+        this.creating = false;
+        this.opening = false;
+        return;
       }
     },
     menuCick(menu) {
@@ -184,9 +237,22 @@ export default {
         </div>
         `;
     },
+    async toOpenHandle() {
+      if (
+        this.params &&
+        JSON.stringify(this.params) !== JSON.stringify(this.originParams)
+      ) {
+        this.confirmVisibleType = 'open';
+        this.confirmVisible = true;
+      } else {
+        await this.toOpen();
+      }
+    },
     async toOpen() {
+      this.opening = true;
       const res = await this.$electron.ipcRenderer.invoke('open-project');
       const { code, data, msg } = res;
+      this.opening = false;
       if (code === 0) {
         if (!data) return;
         //已连接固件状态，打开不一致的采样率项目
@@ -213,11 +279,9 @@ export default {
           }
         }
         this.$store.dispatch('changeReset', true);
-        this.$store.dispatch('saveProject', JSON.parse(JSON.stringify(data)));
-        this.$store.dispatch(
-          'saveParams',
-          JSON.parse(JSON.stringify(data.configJson))
-        );
+        this.$store.dispatch('saveProject', _.cloneDeep(data));
+        this.$store.dispatch('saveParams', _.cloneDeep(data.configJson));
+        this.originParams = _.cloneDeep(data.configJson);
         this.$store.dispatch('changeFsReset', false);
         this.$store.dispatch('changeRate', (fs && parseInt(fs)) || 48000);
       } else {
@@ -226,20 +290,35 @@ export default {
       }
     },
     toCreate() {
+      this.creating = true;
       this.projectModalType = '新建';
       this.projectModalVisible = true;
+    },
+    toCreateHandle() {
+      if (
+        this.params &&
+        JSON.stringify(this.params) !== JSON.stringify(this.originParams)
+      ) {
+        this.confirmVisibleType = 'new';
+        this.confirmVisible = true;
+      } else {
+        this.toCreate();
+      }
     },
     //另存
     toSaveOther() {
       this.projectModalType = '保存';
       this.projectModalVisible = true;
     },
+
     //保存
+    //新建 默认参数
+    //保存 -》现有参数
     async toSave() {
       //保存的时候给没有设置的模块默认参数
       const finalParams = this.mergeParams();
-      console.log('save', finalParams);
       if (this.project && Object.keys(this.project).length === 0) {
+        this.isSave = true;
         return this.toCreate();
       }
       const project = Object.assign({}, this.project, {
@@ -250,13 +329,15 @@ export default {
         project
       );
       const { code, data, msg } = res;
+      this.creating = false;
       if (code === 0) {
         this.$message.success(`保存成功`);
         this.confirmVisible = false;
         this.$store.dispatch('saveProject', _.cloneDeep(data));
         // console.log('更新params2', data.configJson);
         this.$store.dispatch('saveParams', _.cloneDeep(data.configJson));
-        if (this.isclose) {
+        this.originParams = _.cloneDeep(data.configJson);
+        if (this.isCose) {
           this.$electron.ipcRenderer.send('window-close');
         }
       } else {
@@ -279,34 +360,45 @@ export default {
     },
     closeModal() {
       this.projectModalVisible = false;
+      this.opening = false;
+      this.creating = false;
+      this.isSave = false;
     },
+    //新建|另存
     saveHandle(data) {
       const defaultParams = defaultConfig(this.rate);
       const finalParams = this.mergeParams();
-      let saveParamsObj;
-      if (Object.keys(this.params).length === 0) {
-        saveParamsObj = defaultParams;
-      } else {
-        saveParamsObj =
-          Object.keys(this.project).length === 0 ? finalParams : defaultParams;
+      //未打开项目点击保存走新建逻辑，但需要保存现编辑的参数
+      //未打开项目点击新建，直接保存默认参数
+      let saveParamsObj = defaultParams;
+      if (this.isSave) {
+        if (Object.keys(this.params).length === 0) {
+          saveParamsObj = defaultParams;
+        } else {
+          saveParamsObj =
+            Object.keys(this.project).length === 0
+              ? finalParams
+              : defaultParams;
+        }
       }
-
       const params = Object.assign({}, data, {
         configJson:
           this.projectModalType === '新建' ? saveParamsObj : finalParams,
       });
-      console.log(this.projectModalType, params);
+      console.log('saveHandle', this.isSave, this.projectModalType, params);
       this.$electron.ipcRenderer
         .invoke('create-project', params)
         .then((res) => {
           const { code, data, msg } = res;
+          this.creating = false;
           if (code === 0) {
             this.$message.success(`${this.projectModalType}成功`);
             this.$store.dispatch('saveProject', _.cloneDeep(data));
             // console.log('更新params1', data.configJson);
             this.$store.dispatch('saveParams', _.cloneDeep(data.configJson));
+            this.originParams = _.cloneDeep(data.configJson);
             this.confirmVisible = false;
-            if (this.isclose) {
+            if (this.isCose) {
               this.$electron.ipcRenderer.send('window-close');
             }
           } else if (code === -1) {
@@ -322,7 +414,7 @@ export default {
       switch (event.keyCode) {
         case 79:
           if (event.ctrlKey && event.code === 'KeyO') {
-            this.toOpen();
+            this.toOpenHandle();
           }
           break;
         case 83:

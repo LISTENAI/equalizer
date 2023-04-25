@@ -1,10 +1,15 @@
 import { ProjectHandle } from './projectHandle';
 import { ipcMain, dialog } from 'electron';
+import { mainWindow } from './ipcMain';
+
 async function openProject() {
+    mainWindow.setEnabled(false);
     const res = dialog.showOpenDialogSync({
         properties: ['openFile'],
         filters: [{ name: 'custom File Type', extensions: ['lsaudio'] }]
     });
+    mainWindow.setEnabled(true);
+
     if (res) {
         const data = await ProjectHandle.checkProject(res[0]);
         return data;
@@ -21,9 +26,12 @@ async function saveProject(params) {
 }
 //打开目录
 function openDict() {
+    mainWindow.setEnabled(false);
     const res = dialog.showOpenDialogSync({
         properties: ['openDirectory']
     });
+    mainWindow.setEnabled(true);
+
     if (res) {
         return res[0];
     } else {

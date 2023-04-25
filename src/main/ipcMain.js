@@ -4,7 +4,7 @@ import drawHandle from './draw';
 import ProjectHandle from './project';
 
 let mainWindow = null;
-export function IpcMainHandle(window) {
+function IpcMainHandle(window) {
   mainWindow = window;
   window.on('close', () => {
     mainWindow = null;
@@ -27,3 +27,4 @@ export function IpcMainHandle(window) {
   drawHandle(ipcMain);
 
 };
+export { IpcMainHandle, mainWindow };
