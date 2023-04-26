@@ -119,6 +119,9 @@ export default {
       opening: false,
     };
   },
+  created() {
+    this.version = process.env.VUE_APP_VERSION;
+  },
   computed: {
     ...mapState({
       project: (state) => state.Project.project,
