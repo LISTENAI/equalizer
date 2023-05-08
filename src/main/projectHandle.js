@@ -1,5 +1,5 @@
 import { pathExists, readJSON, writeJson } from 'fs-extra';
-import { join } from 'path';
+import { join, sep } from 'path';
 import { dialog } from "electron";
 export const ProjectHandle = {
     async createProject(option) {
@@ -56,6 +56,10 @@ export const ProjectHandle = {
         try {
             if (!await pathExists(pathStr)) { return { code: -1, msg: "项目不存在" }; }
             const { configJson, manifestJson } = await readJSON(pathStr);
+            const pathArr = pathStr.split(sep);
+            manifestJson.name = pathArr[pathArr.length - 1] && pathArr[pathArr.length - 1].split('.lsaudio')[0];
+            manifestJson.path = pathStr;
+            await writeJson(pathStr, { manifestJson, configJson });
             return { code: 0, data: { configJson, manifestJson } };
         } catch (error) {
             console.log(error);

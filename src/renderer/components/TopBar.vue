@@ -346,7 +346,7 @@ export default {
         }
       } else {
         if (msg === '项目不存在') {
-          this.projectModalType === '保存';
+          this.projectModalType = '保存';
           this.projectModalVisible = true;
         }
         this.$message.error(msg);
