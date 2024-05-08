@@ -75,6 +75,14 @@ html {
   background-color: $grey1;
   color: $font-color;
   border: none;
+  box-shadow: #0000003f 0px 4px 8px;
+}
+
+.el-autocomplete-suggestion {
+  background-color: $grey1;
+  color: $font-color;
+  border: none;
+  box-shadow: #0000003f 0px 4px 8px;
 }
 
 .el-popper[x-placement^=bottom] .popper__arrow {
@@ -105,6 +113,15 @@ html {
   padding: 0 12px !important;
   height: 28px;
   line-height: 28px;
+}
+
+.el-autocomplete-suggestion li {
+  color: $font-color;
+}
+
+.el-autocomplete-suggestion li.highlighted, .el-autocomplete-suggestion li:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: $font-color;
 }
 
 .el-select--mini {

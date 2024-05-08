@@ -1,4 +1,4 @@
-const SerialPort = require('serialport');
+import { SerialPort } from 'serialport';
 import { parseData, buf2Hex, reciveDataDone } from '../utils/index';
 const eventEmitter = require('events');
 export default class SerialPortHandle {
@@ -9,15 +9,15 @@ export default class SerialPortHandle {
     static async getList() {
         return await SerialPort.list();
     }
-    static open(portPath) {
+    static open(portPath, baud_rate = 115200) {
         return new Promise((resolve, reject) => {
-            const baud_rate = 115200;
             if (this.currentConnection) {
                 this.currentConnection.close();
                 this.clear();
             }
             console.log('open serialPort', portPath);
-            const port = new SerialPort(portPath, {
+            const port = new SerialPort({
+                path: portPath,
                 baudRate: baud_rate,
                 autoOpen: false,
             });

@@ -17,10 +17,19 @@
           >
           </el-option>
         </el-select>
+        <el-autocomplete
+          v-model="baudrate"
+          :fetch-suggestions="queryBaudrate"
+          placeholder="波特率"
+          size="middle"
+          :disabled="connected"
+          :trigger-on-focus="true"
+          @select="handleSelect"
+        ></el-autocomplete>
         <el-button
           size="mini"
           @click="connectHandle"
-          :disabled="connecting || !com"
+          :disabled="connecting || !com || !baudrate"
           :loading="connecting"
         >
           {{ connected && !connecting ? '断开' : '连接'
@@ -171,6 +180,14 @@ export default {
   data() {
     return {
       coms: [],
+      baudrate: "115200",
+      presetBaudrates: [
+        300, 600, 1200, 2400, 4800,
+        9600, 14400, 19200, 38400, 56000,
+        57600, 115200, 128000, 256000,
+        460800, 512000, 750000, 921600, 
+        1500000, 3000000
+      ],
       SampleRates: [
         {
           value: 16000,
@@ -396,6 +413,22 @@ export default {
     },
   },
   methods: {
+    queryBaudrate(queryString, cb) {
+      try { 
+        var results = queryString ? this.presetBaudrates.filter(item => 
+          item.toString().includes(queryString)
+        ) : this.presetBaudrates;
+        // 调用 callback 返回建议列表的数据
+        console.log(results);
+        cb(results.map(item => { return {value: item.toString()}}));
+      } catch (e) {
+        console.error(e);
+      }
+    },
+    handleSelect(item) {
+      console.log(item);
+    },
+
     //赋默认值
     setInitData() {
       this.voiceType?.eq?.map((item) => (item[2] = this.rate));
@@ -499,6 +532,29 @@ export default {
     },
     async connectHandle() {
       try {
+        let baudrate = 0;
+        try {
+          baudrate = Number(this.baudrate);
+          if (!baudrate) {
+            this.$confirm("请输入正确的波特率", '', {
+              showCancelButton: false,
+              showClose: false,
+              closeOnClickModal: false,
+              confirmButtonText: '确定',
+              type: 'warning',
+            });
+            return;
+          }
+        } catch (e) {
+          this.$confirm("请输入正确的波特率", '', {
+            showCancelButton: false,
+            showClose: false,
+            closeOnClickModal: false,
+            confirmButtonText: '确定',
+            type: 'warning',
+          });
+          return;
+        }
         if (this.connected) {
           await SerialPortHandle.close();
           // this.connected = false;
@@ -524,7 +580,7 @@ export default {
           }, 10000);
           this.timeOutid = timeOutid;
           this.connecting = true;
-          await SerialPortHandle.open(this.com);
+          await SerialPortHandle.open(this.com, baudrate);
           this.checkConnectHandle();
         }
       } catch (error) {
@@ -998,6 +1054,10 @@ export default {
 
     .left {
       .el-select {
+        width: 160px;
+      }
+      .el-autocomplete {
+        margin-left: 8px;
         width: 160px;
       }
     }
