@@ -1,5 +1,6 @@
 import Vue from 'vue';
-import { Button, Select, Option, Checkbox, Dialog, InputNumber, Input, Slider, MessageBox, Message, Radio, Loading, Form, FormItem } from 'element-ui';
+import { Button, Select, Autocomplete, Option, Checkbox, Dialog, InputNumber, Input, Slider, MessageBox, Message, Radio, Loading, Form, FormItem } from 'element-ui';
+Vue.use(Autocomplete);
 Vue.use(Button);
 Vue.use(Select);
 Vue.use(Option);
