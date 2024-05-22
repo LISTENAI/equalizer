@@ -99,6 +99,10 @@ module.exports = {
             from: "./dlls",
             to: "../dlls"
           },
+          {
+            from: "ffmpeg/ffmpeg.exe",
+            to: "../ffmpeg.exe"
+          },
         ],
         win: {
           icon: './public/LSAudio256.ico',

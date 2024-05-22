@@ -7,6 +7,7 @@
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint",
     "electron:build": "vue-cli-service electron:build",
+    "predev": "node ffmpeg/prepare.js",
     "dev": "vue-cli-service electron:serve",
     "postinstall": "electron-builder install-app-deps",
     "postuninstall": "electron-builder install-app-deps"
@@ -20,6 +21,7 @@
     "electron-devtools-installer": "^3.2.0",
     "element-ui": "^2.15.12",
     "ffi-napi": "^4.0.3",
+    "fluent-ffmpeg-7": "^2.1.5",
     "ref-array-di": "^1.2.2",
     "ref-napi": "^3.0.3",
     "ref-struct-di": "^1.1.1",

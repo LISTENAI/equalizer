@@ -151,6 +151,41 @@ export const getParams = (type) => {
     ...createData(0x04, [TYPES_HEX[type]])
   ]);
 };
+
+export const synthTts = (text) => {
+  const encodedMessage = new TextEncoder().encode(text);
+  const lengthArray = new Uint32Array([encodedMessage.length]);
+  const lengthUint8Array = new Uint8Array(lengthArray.buffer)
+  return new Uint8Array([
+    ...createHeader(encodedMessage.length + lengthUint8Array.length + 2),
+    ...createData(0x68, [0, 0, ...lengthUint8Array, ...encodedMessage])
+  ])
+};
+
+export const activeEqParams = (index) => {
+  return new Uint8Array([
+    ...createHeader(1),
+    ...createData(0x05, [index])
+  ]);
+};
+
+let audioOrder = -1;
+export const getPcmFrame = (data, startFlag) => {
+  const lengthArray = new Uint32Array([data.length]);
+  const lengthUint8Array = new Uint8Array(lengthArray.buffer)
+
+  audioOrder += 1;
+  audioOrder = audioOrder % 0x10000;
+
+  const orderArray = new Uint16Array([audioOrder]);
+  const orderUint8Array = new Uint8Array(orderArray.buffer)
+
+  return new Uint8Array([
+    ...createHeader(5 + orderUint8Array.length + lengthUint8Array.length + data.length),
+    ...createData(0x5b, [0, 0, 0x10, 0x01, startFlag, ...orderUint8Array, ...lengthUint8Array, ...data])
+  ]);
+};
+
 //查询的参数
 export const reciveDataDone = (buf) => {
   // console.log('buf--->', buf2Hex(buf));
@@ -161,11 +196,15 @@ export const reciveDataDone = (buf) => {
   while (buf.length > offset) {
     // head start with: 0x58 0x46
     if (buf.readInt16LE(offset) === 18008) {
-      bufLen = buf.readInt16LE(offset + 2);//第一帧长度
-      const dataBuf = buf.subarray(offset, offset + bufLen);
-      isEnd = dataBuf.length === bufLen;
-      data.push(dataBuf);
-      offset += bufLen;
+      if (buf.length > offset + 2) {
+        bufLen = buf.readInt16LE(offset + 2);//第一帧长度
+        const dataBuf = buf.subarray(offset, offset + bufLen);
+        isEnd = dataBuf.length === bufLen;
+        data.push(dataBuf);
+        offset += bufLen;
+      } else {
+        break;
+      }
     } else {
       break;
     }
@@ -192,6 +231,9 @@ export const parseData = (data, bufType) => {
   //     break;
   //   }
   // }
+  if (data == null || data.length == 0) {
+    return null;
+  }
   let res_code = -1;
   let res_data = {
     type: '',
@@ -212,9 +254,11 @@ export const parseData = (data, bufType) => {
         //0xff 0x00 0x01 采样率（四个字节）
         res_data.type = 'fs';
         res_data.code = 0;
-        const fs = parseFloat(data_buf.readFloatLE(3).toFixed(3));
-        console.log('采样率是', fs);
-        res_data.data = { fs };
+        if (data_buf.length > 3) {
+          const fs = parseFloat(data_buf.readFloatLE(3).toFixed(3));
+          console.log('采样率是', fs);
+          res_data.data = { fs };
+        }
       } else if (data_buf.readUInt8(2) === 242) {
         // 返回参数: 0xf2 = 242
         const type = TYPES[data_buf.readInt8(3) - 1];

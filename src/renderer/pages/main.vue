@@ -2,88 +2,37 @@
   <div class="main-page">
     <div class="top-banner flex">
       <div class="left flex">
-        <el-select
-          v-model="com"
-          placeholder="请选择"
-          size="middle"
-          :loading="comsLoading"
-          @visible-change="getComs"
-        >
-          <el-option
-            v-for="item in coms"
-            :key="item.path"
-            :label="item.path"
-            :value="item.path"
-          >
+        <el-select v-model="com" placeholder="请选择" size="middle" :loading="comsLoading" @visible-change="getComs">
+          <el-option v-for="item in coms" :key="item.path" :label="item.path" :value="item.path">
           </el-option>
         </el-select>
-        <el-autocomplete
-          v-model="baudrate"
-          :fetch-suggestions="queryBaudrate"
-          placeholder="波特率"
-          size="middle"
-          :disabled="connected"
-          :trigger-on-focus="true"
-          @select="handleSelect"
-        ></el-autocomplete>
-        <el-button
-          size="mini"
-          @click="connectHandle"
-          :disabled="connecting || !com || !baudrate"
-          :loading="connecting"
-        >
+        <el-autocomplete v-model="baudrate" :fetch-suggestions="queryBaudrate" placeholder="波特率" size="middle"
+          :disabled="connected" :trigger-on-focus="true" @select="handleSelect"></el-autocomplete>
+        <el-button size="mini" @click="connectHandle" :disabled="connecting || !com || !baudrate" :loading="connecting">
           {{ connected && !connecting ? '断开' : '连接'
-          }}{{ connecting ? '中' : '' }}</el-button
-        >
+          }}{{ connecting ? '中' : '' }}</el-button>
         <span class="flex">
           <svg-icon v-if="connecting" icon-class="r_connecting" class="icon" />
-          <svg-icon
-            v-else
-            :icon-class="connected ? 'r_connected' : 'r_disconnected'"
-            class="icon"
-          />
+          <svg-icon v-else :icon-class="connected ? 'r_connected' : 'r_disconnected'" class="icon" />
           <span v-if="!connecting"> {{ connected ? '已' : '未' }}连接</span>
         </span>
       </div>
       <div class="right flex">
-        <el-select
-          :value="fs"
-          placeholder="请选择"
-          size="middle"
-          @change="changeFsHandle"
-          :disabled="connected || connecting"
-        >
-          <el-option
-            v-for="item in SampleRates"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
-          >
+        <el-select :value="fs" placeholder="请选择" size="middle" @change="changeFsHandle"
+          :disabled="connected || connecting">
+          <el-option v-for="item in SampleRates" :key="item.value" :label="item.label" :value="item.value">
           </el-option>
         </el-select>
-        <div
-          class="opt-btn flex"
-          :class="!connected || loading || writing ? 'disabled' : ''"
-          @click="getAllParams"
-        >
+        <div class="opt-btn flex" :class="!connected || loading || writing ? 'disabled' : ''" @click="getAllParams">
           <svg-icon icon-class="get" class="icon" />
           <span>获取参数</span>
         </div>
-        <div
-          class="opt-btn flex margin"
-          v-loading="writing"
-          :class="!connected || loading || writing ? 'disabled' : ''"
-          @click="saveAllParamsHandle"
-          element-loading-spinner="el-icon-loading"
-        >
+        <div class="opt-btn flex margin" v-loading="writing" :class="!connected || loading || writing ? 'disabled' : ''"
+          @click="saveAllParamsHandle" element-loading-spinner="el-icon-loading">
           <svg-icon icon-class="write" class="icon" />
           <span>{{ writing ? '写入中' : '写入参数' }}</span>
         </div>
-        <div
-          class="opt-btn flex"
-          :class="Object.keys(params).length ? '' : 'disabled'"
-          @click="exportBinFile"
-        >
+        <div class="opt-btn flex" :class="Object.keys(params).length ? '' : 'disabled'" @click="exportBinFile">
           <svg-icon icon-class="export" class="icon" />
           <span>导出bin文件</span>
         </div>
@@ -91,6 +40,23 @@
     </div>
     <!-- <p>页面的参数:{{ params }}</p>
     <p>{{ originVoiceType }}</p> -->
+
+    <div class="listen-card flex">
+      <div>均衡器参数组</div>
+      <el-select :value="activeEqParamIndex" placeholder="请选择" size="middle" style="width: 100px;"
+        :disabled="!connected" @change="changeEqParamsIndex">
+        <el-option v-for="item in eqParams" :key="item" :label="item" :value="item">
+        </el-option>
+      </el-select>
+      <el-button size="mini" :disabled="!connected || decoding" @click="chooseAudioFile">
+        测试播放音频
+      </el-button>
+      <el-button size="mini" :disabled="!decoding" @click="stopAudioPlay">停止播放音频</el-button>
+      <el-input v-model="ttsText" style="width: 240px;" size="middle" placeholder="输入合成文本"></el-input>
+      <el-button size="mini" :disabled="!connected" @click="sendTts">
+        测试合成文本
+      </el-button>
+    </div>
 
     <div class="container flex" v-loading="loading || writing">
       <div class="progress flex">
@@ -100,17 +66,9 @@
           <div class="flex box">
             <img :src="require('@/assets/imgs/' + item.imageUrl)" />
             <p class="text">{{ item.text }}</p>
-            <el-button
-              :disabled="item.enable"
-              @click="() => opreateHandle(item)"
-              >设置</el-button
-            >
+            <el-button :disabled="item.enable" @click="() => opreateHandle(item)">设置</el-button>
             <!-- || (!Object.keys(project).length && !connected) -->
-            <el-checkbox
-              v-model="item.enable"
-              @change="() => changeBypass(item)"
-              >Bypass</el-checkbox
-            >
+            <el-checkbox v-model="item.enable" @change="() => changeBypass(item)">Bypass</el-checkbox>
           </div>
         </div>
 
@@ -118,51 +76,24 @@
           <div class="flex">
             <img :src="require('@/assets/imgs/' + arrowImgUrl)" class="arrow" />
             <span class="single-text">L</span>
-            <img
-              :src="require('@/assets/imgs/' + soundImgUrl)"
-              class="sound-img"
-            />
+            <img :src="require('@/assets/imgs/' + soundImgUrl)" class="sound-img" />
           </div>
           <div class="text">输出</div>
           <div class="flex">
             <img :src="require('@/assets/imgs/' + arrowImgUrl)" class="arrow" />
             <span class="single-text">R</span>
-            <img
-              :src="require('@/assets/imgs/' + soundImgUrl)"
-              class="sound-img"
-            />
+            <img :src="require('@/assets/imgs/' + soundImgUrl)" class="sound-img" />
           </div>
         </div>
       </div>
     </div>
 
-    <VoiceModal
-      v-if="voiceVisible"
-      :visible="voiceVisible"
-      :checkable="voiceCheckable"
-      :voiceData="voiceData[currentModalType]"
-      @close="closeModal"
-      @reset="resetModalData"
-      @save="saveHandle"
-    />
-    <EQModal
-      v-if="eqVisible"
-      :visible="eqVisible"
-      :checkable="eqCheckable"
-      :eqData="eqData"
-      @close="closeModal"
-      @reset="resetModalData"
-      @save="saveHandle"
-    />
-    <DRCModal
-      v-if="drcVisible"
-      :visible="drcVisible"
-      :checkable="drcCheckable"
-      :drcData="drcData"
-      @close="closeModal"
-      @reset="resetModalData"
-      @save="saveHandle"
-    />
+    <VoiceModal v-if="voiceVisible" :visible="voiceVisible" :checkable="voiceCheckable"
+      :voiceData="voiceData[currentModalType]" @close="closeModal" @reset="resetModalData" @save="saveHandle" />
+    <EQModal v-if="eqVisible" :visible="eqVisible" :checkable="eqCheckable" :eqData="eqData" @close="closeModal"
+      @reset="resetModalData" @save="saveHandle" />
+    <DRCModal v-if="drcVisible" :visible="drcVisible" :checkable="drcCheckable" :drcData="drcData" @close="closeModal"
+      @reset="resetModalData" @save="saveHandle" />
   </div>
 </template>
 <script>
@@ -170,7 +101,7 @@ import VoiceModal from 'components/VoiceModal.vue';
 import EQModal from 'components/EqModal.vue';
 import DRCModal from 'components/DRCModal.vue';
 import SerialPortHandle from '../utils/serialport';
-import { checkConnect, setParams, getParams } from '../utils/index';
+import { checkConnect, setParams, getParams, activeEqParams, synthTts, getPcmFrame } from '../utils/index';
 import { mapState } from 'vuex';
 import defaultConfig from '../utils/config';
 const TYPES = ['eq', 'bass_boost', 'treble_boost', 'drc', 'agc'];
@@ -185,8 +116,16 @@ export default {
         300, 600, 1200, 2400, 4800,
         9600, 14400, 19200, 38400, 56000,
         57600, 115200, 128000, 256000,
-        460800, 512000, 750000, 921600, 
+        460800, 512000, 750000, 921600,
         1500000, 3000000
+      ],
+      activeEqParamIndex: null,
+      eqParams: [
+        "0001",
+        "0002",
+        "0003",
+        "0004",
+        "0005",
       ],
       SampleRates: [
         {
@@ -316,6 +255,7 @@ export default {
           dots: [],
         },
       },
+      ttsText: '',
       originOptions: [],
       originVoiceType: [],
       eqType: {},
@@ -334,12 +274,32 @@ export default {
       eDone: false,
       timeId: null,
       timeOutid: null,
+      decoding: false,
+      sendFirstFrame: false,
     };
   },
   mounted() {
     this.getComs();
     this.serialPorEmitterHandle();
     this.setInitData();
+    this.$electron.ipcRenderer.on('decode-audio-data', async (e, res) => {
+      if (this.connected) {
+        const { data } = res;
+        console.log('receive data event', data.length, this.decoding);
+        
+        if (!this.sendFirstFrame) {
+          this.sendFirstFrame = true;
+          this.writeSerialPortHandle(getPcmFrame(data, 0xf0));
+        } else {
+          this.writeSerialPortHandle(getPcmFrame(data, 0xf1));
+        }
+      }
+    });
+    this.$electron.ipcRenderer.on('decode-audio-end', async (e) => {
+      this.decoding = false;
+      this.sendFirstFrame = false;
+      this.writeSerialPortHandle(getPcmFrame([], 0xf1));
+    });
   },
   unmounted() {
     SerialPortHandle.close();
@@ -365,9 +325,9 @@ export default {
       immediate: true,
     },
     connected(v) {
-      if (!v) {
-        this.com = '';
-      }
+      // if (!v) {
+      //   this.com = '';
+      // }
       this.loading = false;
       this.connecting = false;
       this.clearInterval();
@@ -414,13 +374,13 @@ export default {
   },
   methods: {
     queryBaudrate(queryString, cb) {
-      try { 
-        var results = queryString ? this.presetBaudrates.filter(item => 
+      try {
+        var results = queryString ? this.presetBaudrates.filter(item =>
           item.toString().includes(queryString)
         ) : this.presetBaudrates;
         // 调用 callback 返回建议列表的数据
         console.log(results);
-        cb(results.map(item => { return {value: item.toString()}}));
+        cb(results.map(item => { return { value: item.toString() } }));
       } catch (e) {
         console.error(e);
       }
@@ -465,7 +425,7 @@ export default {
           case 'disconnect':
             this.connecting = false;
             this.$store.dispatch('changeConnect', false);
-            this.com = '';
+            // this.com = '';
             this.clearTimeout();
             break;
           case 'save':
@@ -489,6 +449,19 @@ export default {
             break;
         }
       });
+    },
+
+    async setEqParamsIndex(index) {
+      if (!this.connected) {
+        return;
+      }
+      try {
+        console.log('enable eq params index -->', index);
+        await this.writeSerialPortHandle(activeEqParams(index));
+        await this.getAllParams();
+      } catch (error) {
+        console.error(error);
+      }
     },
 
     async getData(type) {
@@ -575,6 +548,7 @@ export default {
               confirmButtonText: '确定',
               type: 'warning',
             }).then(() => {
+              SerialPortHandle.close();
               return;
             });
           }, 10000);
@@ -617,6 +591,10 @@ export default {
         if (fs && parseInt(fs) === parseInt(this.rate)) {
           // this.connected = isOk;
           this.$store.dispatch('changeConnect', isOk);
+          let v = this.eqParams[0]
+          this.activeEqParamIndex = v;
+          await this.setEqParamsIndex(this.eqParams.indexOf(v) + 1);
+          await this.getAllParams();
         } else {
           this.$confirm(
             '固件采样率和界面不一致，请修改界面采样率后再进行连接',
@@ -798,6 +776,28 @@ export default {
       }
       modalData.fs = data.fs || this.fs;
       this.voiceData[type] = modalData;
+    },
+    async chooseAudioFile() {
+      const res = await this.$electron.ipcRenderer.invoke('open-audio');
+      const { code, data } = res;
+      if (res) {
+        this.decoding = true;
+        setTimeout(() => {
+          this.$electron.ipcRenderer.invoke('decode-audio', { file: data[0] });
+        }, 400);
+      }
+    },
+    async stopAudioPlay() {
+      this.$electron.ipcRenderer.invoke('decode-audio-cancel');
+    },
+    async sendTts() {
+      try {
+        console.log(`synth tts ${this.ttsText}`);
+        const data = synthTts(this.ttsText);
+        await this.writeSerialPortHandle(data);
+      } catch (error) {
+        console.error(error);
+      }
     },
     resetModalData(type) {
       const voiceData = JSON.parse(JSON.stringify(this.originVoiceType[type]));
@@ -993,6 +993,25 @@ export default {
         }
       }
     },
+    changeEqParamsIndex(v) {
+      this.$confirm(
+        '切换参数值会从固件中读取参数并覆盖当前参数，如有修改请先保存现有编辑参数',
+        '是否确定切换参数组',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning',
+        }
+      )
+        .then(async () => {
+          this.activeEqParamIndex = v;
+          await this.setEqParamsIndex(this.eqParams.indexOf(v) + 1);
+          await this.getAllParams();
+        })
+        .catch(() => {
+          return;
+        });
+    },
     changeFsHandle(v) {
       if (Object.keys(this.params).length === 0) {
         this.$store.dispatch('changeFsReset', true);
@@ -1032,6 +1051,7 @@ export default {
   background-color: $background;
   height: calc(100% - 30px);
   color: $font-color;
+
   .icon {
     display: block;
     width: 16px;
@@ -1039,6 +1059,7 @@ export default {
     background-size: cover;
     margin: 0 2px;
   }
+
   .top-banner {
     justify-content: space-between;
     width: 100%;
@@ -1056,39 +1077,56 @@ export default {
       .el-select {
         width: 160px;
       }
+
       .el-autocomplete {
         margin-left: 8px;
         width: 160px;
       }
     }
+
     .right {
       .el-select {
         width: 200px;
         margin-right: 32px;
       }
+
       .opt-btn {
         flex-direction: column;
         cursor: pointer;
         border-radius: 4px;
         padding: 3px 8px;
+
         &:hover {
           background: rgba(255, 255, 255, 0.1);
         }
+
         span {
           font-size: 11px;
         }
+
         &.margin {
           margin: 0 24px;
         }
+
         .icon {
           margin-bottom: 2px;
         }
+
         &.disabled {
           cursor: not-allowed;
         }
       }
     }
   }
+
+  .listen-card {
+    min-height: 54px;
+    background: #ffffff08;
+    border-radius: 0px 0px 8px 0px;
+    padding: 0px 16px;
+    gap: 8px;
+  }
+
   .container {
     width: 100%;
     height: calc(100vh - 86px);
@@ -1096,10 +1134,12 @@ export default {
     justify-content: center;
     align-items: center;
     font-family: MicrosoftYaHei;
+
     .progress {
       width: auto;
       height: 282px;
       margin: 0 auto;
+
       .step {
         &.text {
           width: 15px;
@@ -1109,15 +1149,18 @@ export default {
           line-height: 22px;
           margin-right: 8px;
         }
+
         .box {
           flex-direction: column;
           background-color: $grey1;
           padding: 48px 16px;
           border-radius: 12px;
+
           img {
             width: 64px;
             height: 64px;
           }
+
           .text {
             height: 22px;
             font-size: 15px;
@@ -1125,28 +1168,34 @@ export default {
             line-height: 22px;
             margin-top: 6px;
           }
+
           .el-button {
             width: 112px;
             margin: 24px 0;
           }
         }
+
         .arrow {
           width: 40px;
           height: 24px;
         }
       }
+
       .arrow-part {
         flex-direction: column;
         height: 282px;
         justify-content: space-around;
+
         .sound-img {
           width: 64px;
           height: 64px;
         }
+
         .single-text {
           margin: 0 12px;
           font-size: 15px;
         }
+
         .text {
           width: 15px;
           height: 44px;
