@@ -286,6 +286,17 @@ export default {
     SerialPortProxy.on('sp-sample-rate', this.receiveFs)
     SerialPortProxy.on('sp-eq-params', this.receiveParams)
     SerialPortProxy.on('sp-update-audio-state', this.receiveAudioState)
+
+    if (localStorage.getItem('last_baudrate')) {
+      this.baudrate = localStorage.getItem('last_baudrate');
+    }
+    if (localStorage.getItem('last_sampleRate')) {
+      const fs = localStorage.getItem('last_sampleRate');
+      const selected = this.SampleRates.find(item => item.value == fs);
+      if (selected) {
+        this.fs = selected.value;
+      }
+    }
   },
   unmounted() {
     this.clearInterval();
@@ -595,6 +606,10 @@ export default {
         await this.changeConnectHandle(false);
       }
     },
+    saveOpenConfig() {
+      localStorage.setItem('last_baudrate', this.baudrate);
+      localStorage.setItem('last_sampleRate', this.fs);
+    },
     async changeConnectHandle(isOk, fs) {
       //固件上报连接成功，判断固件和界面的采样率是否一致
       console.log('串口采样率', fs, this.rate);
@@ -602,6 +617,9 @@ export default {
         if (fs && parseInt(fs) === parseInt(this.rate)) {
           this.connected = isOk;
           this.$store.dispatch('changeConnect', isOk);
+
+          this.saveOpenConfig();
+
           let v = this.eqParams[0]
           this.activeEqParamIndex = v;
           await this.setEqParamsIndex(this.eqParams.indexOf(v) + 1);
