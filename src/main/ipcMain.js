@@ -2,7 +2,8 @@
 import { ipcMain, BrowserWindow } from 'electron';
 import drawHandle from './draw';
 import ProjectHandle from './project';
-import audioHandle from './audio';
+import serialport from './serialport';
+import file from './file';
 
 let mainWindow = null;
 function IpcMainHandle(window) {
@@ -34,6 +35,7 @@ function IpcMainHandle(window) {
 
   ProjectHandle();
   drawHandle(ipcMain);
-  audioHandle();
+  serialport();
+  file();
 };
 export { IpcMainHandle, mainWindow };

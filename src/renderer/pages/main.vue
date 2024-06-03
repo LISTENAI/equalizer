@@ -2,12 +2,13 @@
   <div class="main-page">
     <div class="top-banner flex">
       <div class="left flex">
-        <el-select v-model="com" placeholder="请选择" size="middle" :loading="comsLoading" @visible-change="getComs">
+        <el-select v-model="com" placeholder="请选择" size="middle" :loading="comsLoading" @visible-change="getComs"
+          :disabled="connected || connecting">
           <el-option v-for="item in coms" :key="item.path" :label="item.path" :value="item.path">
           </el-option>
         </el-select>
         <el-autocomplete v-model="baudrate" :fetch-suggestions="queryBaudrate" placeholder="波特率" size="middle"
-          :disabled="connected" :trigger-on-focus="true" @select="handleSelect"></el-autocomplete>
+          :disabled="connected || connecting" :trigger-on-focus="true" @select="handleSelect"></el-autocomplete>
         <el-button size="mini" @click="connectHandle" :disabled="connecting || !com || !baudrate" :loading="connecting">
           {{ connected && !connecting ? '断开' : '连接'
           }}{{ connecting ? '中' : '' }}</el-button>
@@ -44,16 +45,16 @@
     <div class="listen-card flex">
       <div>均衡器参数组</div>
       <el-select :value="activeEqParamIndex" placeholder="请选择" size="middle" style="width: 100px;"
-        :disabled="!connected" @change="changeEqParamsIndex">
+        :disabled="!connected || (loading || writing) || decoding" @change="changeEqParamsIndex">
         <el-option v-for="item in eqParams" :key="item" :label="item" :value="item">
         </el-option>
       </el-select>
-      <el-button size="mini" :disabled="!connected || decoding" @click="chooseAudioFile">
+      <el-button size="mini" :disabled="!connected || decoding || (loading || writing)" @click="chooseAudioFile">
         测试播放音频
       </el-button>
-      <el-button size="mini" :disabled="!decoding" @click="stopAudioPlay">停止播放音频</el-button>
+      <el-button size="mini" :disabled="!decoding || (loading || writing)" @click="stopAudioPlay">停止播放音频</el-button>
       <el-input v-model="ttsText" style="width: 240px;" size="middle" placeholder="输入合成文本"></el-input>
-      <el-button size="mini" :disabled="!connected" @click="sendTts">
+      <el-button size="mini" :disabled="!connected || (loading || writing) || decoding" @click="sendTts">
         测试合成文本
       </el-button>
     </div>
@@ -100,7 +101,7 @@
 import VoiceModal from 'components/VoiceModal.vue';
 import EQModal from 'components/EqModal.vue';
 import DRCModal from 'components/DRCModal.vue';
-import SerialPortHandle from '../utils/serialport';
+import { SerialPortProxy, getList } from '../utils/serialPortProxy';
 import { checkConnect, setParams, getParams, activeEqParams, synthTts, getPcmFrame } from '../utils/index';
 import { mapState } from 'vuex';
 import defaultConfig from '../utils/config';
@@ -280,31 +281,19 @@ export default {
   },
   mounted() {
     this.getComs();
-    this.serialPorEmitterHandle();
     this.setInitData();
-    this.$electron.ipcRenderer.on('decode-audio-data', async (e, res) => {
-      if (this.connected) {
-        const { data } = res;
-        console.log('receive data event', data.length, this.decoding);
-        
-        if (!this.sendFirstFrame) {
-          this.sendFirstFrame = true;
-          this.writeSerialPortHandle(getPcmFrame(data, 0xf0));
-        } else {
-          this.writeSerialPortHandle(getPcmFrame(data, 0xf1));
-        }
-      }
-    });
-    this.$electron.ipcRenderer.on('decode-audio-end', async (e) => {
-      this.decoding = false;
-      this.sendFirstFrame = false;
-      this.writeSerialPortHandle(getPcmFrame([], 0xf1));
-    });
+    SerialPortProxy.mount();
+    SerialPortProxy.on('sp-sample-rate', this.receiveFs)
+    SerialPortProxy.on('sp-eq-params', this.receiveParams)
+    SerialPortProxy.on('sp-update-audio-state', this.receiveAudioState)
   },
   unmounted() {
-    SerialPortHandle.close();
     this.clearInterval();
     this.clearTimeout();
+    SerialPortProxy.unmount();
+    SerialPortProxy.off('sp-sample-rate', this.receiveFs)
+    SerialPortProxy.off('sp-eq-params', this.receiveParams)
+    SerialPortProxy.off('sp-update-audio-state', this.receiveAudioState)
   },
 
   computed: {
@@ -373,6 +362,43 @@ export default {
     },
   },
   methods: {
+    async receiveFs(args) {
+      console.log(args);
+      const { sampleRate } = args;
+      if (this.timeOutid && sampleRate != -1) {
+        clearTimeout(this.timeOutid);
+        this.timeOutid = null;
+
+        //这里的采样率需要从固件获取
+        //只有确认采样率一致才能进入连接逻辑
+        await this.changeConnectHandle(true, sampleRate);
+      }
+    },
+    async receiveParams(args) {
+      if (args[this.eName]) {
+        this.eDone = true;
+      }
+      const newParams = Object.assign(this.params, args);
+      console.log(newParams);
+      this.$store.dispatch('saveParams', newParams);
+    },
+    async receiveData(e, res) {
+      if (this.connected) {
+        const { data, index } = res;
+        console.log('receive data event', index, data.length, new Date().getTime());
+
+        if (!this.sendFirstFrame) {
+          this.sendFirstFrame = true;
+          await this.writeSerialPortHandle(getPcmFrame(data, 0xf0));
+        } else {
+          await this.writeSerialPortHandle(getPcmFrame(data, 0xf1));
+        }
+      }
+    },
+    receiveAudioState(args) {
+      const { isPlaying } = args;
+      this.decoding = isPlaying;
+    },
     queryBaudrate(queryString, cb) {
       try {
         var results = queryString ? this.presetBaudrates.filter(item =>
@@ -401,56 +427,6 @@ export default {
       this.$store.dispatch('changeReset', false);
     },
 
-    serialPorEmitterHandle() {
-      SerialPortHandle?.serialPorEmitter?.on('SerialPort', async (res) => {
-        console.log('data from SerialPort', res);
-        // console.log(JSON.stringify(res));
-        const { code, data, message } = res;
-        if (this.eName === data.type && code === 0) {
-          this.eDone = true;
-        }
-        switch (data.type) {
-          case 'connect':
-            //判断连接状态
-            //连接和采样率逻辑分离，这边验证一下拿到连接状态之后再拿采样率是否有问题
-            if (code !== 0) {
-              await this.changeConnectHandle(false);
-            }
-            break;
-          case 'fs':
-            //这里的采样率需要从固件获取
-            //只有确认采样率一致才能进入连接逻辑
-            await this.changeConnectHandle(true, data?.data?.fs || 48000);
-            break;
-          case 'disconnect':
-            this.connecting = false;
-            this.$store.dispatch('changeConnect', false);
-            // this.com = '';
-            this.clearTimeout();
-            break;
-          case 'save':
-            if (code === 0) {
-              //设置数据成功 更新voiceType
-              console.log('save成功');
-            }
-            break;
-          case 'error':
-            this.$message.error(message);
-            break;
-          default:
-            //获取参数
-            if (TYPES.includes(data.type) && !_.isEmpty(data.data)) {
-              this.parseData(data.type, data.data);
-              const newParams = JSON.parse(JSON.stringify(this.params));
-              newParams[data.type] = data.data;
-              // console.log(newParams);
-              this.$store.dispatch('saveParams', newParams);
-            }
-            break;
-        }
-      });
-    },
-
     async setEqParamsIndex(index) {
       if (!this.connected) {
         return;
@@ -471,7 +447,6 @@ export default {
       try {
         console.log('getData-->', type);
         const params = getParams(type);
-        SerialPortHandle.type = `${type}`;
         await this.writeSerialPortHandle(params);
       } catch (error) {
         console.error(error);
@@ -480,15 +455,19 @@ export default {
 
     async writeSerialPortHandle(params, errorCb) {
       try {
-        await SerialPortHandle.write(params);
+        const result = await SerialPortProxy.write(params);
+        console.log('write serial', result);
+        return result;
       } catch (error) {
         errorCb && errorCb();
-        this.$message.error(error.message || '写入参数失败请重试');
+        const message = error.message || '写入参数失败请重试'
+        this.$message.error(message);
+        return { code: -1, message }
       }
     },
     async getComs() {
       this.comsLoading = true;
-      const res = await SerialPortHandle.getList();
+      const res = await getList();
       this.coms = res;
       this.comsLoading = false;
     },
@@ -529,33 +508,66 @@ export default {
           return;
         }
         if (this.connected) {
-          await SerialPortHandle.close();
-          // this.connected = false;
+          const result = await SerialPortProxy.close();
+          console.log('close result', result);
           this.$store.dispatch('changeConnect', false);
           this.writing = false;
           this.loading = false;
           this.clearTimeout();
         } else {
-          const timeOutid = setTimeout(() => {
-            this.$store.dispatch('changeConnect', false);
+          this.connecting = true;
+          const result = await SerialPortProxy.open(
+            { port: this.com, baudRate: baudrate }
+          );
+          console.log("open result", result);
+          if (result.code == 0) {
+            const connectResult = await SerialPortProxy.verifyConnection();
+            console.log('verify connection', connectResult);
+            if (connectResult.code == 0) {
+              // 等待返回 fs
+              this.timeOutid = setTimeout(() => {
+                this.$store.dispatch('changeConnect', false);
+                this.connecting = false;
+                this.writing = false;
+                this.loading = false;
+                this.$confirm('连接超时，请重试', '', {
+                  showCancelButton: false,
+                  showClose: false,
+                  closeOnClickModal: false,
+                  confirmButtonText: '确定',
+                  type: 'warning',
+                }).then(() => {
+                  SerialPortProxy.close();
+                  return;
+                });
+              }, 5000);
+            } else {
+              this.$confirm(connectResult.message, '', {
+                showCancelButton: false,
+                showClose: false,
+                closeOnClickModal: false,
+                confirmButtonText: '确定',
+                type: 'warning',
+              });
+            }
+          } else {
+            SerialPortProxy.close();
             this.connecting = false;
+            // this.connected = false;
+            this.$store.dispatch('changeConnect', false);
             this.writing = false;
             this.loading = false;
-            this.$confirm('连接超时，请重试', '', {
+            this.clearTimeout();
+            this.$confirm(result.message, '', {
               showCancelButton: false,
               showClose: false,
               closeOnClickModal: false,
               confirmButtonText: '确定',
               type: 'warning',
             }).then(() => {
-              SerialPortHandle.close();
               return;
             });
-          }, 10000);
-          this.timeOutid = timeOutid;
-          this.connecting = true;
-          await SerialPortHandle.open(this.com, baudrate);
-          this.checkConnectHandle();
+          }
         }
       } catch (error) {
         this.connecting = false;
@@ -578,7 +590,6 @@ export default {
     async checkConnectHandle() {
       try {
         const params = checkConnect();
-        SerialPortHandle.type = 'connect';
         await this.writeSerialPortHandle(params);
       } catch (error) {
         await this.changeConnectHandle(false);
@@ -589,12 +600,12 @@ export default {
       console.log('串口采样率', fs, this.rate);
       if (isOk) {
         if (fs && parseInt(fs) === parseInt(this.rate)) {
-          // this.connected = isOk;
+          this.connected = isOk;
           this.$store.dispatch('changeConnect', isOk);
           let v = this.eqParams[0]
           this.activeEqParamIndex = v;
           await this.setEqParamsIndex(this.eqParams.indexOf(v) + 1);
-          await this.getAllParams();
+          console.log('end setEqParamsIndex');
         } else {
           this.$confirm(
             '固件采样率和界面不一致，请修改界面采样率后再进行连接',
@@ -607,14 +618,14 @@ export default {
               type: 'warning',
             }
           ).then(async () => {
-            await SerialPortHandle.close();
+            await SerialPortProxy.close();
             // this.connected = false;
             this.$store.dispatch('changeConnect', false);
           });
         }
       } else {
         //串口已经打开，但是固件返回连接状态失败
-        await SerialPortHandle.close();
+        await SerialPortProxy.close();
       }
       this.connecting = false;
       this.clearTimeout();
@@ -778,17 +789,22 @@ export default {
       this.voiceData[type] = modalData;
     },
     async chooseAudioFile() {
-      const res = await this.$electron.ipcRenderer.invoke('open-audio');
+      const res = await this.$electron.ipcRenderer.invoke('open-file', {
+        filters: [
+          {
+            name: '音频',
+            extensions: ['mp3', 'wav', 'pcm'],
+          },
+        ],
+        properties: ['openFile'],
+      });
       const { code, data } = res;
       if (res) {
-        this.decoding = true;
-        setTimeout(() => {
-          this.$electron.ipcRenderer.invoke('decode-audio', { file: data[0] });
-        }, 400);
+        SerialPortProxy.playAudioFile({ file: data[0] });
       }
     },
     async stopAudioPlay() {
-      this.$electron.ipcRenderer.invoke('decode-audio-cancel');
+      SerialPortProxy.cancelAudioFile();
     },
     async sendTts() {
       try {
@@ -857,10 +873,14 @@ export default {
     async saveParamsHandle(type, data) {
       try {
         const params = setParams(type, data);
-        SerialPortHandle.type = `save-${type}`;
-        await this.writeSerialPortHandle(params, () => {
+        const result = await this.writeSerialPortHandle(params);
+        if (result.code != 0) {
           this.resetModalData(type);
-        });
+        } else {
+          if (this.eName == `save-${type}`) {
+            this.eDone = true;
+          }
+        }
       } catch (error) {
         this.$message.error(error.message);
       }
@@ -1006,7 +1026,6 @@ export default {
         .then(async () => {
           this.activeEqParamIndex = v;
           await this.setEqParamsIndex(this.eqParams.indexOf(v) + 1);
-          await this.getAllParams();
         })
         .catch(() => {
           return;
