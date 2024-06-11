@@ -1,9 +1,9 @@
 import { BrowserWindow, ipcMain } from 'electron';
-import { createReadStream, stat } from 'fs';
+import EventEmitter from 'events';
+import { createReadStream } from 'fs';
 import { SerialPort } from 'serialport';
 import { PassThrough, Readable } from 'stream';
 import { decoder } from './audioDecoder';
-import EventEmitter from 'events';
 
 let handlingPort = null;
 let handlingPortName = null;
@@ -672,7 +672,7 @@ export default () => {
         .audioCodec('pcm_s16le')
         .audioFrequency(16000)
         .audioChannels(1)
-        .toFormat('wav')
+        .toFormat('s16le')
         .on('error', function (err, stdout, stderr) {
           console.log('Cannot process audio: ' + err.message);
         })
