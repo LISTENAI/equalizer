@@ -146,6 +146,13 @@ export default {
       },
       []
     );
+    this.$electron.ipcRenderer.on(
+      'windowChange',
+      (_e, res) => {
+        const { isMaximized } = res;
+        this.isMax = isMaximized;
+      },
+    )
   },
   methods: {
     // 新建项目之后 打开项目，参数都为默认值

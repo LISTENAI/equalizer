@@ -2,88 +2,38 @@
   <div class="main-page">
     <div class="top-banner flex">
       <div class="left flex">
-        <el-select
-          v-model="com"
-          placeholder="请选择"
-          size="middle"
-          :loading="comsLoading"
-          @visible-change="getComs"
-        >
-          <el-option
-            v-for="item in coms"
-            :key="item.path"
-            :label="item.path"
-            :value="item.path"
-          >
+        <el-select v-model="com" placeholder="请选择" size="middle" :loading="comsLoading" @visible-change="getComs"
+          :disabled="connected || connecting">
+          <el-option v-for="item in coms" :key="item.path" :label="item.path" :value="item.path">
           </el-option>
         </el-select>
-        <el-autocomplete
-          v-model="baudrate"
-          :fetch-suggestions="queryBaudrate"
-          placeholder="波特率"
-          size="middle"
-          :disabled="connected"
-          :trigger-on-focus="true"
-          @select="handleSelect"
-        ></el-autocomplete>
-        <el-button
-          size="mini"
-          @click="connectHandle"
-          :disabled="connecting || !com || !baudrate"
-          :loading="connecting"
-        >
+        <el-autocomplete v-model="baudrate" :fetch-suggestions="queryBaudrate" placeholder="波特率" size="middle"
+          :disabled="connected || connecting" :trigger-on-focus="true" @select="handleSelect"></el-autocomplete>
+        <el-button size="mini" @click="connectHandle" :disabled="connecting || !com || !baudrate" :loading="connecting">
           {{ connected && !connecting ? '断开' : '连接'
-          }}{{ connecting ? '中' : '' }}</el-button
-        >
+          }}{{ connecting ? '中' : '' }}</el-button>
         <span class="flex">
           <svg-icon v-if="connecting" icon-class="r_connecting" class="icon" />
-          <svg-icon
-            v-else
-            :icon-class="connected ? 'r_connected' : 'r_disconnected'"
-            class="icon"
-          />
+          <svg-icon v-else :icon-class="connected ? 'r_connected' : 'r_disconnected'" class="icon" />
           <span v-if="!connecting"> {{ connected ? '已' : '未' }}连接</span>
         </span>
       </div>
       <div class="right flex">
-        <el-select
-          :value="fs"
-          placeholder="请选择"
-          size="middle"
-          @change="changeFsHandle"
-          :disabled="connected || connecting"
-        >
-          <el-option
-            v-for="item in SampleRates"
-            :key="item.value"
-            :label="item.label"
-            :value="item.value"
-          >
+        <el-select :value="fs" placeholder="请选择" size="middle" @change="changeFsHandle"
+          :disabled="connected || connecting">
+          <el-option v-for="item in SampleRates" :key="item.value" :label="item.label" :value="item.value">
           </el-option>
         </el-select>
-        <div
-          class="opt-btn flex"
-          :class="!connected || loading || writing ? 'disabled' : ''"
-          @click="getAllParams"
-        >
+        <div class="opt-btn flex" :class="!connected || loading || writing ? 'disabled' : ''" @click="getAllParams">
           <svg-icon icon-class="get" class="icon" />
           <span>获取参数</span>
         </div>
-        <div
-          class="opt-btn flex margin"
-          v-loading="writing"
-          :class="!connected || loading || writing ? 'disabled' : ''"
-          @click="saveAllParamsHandle"
-          element-loading-spinner="el-icon-loading"
-        >
+        <div class="opt-btn flex margin" v-loading="writing" :class="!connected || loading || writing ? 'disabled' : ''"
+          @click="saveAllParamsHandle" element-loading-spinner="el-icon-loading">
           <svg-icon icon-class="write" class="icon" />
           <span>{{ writing ? '写入中' : '写入参数' }}</span>
         </div>
-        <div
-          class="opt-btn flex"
-          :class="Object.keys(params).length ? '' : 'disabled'"
-          @click="exportBinFile"
-        >
+        <div class="opt-btn flex" :class="Object.keys(params).length ? '' : 'disabled'" @click="exportBinFile">
           <svg-icon icon-class="export" class="icon" />
           <span>导出bin文件</span>
         </div>
@@ -91,6 +41,23 @@
     </div>
     <!-- <p>页面的参数:{{ params }}</p>
     <p>{{ originVoiceType }}</p> -->
+
+    <div class="listen-card flex">
+      <div>均衡器参数组</div>
+      <el-select :value="activeEqParamIndex" placeholder="请选择" size="middle" style="width: 100px;"
+        :disabled="!connected || (loading || writing) || decoding" @change="changeEqParamsIndex">
+        <el-option v-for="item in eqParams" :key="item" :label="item" :value="item">
+        </el-option>
+      </el-select>
+      <el-button size="mini" :disabled="!connected || decoding || (loading || writing)" @click="chooseAudioFile">
+        测试播放音频
+      </el-button>
+      <el-button size="mini" :disabled="!decoding || (loading || writing)" @click="stopAudioPlay">停止播放音频</el-button>
+      <el-input v-model="ttsText" style="width: 240px;" size="middle" placeholder="输入合成文本"></el-input>
+      <el-button size="mini" :disabled="!connected || (loading || writing) || decoding" @click="sendTts">
+        测试合成文本
+      </el-button>
+    </div>
 
     <div class="container flex" v-loading="loading || writing">
       <div class="progress flex">
@@ -100,17 +67,9 @@
           <div class="flex box">
             <img :src="require('@/assets/imgs/' + item.imageUrl)" />
             <p class="text">{{ item.text }}</p>
-            <el-button
-              :disabled="item.enable"
-              @click="() => opreateHandle(item)"
-              >设置</el-button
-            >
+            <el-button :disabled="item.enable" @click="() => opreateHandle(item)">设置</el-button>
             <!-- || (!Object.keys(project).length && !connected) -->
-            <el-checkbox
-              v-model="item.enable"
-              @change="() => changeBypass(item)"
-              >Bypass</el-checkbox
-            >
+            <el-checkbox v-model="item.enable" @change="() => changeBypass(item)">Bypass</el-checkbox>
           </div>
         </div>
 
@@ -118,59 +77,32 @@
           <div class="flex">
             <img :src="require('@/assets/imgs/' + arrowImgUrl)" class="arrow" />
             <span class="single-text">L</span>
-            <img
-              :src="require('@/assets/imgs/' + soundImgUrl)"
-              class="sound-img"
-            />
+            <img :src="require('@/assets/imgs/' + soundImgUrl)" class="sound-img" />
           </div>
           <div class="text">输出</div>
           <div class="flex">
             <img :src="require('@/assets/imgs/' + arrowImgUrl)" class="arrow" />
             <span class="single-text">R</span>
-            <img
-              :src="require('@/assets/imgs/' + soundImgUrl)"
-              class="sound-img"
-            />
+            <img :src="require('@/assets/imgs/' + soundImgUrl)" class="sound-img" />
           </div>
         </div>
       </div>
     </div>
 
-    <VoiceModal
-      v-if="voiceVisible"
-      :visible="voiceVisible"
-      :checkable="voiceCheckable"
-      :voiceData="voiceData[currentModalType]"
-      @close="closeModal"
-      @reset="resetModalData"
-      @save="saveHandle"
-    />
-    <EQModal
-      v-if="eqVisible"
-      :visible="eqVisible"
-      :checkable="eqCheckable"
-      :eqData="eqData"
-      @close="closeModal"
-      @reset="resetModalData"
-      @save="saveHandle"
-    />
-    <DRCModal
-      v-if="drcVisible"
-      :visible="drcVisible"
-      :checkable="drcCheckable"
-      :drcData="drcData"
-      @close="closeModal"
-      @reset="resetModalData"
-      @save="saveHandle"
-    />
+    <VoiceModal v-if="voiceVisible" :visible="voiceVisible" :checkable="voiceCheckable"
+      :voiceData="voiceData[currentModalType]" @close="closeModal" @reset="resetModalData" @save="saveHandle" />
+    <EQModal v-if="eqVisible" :visible="eqVisible" :checkable="eqCheckable" :eqData="eqData" @close="closeModal"
+      @reset="resetModalData" @save="saveHandle" />
+    <DRCModal v-if="drcVisible" :visible="drcVisible" :checkable="drcCheckable" :drcData="drcData" @close="closeModal"
+      @reset="resetModalData" @save="saveHandle" />
   </div>
 </template>
 <script>
 import VoiceModal from 'components/VoiceModal.vue';
 import EQModal from 'components/EqModal.vue';
 import DRCModal from 'components/DRCModal.vue';
-import SerialPortHandle from '../utils/serialport';
-import { checkConnect, setParams, getParams } from '../utils/index';
+import { SerialPortProxy, getList } from '../utils/serialPortProxy';
+import { checkConnect, setParams, getParams, activeEqParams, synthTts, getPcmFrame } from '../utils/index';
 import { mapState } from 'vuex';
 import defaultConfig from '../utils/config';
 const TYPES = ['eq', 'bass_boost', 'treble_boost', 'drc', 'agc'];
@@ -185,8 +117,16 @@ export default {
         300, 600, 1200, 2400, 4800,
         9600, 14400, 19200, 38400, 56000,
         57600, 115200, 128000, 256000,
-        460800, 512000, 750000, 921600, 
+        460800, 512000, 750000, 921600,
         1500000, 3000000
+      ],
+      activeEqParamIndex: null,
+      eqParams: [
+        "0001",
+        "0002",
+        "0003",
+        "0004",
+        "0005",
       ],
       SampleRates: [
         {
@@ -316,6 +256,7 @@ export default {
           dots: [],
         },
       },
+      ttsText: '',
       originOptions: [],
       originVoiceType: [],
       eqType: {},
@@ -334,17 +275,36 @@ export default {
       eDone: false,
       timeId: null,
       timeOutid: null,
+      decoding: false,
+      sendFirstFrame: false,
     };
   },
   mounted() {
     this.getComs();
-    this.serialPorEmitterHandle();
     this.setInitData();
+    SerialPortProxy.mount();
+    SerialPortProxy.on('sp-sample-rate', this.receiveFs)
+    SerialPortProxy.on('sp-eq-params', this.receiveParams)
+    SerialPortProxy.on('sp-update-audio-state', this.receiveAudioState)
+
+    if (localStorage.getItem('last_baudrate')) {
+      this.baudrate = localStorage.getItem('last_baudrate');
+    }
+    if (localStorage.getItem('last_sampleRate')) {
+      const fs = localStorage.getItem('last_sampleRate');
+      const selected = this.SampleRates.find(item => item.value == fs);
+      if (selected) {
+        this.fs = selected.value;
+      }
+    }
   },
   unmounted() {
-    SerialPortHandle.close();
     this.clearInterval();
     this.clearTimeout();
+    SerialPortProxy.unmount();
+    SerialPortProxy.off('sp-sample-rate', this.receiveFs)
+    SerialPortProxy.off('sp-eq-params', this.receiveParams)
+    SerialPortProxy.off('sp-update-audio-state', this.receiveAudioState)
   },
 
   computed: {
@@ -365,9 +325,9 @@ export default {
       immediate: true,
     },
     connected(v) {
-      if (!v) {
-        this.com = '';
-      }
+      // if (!v) {
+      //   this.com = '';
+      // }
       this.loading = false;
       this.connecting = false;
       this.clearInterval();
@@ -413,14 +373,51 @@ export default {
     },
   },
   methods: {
+    async receiveFs(args) {
+      console.log(args);
+      const { sampleRate } = args;
+      if (this.timeOutid && sampleRate != -1) {
+        clearTimeout(this.timeOutid);
+        this.timeOutid = null;
+
+        //这里的采样率需要从固件获取
+        //只有确认采样率一致才能进入连接逻辑
+        await this.changeConnectHandle(true, sampleRate);
+      }
+    },
+    async receiveParams(args) {
+      if (args[this.eName]) {
+        this.eDone = true;
+      }
+      const newParams = Object.assign(this.params, args);
+      console.log(newParams);
+      this.$store.dispatch('saveParams', newParams);
+    },
+    async receiveData(e, res) {
+      if (this.connected) {
+        const { data, index } = res;
+        console.log('receive data event', index, data.length, new Date().getTime());
+
+        if (!this.sendFirstFrame) {
+          this.sendFirstFrame = true;
+          await this.writeSerialPortHandle(getPcmFrame(data, 0xf0));
+        } else {
+          await this.writeSerialPortHandle(getPcmFrame(data, 0xf1));
+        }
+      }
+    },
+    receiveAudioState(args) {
+      const { isPlaying } = args;
+      this.decoding = isPlaying;
+    },
     queryBaudrate(queryString, cb) {
-      try { 
-        var results = queryString ? this.presetBaudrates.filter(item => 
+      try {
+        var results = queryString ? this.presetBaudrates.filter(item =>
           item.toString().includes(queryString)
         ) : this.presetBaudrates;
         // 调用 callback 返回建议列表的数据
         console.log(results);
-        cb(results.map(item => { return {value: item.toString()}}));
+        cb(results.map(item => { return { value: item.toString() } }));
       } catch (e) {
         console.error(e);
       }
@@ -441,54 +438,17 @@ export default {
       this.$store.dispatch('changeReset', false);
     },
 
-    serialPorEmitterHandle() {
-      SerialPortHandle?.serialPorEmitter?.on('SerialPort', async (res) => {
-        console.log('data from SerialPort', res);
-        // console.log(JSON.stringify(res));
-        const { code, data, message } = res;
-        if (this.eName === data.type && code === 0) {
-          this.eDone = true;
-        }
-        switch (data.type) {
-          case 'connect':
-            //判断连接状态
-            //连接和采样率逻辑分离，这边验证一下拿到连接状态之后再拿采样率是否有问题
-            if (code !== 0) {
-              await this.changeConnectHandle(false);
-            }
-            break;
-          case 'fs':
-            //这里的采样率需要从固件获取
-            //只有确认采样率一致才能进入连接逻辑
-            await this.changeConnectHandle(true, data?.data?.fs || 48000);
-            break;
-          case 'disconnect':
-            this.connecting = false;
-            this.$store.dispatch('changeConnect', false);
-            this.com = '';
-            this.clearTimeout();
-            break;
-          case 'save':
-            if (code === 0) {
-              //设置数据成功 更新voiceType
-              console.log('save成功');
-            }
-            break;
-          case 'error':
-            this.$message.error(message);
-            break;
-          default:
-            //获取参数
-            if (TYPES.includes(data.type) && !_.isEmpty(data.data)) {
-              this.parseData(data.type, data.data);
-              const newParams = JSON.parse(JSON.stringify(this.params));
-              newParams[data.type] = data.data;
-              // console.log(newParams);
-              this.$store.dispatch('saveParams', newParams);
-            }
-            break;
-        }
-      });
+    async setEqParamsIndex(index) {
+      if (!this.connected) {
+        return;
+      }
+      try {
+        console.log('enable eq params index -->', index);
+        await this.writeSerialPortHandle(activeEqParams(index));
+        await this.getAllParams();
+      } catch (error) {
+        console.error(error);
+      }
     },
 
     async getData(type) {
@@ -498,7 +458,6 @@ export default {
       try {
         console.log('getData-->', type);
         const params = getParams(type);
-        SerialPortHandle.type = `${type}`;
         await this.writeSerialPortHandle(params);
       } catch (error) {
         console.error(error);
@@ -507,15 +466,19 @@ export default {
 
     async writeSerialPortHandle(params, errorCb) {
       try {
-        await SerialPortHandle.write(params);
+        const result = await SerialPortProxy.write(params);
+        console.log('write serial', result);
+        return result;
       } catch (error) {
         errorCb && errorCb();
-        this.$message.error(error.message || '写入参数失败请重试');
+        const message = error.message || '写入参数失败请重试'
+        this.$message.error(message);
+        return { code: -1, message }
       }
     },
     async getComs() {
       this.comsLoading = true;
-      const res = await SerialPortHandle.getList();
+      const res = await getList();
       this.coms = res;
       this.comsLoading = false;
     },
@@ -556,19 +519,57 @@ export default {
           return;
         }
         if (this.connected) {
-          await SerialPortHandle.close();
-          // this.connected = false;
+          const result = await SerialPortProxy.close();
+          console.log('close result', result);
           this.$store.dispatch('changeConnect', false);
           this.writing = false;
           this.loading = false;
           this.clearTimeout();
         } else {
-          const timeOutid = setTimeout(() => {
-            this.$store.dispatch('changeConnect', false);
+          this.connecting = true;
+          const result = await SerialPortProxy.open(
+            { port: this.com, baudRate: baudrate }
+          );
+          console.log("open result", result);
+          if (result.code == 0) {
+            const connectResult = await SerialPortProxy.verifyConnection();
+            console.log('verify connection', connectResult);
+            if (connectResult.code == 0) {
+              // 等待返回 fs
+              this.timeOutid = setTimeout(() => {
+                this.$store.dispatch('changeConnect', false);
+                this.connecting = false;
+                this.writing = false;
+                this.loading = false;
+                this.$confirm('连接超时，请重试', '', {
+                  showCancelButton: false,
+                  showClose: false,
+                  closeOnClickModal: false,
+                  confirmButtonText: '确定',
+                  type: 'warning',
+                }).then(() => {
+                  SerialPortProxy.close();
+                  return;
+                });
+              }, 5000);
+            } else {
+              this.$confirm(connectResult.message, '', {
+                showCancelButton: false,
+                showClose: false,
+                closeOnClickModal: false,
+                confirmButtonText: '确定',
+                type: 'warning',
+              });
+            }
+          } else {
+            SerialPortProxy.close();
             this.connecting = false;
+            // this.connected = false;
+            this.$store.dispatch('changeConnect', false);
             this.writing = false;
             this.loading = false;
-            this.$confirm('连接超时，请重试', '', {
+            this.clearTimeout();
+            this.$confirm(result.message, '', {
               showCancelButton: false,
               showClose: false,
               closeOnClickModal: false,
@@ -577,11 +578,7 @@ export default {
             }).then(() => {
               return;
             });
-          }, 10000);
-          this.timeOutid = timeOutid;
-          this.connecting = true;
-          await SerialPortHandle.open(this.com, baudrate);
-          this.checkConnectHandle();
+          }
         }
       } catch (error) {
         this.connecting = false;
@@ -604,19 +601,29 @@ export default {
     async checkConnectHandle() {
       try {
         const params = checkConnect();
-        SerialPortHandle.type = 'connect';
         await this.writeSerialPortHandle(params);
       } catch (error) {
         await this.changeConnectHandle(false);
       }
+    },
+    saveOpenConfig() {
+      localStorage.setItem('last_baudrate', this.baudrate);
+      localStorage.setItem('last_sampleRate', this.fs);
     },
     async changeConnectHandle(isOk, fs) {
       //固件上报连接成功，判断固件和界面的采样率是否一致
       console.log('串口采样率', fs, this.rate);
       if (isOk) {
         if (fs && parseInt(fs) === parseInt(this.rate)) {
-          // this.connected = isOk;
+          this.connected = isOk;
           this.$store.dispatch('changeConnect', isOk);
+
+          this.saveOpenConfig();
+
+          let v = this.eqParams[0]
+          this.activeEqParamIndex = v;
+          await this.setEqParamsIndex(this.eqParams.indexOf(v) + 1);
+          console.log('end setEqParamsIndex');
         } else {
           this.$confirm(
             '固件采样率和界面不一致，请修改界面采样率后再进行连接',
@@ -629,14 +636,14 @@ export default {
               type: 'warning',
             }
           ).then(async () => {
-            await SerialPortHandle.close();
+            await SerialPortProxy.close();
             // this.connected = false;
             this.$store.dispatch('changeConnect', false);
           });
         }
       } else {
         //串口已经打开，但是固件返回连接状态失败
-        await SerialPortHandle.close();
+        await SerialPortProxy.close();
       }
       this.connecting = false;
       this.clearTimeout();
@@ -799,6 +806,33 @@ export default {
       modalData.fs = data.fs || this.fs;
       this.voiceData[type] = modalData;
     },
+    async chooseAudioFile() {
+      const res = await this.$electron.ipcRenderer.invoke('open-file', {
+        filters: [
+          {
+            name: '音频',
+            extensions: ['mp3', 'wav', 'pcm'],
+          },
+        ],
+        properties: ['openFile'],
+      });
+      const { code, data } = res;
+      if (res) {
+        SerialPortProxy.playAudioFile({ file: data[0] });
+      }
+    },
+    async stopAudioPlay() {
+      SerialPortProxy.cancelAudioFile();
+    },
+    async sendTts() {
+      try {
+        console.log(`synth tts ${this.ttsText}`);
+        const data = synthTts(this.ttsText);
+        await this.writeSerialPortHandle(data);
+      } catch (error) {
+        console.error(error);
+      }
+    },
     resetModalData(type) {
       const voiceData = JSON.parse(JSON.stringify(this.originVoiceType[type]));
       // console.log('reset', voiceData);
@@ -857,10 +891,14 @@ export default {
     async saveParamsHandle(type, data) {
       try {
         const params = setParams(type, data);
-        SerialPortHandle.type = `save-${type}`;
-        await this.writeSerialPortHandle(params, () => {
+        const result = await this.writeSerialPortHandle(params);
+        if (result.code != 0) {
           this.resetModalData(type);
-        });
+        } else {
+          if (this.eName == `save-${type}`) {
+            this.eDone = true;
+          }
+        }
       } catch (error) {
         this.$message.error(error.message);
       }
@@ -993,6 +1031,24 @@ export default {
         }
       }
     },
+    changeEqParamsIndex(v) {
+      this.$confirm(
+        '切换参数值会从固件中读取参数并覆盖当前参数，如有修改请先保存现有编辑参数',
+        '是否确定切换参数组',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning',
+        }
+      )
+        .then(async () => {
+          this.activeEqParamIndex = v;
+          await this.setEqParamsIndex(this.eqParams.indexOf(v) + 1);
+        })
+        .catch(() => {
+          return;
+        });
+    },
     changeFsHandle(v) {
       if (Object.keys(this.params).length === 0) {
         this.$store.dispatch('changeFsReset', true);
@@ -1032,6 +1088,7 @@ export default {
   background-color: $background;
   height: calc(100% - 30px);
   color: $font-color;
+
   .icon {
     display: block;
     width: 16px;
@@ -1039,6 +1096,7 @@ export default {
     background-size: cover;
     margin: 0 2px;
   }
+
   .top-banner {
     justify-content: space-between;
     width: 100%;
@@ -1056,39 +1114,56 @@ export default {
       .el-select {
         width: 160px;
       }
+
       .el-autocomplete {
         margin-left: 8px;
         width: 160px;
       }
     }
+
     .right {
       .el-select {
         width: 200px;
         margin-right: 32px;
       }
+
       .opt-btn {
         flex-direction: column;
         cursor: pointer;
         border-radius: 4px;
         padding: 3px 8px;
+
         &:hover {
           background: rgba(255, 255, 255, 0.1);
         }
+
         span {
           font-size: 11px;
         }
+
         &.margin {
           margin: 0 24px;
         }
+
         .icon {
           margin-bottom: 2px;
         }
+
         &.disabled {
           cursor: not-allowed;
         }
       }
     }
   }
+
+  .listen-card {
+    min-height: 54px;
+    background: #ffffff08;
+    border-radius: 0px 0px 8px 0px;
+    padding: 0px 16px;
+    gap: 8px;
+  }
+
   .container {
     width: 100%;
     height: calc(100vh - 86px);
@@ -1096,10 +1171,12 @@ export default {
     justify-content: center;
     align-items: center;
     font-family: MicrosoftYaHei;
+
     .progress {
       width: auto;
       height: 282px;
       margin: 0 auto;
+
       .step {
         &.text {
           width: 15px;
@@ -1109,15 +1186,18 @@ export default {
           line-height: 22px;
           margin-right: 8px;
         }
+
         .box {
           flex-direction: column;
           background-color: $grey1;
           padding: 48px 16px;
           border-radius: 12px;
+
           img {
             width: 64px;
             height: 64px;
           }
+
           .text {
             height: 22px;
             font-size: 15px;
@@ -1125,28 +1205,34 @@ export default {
             line-height: 22px;
             margin-top: 6px;
           }
+
           .el-button {
             width: 112px;
             margin: 24px 0;
           }
         }
+
         .arrow {
           width: 40px;
           height: 24px;
         }
       }
+
       .arrow-part {
         flex-direction: column;
         height: 282px;
         justify-content: space-around;
+
         .sound-img {
           width: 64px;
           height: 64px;
         }
+
         .single-text {
           margin: 0 12px;
           font-size: 15px;
         }
+
         .text {
           width: 15px;
           height: 44px;

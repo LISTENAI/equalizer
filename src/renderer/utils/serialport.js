@@ -66,7 +66,7 @@ export default class SerialPortHandle {
                         all?.length && this.read(all);
                         this.cacheData = [];
                     }
-                }, 400);
+                }, 200);
                 this.timeid = timeid;
             });
             port.on('close', () => {
@@ -123,9 +123,11 @@ export default class SerialPortHandle {
     static read(data) {
         try {
             const res = parseData(data, this.type);
-            // console.log('读取串口数据成功', JSON.stringify(res));
-            this.serialPorEmitter.emit('SerialPort', res);
-            this.cacheData = [];
+            if (res) {
+                // console.log('读取串口数据成功', JSON.stringify(res));
+                this.serialPorEmitter.emit('SerialPort', res);
+                this.cacheData = [];
+            }
         } catch (error) {
             console.log(error);
         }
