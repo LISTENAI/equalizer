@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     :title="detail.title"
-    :visible="show"
+    v-model="show"
     width="600px"
     class="low-dialog"
     :destroy-on-close="true"
@@ -17,7 +17,7 @@
             controls-position="right"
             :min="item.min"
             :max="item.max"
-            size="mini"
+            size="small"
           ></el-input-number>
           <i>{{ item.unit }}</i>
         </div>
@@ -33,15 +33,17 @@
         </div>
       </div>
     </div>
+    <template #footer>
+      <span class="dialog-footer">
+        <div class="fl flex">
+          <el-button @click="resetHandle">重置</el-button>
+          <el-checkbox v-model="enable">Bypass</el-checkbox>
+        </div>
+        <el-button type="primary" @click="saveHandle">确 定</el-button>
+        <el-button @click="beforeCloseHandle">取 消</el-button>
+      </span>
+    </template>
 
-    <span slot="footer" class="dialog-footer">
-      <div class="fl">
-        <el-button @click="resetHandle">重置</el-button>
-        <el-checkbox v-model="enable">Bypass</el-checkbox>
-      </div>
-      <el-button type="primary" @click="saveHandle">确 定</el-button>
-      <el-button @click="beforeCloseHandle">取 消</el-button>
-    </span>
   </el-dialog>
 </template>
 

@@ -6,6 +6,7 @@ function resolve(dir) {
 }
 module.exports = {
   lintOnSave: false,
+  transpileDependencies: ['vue-router', 'element-plus'],
   runtimeCompiler: true,
   productionSourceMap: true,
   css: {

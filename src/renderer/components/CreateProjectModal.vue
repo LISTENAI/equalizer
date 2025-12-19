@@ -18,13 +18,13 @@
       >
         <el-form-item label="项目地址" prop="pathStr">
           <el-input
-            size="middle"
+            size="default"
             style="width: 200px"
             v-model="formData.pathStr"
             placeholder="项目地址"
           ></el-input>
           <el-button
-            size="middle"
+            size="default"
             style="margin-left: 20px"
             @click.prevent="selsectDict"
             >选择</el-button
@@ -33,7 +33,7 @@
         <el-form-item label="项目名称" prop="name">
           <el-input
             style="width: 200px"
-            size="middle"
+            size="default"
             v-model="formData.name"
             placeholder="项目名称"
           ></el-input>

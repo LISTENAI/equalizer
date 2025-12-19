@@ -17,16 +17,16 @@
     "axios": "^1.2.2",
     "core-js": "^3.6.5",
     "echarts": "^5.4.1",
-    "electron": "^14.2.9",
+    "electron": "^21.4.4",
     "electron-devtools-installer": "^3.2.0",
-    "element-ui": "^2.15.12",
+    "element-plus": "^2.3.0",
     "fluent-ffmpeg-7": "^2.1.5",
     "koffi": "^2.14.1",
     "serialport": "^12.0.0",
     "svg-sprite-loader": "^6.0.11",
-    "vue": "^2.6.11",
-    "vue-router": "^3.2.0",
-    "vuex": "^3.4.0"
+    "vue": "^3.2.47",
+    "vue-router": "^4.2.0",
+    "vuex": "^4.1.0"
   },
   "devDependencies": {
     "@vue/cli-plugin-babel": "~4.5.19",
@@ -46,6 +46,6 @@
     "sass": "^1.26.5",
     "sass-loader": "^8.0.2",
     "vue-cli-plugin-electron-builder": "^2.1.1",
-    "vue-template-compiler": "^2.6.11"
+    "@vue/compiler-sfc": "^3.2.47"
   }
 }

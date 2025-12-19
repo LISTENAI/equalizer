@@ -1,15 +1,15 @@
 <template>
   <div class="main-page">
     <div class="top-banner flex">
-      <div class="left flex">
-        <el-select v-model="com" placeholder="请选择" size="middle" :loading="comsLoading" @visible-change="getComs"
+      <div class="left flex" style="gap: 8px">
+        <el-select v-model="com" placeholder="请选择" size="default" :loading="comsLoading" @visible-change="getComs"
           :disabled="connected || connecting">
           <el-option v-for="item in coms" :key="item.path" :label="item.path" :value="item.path">
           </el-option>
         </el-select>
-        <el-autocomplete v-model="baudrate" :fetch-suggestions="queryBaudrate" placeholder="波特率" size="middle"
+        <el-autocomplete v-model="baudrate" :fetch-suggestions="queryBaudrate" placeholder="波特率" size="default"
           :disabled="connected || connecting" :trigger-on-focus="true" @select="handleSelect"></el-autocomplete>
-        <el-button size="mini" @click="connectHandle" :disabled="connecting || !com || !baudrate" :loading="connecting">
+        <el-button size="small" @click="connectHandle" :disabled="connecting || !com || !baudrate" :loading="connecting">
           {{ connected && !connecting ? '断开' : '连接'
           }}{{ connecting ? '中' : '' }}</el-button>
         <span class="flex">
@@ -19,7 +19,7 @@
         </span>
       </div>
       <div class="right flex">
-        <el-select :value="fs" placeholder="请选择" size="middle" @change="changeFsHandle"
+        <el-select v-model="fs" placeholder="请选择" size="default" @change="changeFsHandle"
           :disabled="connected || connecting">
           <el-option v-for="item in SampleRates" :key="item.value" :label="item.label" :value="item.value">
           </el-option>
@@ -44,17 +44,17 @@
 
     <div class="listen-card flex">
       <div>均衡器参数组</div>
-      <el-select :value="activeEqParamIndex" placeholder="请选择" size="middle" style="width: 100px;"
+      <el-select v-model="activeEqParamIndex" placeholder="请选择" size="default" style="width: 100px;"
         :disabled="!connected || (loading || writing) || decoding" @change="changeEqParamsIndex">
         <el-option v-for="item in eqParams" :key="item" :label="item" :value="item">
         </el-option>
       </el-select>
-      <el-button size="mini" :disabled="!connected || decoding || (loading || writing)" @click="chooseAudioFile">
+      <el-button size="small" :disabled="!connected || decoding || (loading || writing)" @click="chooseAudioFile">
         测试播放音频
       </el-button>
-      <el-button size="mini" :disabled="!decoding || (loading || writing)" @click="stopAudioPlay">停止播放音频</el-button>
-      <el-input v-model="ttsText" style="width: 240px;" size="middle" placeholder="输入合成文本"></el-input>
-      <el-button size="mini" :disabled="!connected || (loading || writing) || decoding" @click="sendTts">
+      <el-button size="small" :disabled="!decoding || (loading || writing)" @click="stopAudioPlay">停止播放音频</el-button>
+      <el-input v-model="ttsText" style="width: 240px;" size="default" placeholder="输入合成文本"></el-input>
+      <el-button size="small" :disabled="!connected || (loading || writing) || decoding" @click="sendTts">
         测试合成文本
       </el-button>
     </div>
@@ -871,7 +871,7 @@ export default {
       });
       if (voiceItem) {
         voiceItem.enable = val;
-        this.$set(this.options, index, voiceItem);
+        this.options.splice(index, 1, voiceItem);
       }
     },
     async saveHandle(type, data) {
@@ -1107,7 +1107,6 @@ export default {
 
     .el-button {
       height: 28px;
-      margin: 0 8px;
     }
 
     .left {

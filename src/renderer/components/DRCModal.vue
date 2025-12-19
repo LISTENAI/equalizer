@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     title="DRC"
-    :visible="show"
+    v-model="show"
     width="750px"
     top="50px"
     class="drc-dialog"
@@ -39,7 +39,7 @@
               controls-position="right"
               :min="bandsData[key - 1]?.x"
               :max="bandsData[key + 1]?.x"
-              size="mini"
+              size="small"
               @change="mutex = false"
             ></el-input-number>
             <span>Y</span>
@@ -48,7 +48,7 @@
               controls-position="right"
               :min="-100"
               :max="0"
-              size="mini"
+              size="small"
               @change="mutex = false"
             ></el-input-number>
             <span>W</span>
@@ -57,7 +57,7 @@
               controls-position="right"
               :min="0"
               :max="20"
-              size="mini"
+              size="small"
               @change="mutex = false"
             ></el-input-number>
             <span>dB</span>
@@ -71,7 +71,7 @@
               controls-position="right"
               :min="0"
               :max="100"
-              size="mini"
+              size="small"
             ></el-input-number>
             <i>ms</i>
           </div>
@@ -82,13 +82,13 @@
               controls-position="right"
               :min="0"
               :max="1000"
-              size="mini"
+              size="small"
             ></el-input-number>
             <i>ms</i>
           </div>
           <div class="list">
             <span>检测类型</span>
-            <el-select v-model="mode" size="mini">
+            <el-select v-model="mode" size="small">
               <el-option
                 v-for="type in types"
                 :label="type.label"
@@ -106,7 +106,7 @@
               :min="0"
               :max="100"
               :step="1"
-              size="mini"
+              size="small"
             ></el-input-number>
             <i>ms</i>
           </div>
@@ -114,14 +114,16 @@
       </div>
     </div>
 
-    <span slot="footer" class="dialog-footer">
-      <div class="fl">
-        <el-button @click="resetHandle">重置</el-button>
-        <el-checkbox v-model="enable">Bypass</el-checkbox>
-      </div>
-      <el-button type="primary" @click="saveHandle">确 定</el-button>
-      <el-button @click="beforeCloseHandle">取 消</el-button>
-    </span>
+    <template #footer>
+      <span class="dialog-footer">
+        <div class="fl flex">
+          <el-button @click="resetHandle">重置</el-button>
+          <el-checkbox v-model="enable">Bypass</el-checkbox>
+        </div>
+        <el-button type="primary" @click="saveHandle">确 定</el-button>
+        <el-button @click="beforeCloseHandle">取 消</el-button>
+      </span>
+    </template>
   </el-dialog>
 </template>
 
@@ -866,8 +868,8 @@ export default {
         }
       }
     }
-    .el-input-number--mini,
-    .el-select--mini {
+    .el-input-number--small,
+    .el-select--small {
       width: 72px;
     }
     .el-input-number.is-controls-right .el-input__inner {

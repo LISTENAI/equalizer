@@ -1,24 +1,24 @@
-import Vue from 'vue';
+import { createApp } from 'vue';
 import axios from 'axios';
 import App from './App';
 import router from './router';
 import store from './store';
-import './element';
 import Components from './components';
-import 'element-ui/lib/theme-chalk/index.css';
+import Element from './element';
+import 'element-plus/dist/index.css';
+import 'element-plus/theme-chalk/dark/css-vars.css';
 import '@/assets/scss/basic.scss';
-import * as electron from "electron";
+import * as electron from 'electron';
 import _ from 'lodash';
-Vue.prototype._ = _;
-Vue.http = Vue.prototype.$http = axios;
-Vue.electron = Vue.prototype.$electron = electron;
 
-Vue.config.productionTip = false;
-Vue.use(Components);
-/* eslint-disable no-new */
-new Vue({
-  components: { App },
-  router,
-  store,
-  template: '<App/>'
-}).$mount('#app');
+const app = createApp(App);
+app.config.globalProperties._ = _;
+app.config.globalProperties.$http = axios;
+app.config.globalProperties.$electron = electron;
+
+app.use(Components);
+app.use(Element);
+app.use(router);
+app.use(store);
+
+app.mount('#app');

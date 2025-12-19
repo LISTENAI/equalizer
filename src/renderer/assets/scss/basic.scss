@@ -59,12 +59,13 @@ html {
   color: $font-color;
 }
 
-.el-input__inner,
+.el-input__wrapper,
 .el-select-dropdown__item.is-disabled:hover {
   background-color: $grey5;
+  box-shadow: none;
 }
 
-.el-input.is-disabled .el-input__inner {
+.el-input.is-disabled .el-input__wrapper {
   border: none;
   color: #595959;
   background: rgba(255, 255, 255, 0.06);
@@ -124,22 +125,50 @@ html {
   color: $font-color;
 }
 
-.el-select--mini {
+.el-select__wrapper {
+  background-color: $grey5;
+  box-shadow: none;
+  padding-top: 0px;
+  padding-bottom: 0px;
+  min-height: 28px;
+}
+
+.el-select--small {
   width: 64px;
 }
 
-.el-select--mini .el-input__inner {
+.el-select--small .el-input__inner {
   padding-right: 20px;
   padding-left: 8px;
 }
 
-.el-select--mini .el-input .el-select__caret {
+.el-select--small .el-select__wrapper {
+  padding-left: 2px;
+  padding-right: 2px;
+}
+
+.el-select__placeholder {
+  padding-left: 4px;
+}
+
+.el-select--small .el-input .el-select__caret {
   font-size: 12px;
 }
 
+.el-select__wrapper.is-disabled {
+  box-shadow: none;
+}
 
+.el-input.is-disabled .el-input__wrapper {
+  box-shadow: none;
+}
 
-.el-input--mini .el-input__icon {
+.el-input__wrapper {
+  padding-top: 0px;
+  padding-bottom: 0px;
+}
+
+.el-input--small .el-input__icon {
   line-height: 20px;
   width: 16px;
 }
@@ -198,6 +227,7 @@ html {
 .el-dialog {
   background-color: $background;
   border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 0;
 }
 
 .el-dialog__title {
@@ -222,41 +252,59 @@ html {
 }
 
 .el-dialog__headerbtn {
-  top: 13px;
-  right: 16px;
+  top: 0;
+  right: 0;
 }
 
-.el-input-number--mini {
+.el-input-number--small {
   line-height: 20px;
   width: 72px;
 }
 
-.el-input--mini .el-input__inner {
+.el-input--small .el-input__inner {
   height: 20px;
   line-height: 20px;
 }
 
-.el-input-number--middle {
+.el-input--small .el-input__wrapper {
+  padding-top: 0px;
+  padding-bottom: 0px;
+}
+
+.el-input-number--default {
   line-height: 28px;
 }
 
-.el-input--middle .el-input__inner {
+.el-input--default .el-input__inner {
   height: 28px;
   line-height: 28px;
 }
 
-.el-input--middle .el-input__icon {
+.el-select__wrapper .el-select__selection {
+  height: 20px;
+  width: 32px;
+}
+
+.el-input-number--small.is-controls-right .el-input--small .el-input__wrapper {
+  padding-right: 15px;
+}
+
+.el-autocomplete:has(.el-input--default) {
+  width: 160px;
+}
+
+.el-input--default .el-input__icon {
   line-height: 28px;
 }
 
-.el-input-number.is-controls-right[class*=mini] [class*=decrease],
-.el-input-number.is-controls-right[class*=mini] [class*=increase] {
+.el-input-number.is-controls-right[class*=small] [class*=decrease],
+.el-input-number.is-controls-right[class*=small] [class*=increase] {
   line-height: 10px;
   height: 10px;
 }
 
-.el-input-number--mini .el-input-number__decrease,
-.el-input-number--mini .el-input-number__increase {
+.el-input-number--small .el-input-number__decrease,
+.el-input-number--small .el-input-number__increase {
   width: 16px;
 }
 
@@ -283,11 +331,11 @@ html {
   color: #595959;
 }
 
-.el-input--mini.is-disabled .el-select__caret {
+.el-input--small.is-disabled .el-select__caret {
   color: #595959;
 }
 
-.el-input-number.is-controls-right .el-input__inner {
+.el-input-number.is-controls-right .el-input__wrapper {
   padding-right: 15px;
   padding-left: 8px;
 }

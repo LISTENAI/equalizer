@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     title="EQ均衡器"
-    :visible="show"
+    v-model="show"
     width="880px"
     top="40px"
     class="eq-dialog"
@@ -41,7 +41,7 @@
             controls-position="right"
             :min="boundaryVal.minFC"
             :max="boundaryVal.maxFC"
-            size="mini"
+            size="small"
             :disabled="!item.enable"
             @change="mutex = false"
           ></el-input-number>
@@ -52,7 +52,7 @@
             :max="boundaryVal.maxdB"
             :precision="1"
             :step="0.1"
-            size="mini"
+            size="small"
             :disabled="!item.enable"
             @change="mutex = false"
           ></el-input-number>
@@ -63,13 +63,13 @@
             :max="boundaryVal.maxQ"
             :precision="3"
             :step="0.001"
-            size="mini"
+            size="small"
             :disabled="!item.enable"
             @change="mutex = false"
           ></el-input-number>
           <el-select
             v-model="item.type"
-            size="mini"
+            size="small"
             :ref="'select' + key"
             @change="changeType($event, key)"
             popper-class="type-select"
@@ -77,8 +77,8 @@
           >
             <el-option
               v-for="type in types"
-              :label="type.label"
               :value="type.val"
+              label=""
               :key="type.val"
             >
               <p class="type-label">
@@ -94,14 +94,16 @@
       </div>
     </div>
 
-    <span slot="footer" class="dialog-footer">
-      <div class="fl">
-        <el-button @click="resetHandle">重置</el-button>
-        <el-checkbox v-model="enable">Bypass</el-checkbox>
+    <template #footer>
+      <div class="dialog-footer">
+        <div class="fl flex">
+          <el-button @click="resetHandle">重置</el-button>
+          <el-checkbox v-model="enable">Bypass</el-checkbox>
+        </div>
+        <el-button type="primary" @click="saveHandle">确 定</el-button>
+        <el-button @click="beforeCloseHandle">取 消</el-button>
       </div>
-      <el-button type="primary" @click="saveHandle">确 定</el-button>
-      <el-button @click="beforeCloseHandle">取 消</el-button>
-    </span>
+    </template>
   </el-dialog>
 </template>
 
@@ -762,7 +764,7 @@ export default {
         border-radius: 4px;
       }
     }
-    .el-input-number--mini {
+    .el-input-number--small {
       width: 64px;
     }
     .el-input-number.is-controls-right .el-input__inner {

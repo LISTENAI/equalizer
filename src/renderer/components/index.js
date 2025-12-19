@@ -7,9 +7,9 @@ import SvgIcon from './SvgIcon';
 const components = [SvgIcon];
 
 export default {
-  install(Vue) {
+  install(app) {
     components.map(component => {
-      Vue.component(component.name, component);
+      app.component(component.name, component);
     });
     const req = require.context('../assets/svg', false, /\.svg$/);
     const requireAll = requireContext =>
