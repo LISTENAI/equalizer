@@ -1,132 +1,132 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.writeToBinFile = exports.drcDrawPoints = exports.eqDrawPoints = void 0;
-const capi_1 = require("./capi");
-const stru_1 = require("./stru");
-const stru_2 = require("./stru");
-const stru_3 = require("./stru");
-const stru_4 = require("./stru");
-const eqDrawPoints = (eqData, chartConf) => {
-    const filterprms = new stru_1.StruFiltersPrm();
-    eqData.filters && eqData.filters.forEach((filter, index) => {
-        filterprms[index] = new stru_1.struFilterPrm({
-            FilterEnable: filter.enable,
-            FilterType: filter.type,
-            fSampleRateHz: filter.dSampleRateHz,
-            fQ: filter.q,
-            fDbGain: filter.gain,
-            fFreqHz: filter.fc,
-        });
+import { iflytekEqDraw, iflytekBinHandle } from './capi.js';
+import * as stru from './stru.js';
+
+const POINTS_X_NUM = stru.Constants ? stru.Constants.POINTS_X_DEFAULT : 840; // keep original fixed resolution used by native lib
+
+function buildFilterPrms(filters) {
+    const filterPrms = [];
+    filters.forEach((filter, idx) => {
+        // support both object form and array form
+        const params = Array.isArray(filter)
+            ? {
+                FilterEnable: filter[0],
+                FilterType: filter[1],
+                fSampleRateHz: filter[2],
+                fQ: filter[3],
+                fDbGain: filter[4],
+                fFreqHz: filter[5],
+            }
+            : {
+                FilterEnable: filter.enable,
+                FilterType: filter.type,
+                fSampleRateHz: filter.dSampleRateHz,
+                fQ: filter.q,
+                fDbGain: filter.gain,
+                fFreqHz: filter.fc,
+            };
+        filterPrms[idx] = params;
     });
-    const monoEqPrm = new stru_1.struMonoEqPrm({
-        Enable: Number(eqData.enable),
+    return filterPrms;
+}
+
+function parsePointsFromResult(result, arrKey = 'points') {
+    const list = [];
+    for (let i = 0; i < result.arr_size; i++) {
+        list.push([parseFloat(result[arrKey][i][0].toFixed(6)), parseFloat(result[arrKey][i][1].toFixed(6))]);
+    }
+    return list;
+}
+
+function parseDotsFromResult(result) {
+    const list = [];
+    for (let i = 0; i < result.dot_size; i++) {
+        list.push([parseFloat(result.dots[i].X.toFixed(0)), parseFloat(result.dots[i].Y.toFixed(0)), parseFloat(result.dots[i].W.toFixed(0))]);
+    }
+    return list;
+}
+
+export const eqDrawPoints = (eqData, chartConf) => {
+    const filterprms = buildFilterPrms(eqData && eqData.filters);
+    const monoEqPrm = {
+        Enable: Number(eqData && eqData.enable),
         FilterPrm: filterprms
-    });
-    const xyData = new stru_1.struUIXYInfo({
+    };
+    const xyData = {
         startFreq: chartConf.startFreq,
         endFreq: chartConf.endFreq,
         startGain: chartConf.startGain,
         endGain: chartConf.endGain,
-        xNum: 840,
+        xNum: POINTS_X_NUM,
         yNum: chartConf.yNum
-    });
-    let eqdrawdata = (capi_1.iflytekEqDraw.eqDrawPoints(monoEqPrm.ref(), xyData.ref())).deref();
-    const json = {
-        ret: eqdrawdata.ret,
-        arr_size: eqdrawdata.arr_size,
-        points: []
     };
-    for (let i = 0; i < eqdrawdata.arr_size; i++) {
-        json.points.push([parseFloat((eqdrawdata.points)[i][0].toFixed(6)), parseFloat((eqdrawdata.points)[i][1].toFixed(6))]);
-    }
+    const raw = iflytekEqDraw.eqDrawPoints(monoEqPrm, xyData);
+    const json = {
+        ret: raw.ret,
+        arr_size: raw.arr_size,
+        points: parsePointsFromResult(raw, 'points')
+    };
     const data = JSON.parse(JSON.stringify(json));
-    capi_1.iflytekEqDraw.freePoints(eqdrawdata.ref());
     return data;
 };
-exports.eqDrawPoints = eqDrawPoints;
-const drcDrawPoints = (drcData, chartConf) => {
-    const dotprms = new stru_3.struDots();
-    drcData.dots && drcData.dots.forEach((dot, index) => {
-        dotprms[index] = new stru_3.struDrcDot({
-            X: dot[0],
-            Y: dot[1],
-            W: dot[2]
-        });
+
+export const drcDrawPoints = (drcData, chartConf) => {
+    const dotPrms = [];
+    (drcData && drcData.dots || []).forEach((dot, idx) => {
+        dotPrms[idx] = { X: dot[0], Y: dot[1], W: dot[2] };
     });
-    const monoDrcPrm = new stru_3.struDrcPrm({
-        iEnable: Number(drcData.enable),
-        Fs: drcData.fs,
-        At: drcData.at,
-        Rt: drcData.rt,
-        Type: drcData.mode,
-        RmsTime: drcData.rms,
-        SegNum: drcData.seg,
-        Dot: dotprms
-    });
-    const xyData = new stru_3.struUIDrcInfo({
+    const monoDrcPrm = {
+        iEnable: Number(drcData && drcData.enable),
+        Fs: drcData && drcData.fs,
+        At: drcData && drcData.at,
+        Rt: drcData && drcData.rt,
+        Type: drcData && drcData.mode,
+        RmsTime: drcData && drcData.rms,
+        SegNum: drcData && drcData.seg,
+        Dot: dotPrms
+    };
+    const xyData = {
         WidthX: chartConf.WidthX,
         HeightY: chartConf.HeightY,
         startXGain: chartConf.startXGain,
         endXGain: chartConf.endXGain,
         startYGain: chartConf.startYGain,
         endYGain: chartConf.endYGain
-    });
-    let drcDrawdata = (capi_1.iflytekEqDraw.drcDrawPoints(monoDrcPrm.ref(), xyData.ref())).deref();
-    const json = {
-        ret: drcDrawdata.ret,
-        arr_size: drcDrawdata.arr_size,
-        dot_size: drcDrawdata.dot_size,
-        points: [],
-        dots: []
     };
-    for (let i = 0; i < drcDrawdata.arr_size; i++) {
-        json.points.push([parseFloat((drcDrawdata.points)[i][0].toFixed(6)), parseFloat((drcDrawdata.points)[i][1].toFixed(6))]);
-    }
-    for (let i = 0; i < drcDrawdata.dot_size; i++) {
-        json.dots.push([parseFloat((drcDrawdata.dots)[i].X.toFixed(0)), parseFloat((drcDrawdata.dots)[i].Y.toFixed(0)), parseFloat((drcDrawdata.dots)[i].W.toFixed(0))]);
-    }
+    const raw = iflytekEqDraw.drcDrawPoints(monoDrcPrm, xyData);
+    const json = {
+        ret: raw.ret,
+        arr_size: raw.arr_size,
+        dot_size: raw.dot_size,
+        points: parsePointsFromResult(raw, 'points'),
+        dots: parseDotsFromResult(raw)
+    };
     const data = JSON.parse(JSON.stringify(json));
-    capi_1.iflytekEqDraw.freeDrcPoints(drcDrawdata.ref());
     return data;
 };
-exports.drcDrawPoints = drcDrawPoints;
-const writeToBinFile = (binfile, audioConf) => {
-    const bassBoost = audioConf.bass_boost && new stru_2.struBassBoostPrm({
+
+export const writeToBinFile = (binfile, audioConf) => {
+    const bassBoost = audioConf && audioConf.bass_boost && {
         iEnable: Number(audioConf.bass_boost.enable),
         fFs: audioConf.bass_boost.fs,
         fDbGain: audioConf.bass_boost.gain,
         fFreqHz: audioConf.bass_boost.freq,
-    });
-    const trebleoost = audioConf.treble_boost && new stru_2.struTrebleBoostPrm({
+    };
+    const trebleoost = audioConf && audioConf.treble_boost && {
         iEnable: Number(audioConf.treble_boost.enable),
         fFs: audioConf.treble_boost.fs,
         fDbGain: audioConf.treble_boost.gain,
         fFreqHz: audioConf.treble_boost.freq,
-    });
-    const filterprms = audioConf.eq && new stru_1.StruFiltersPrm();
-    audioConf.eq && audioConf.eq.filters && audioConf.eq.filters.forEach((filter, index) => {
-        filterprms[index] = new stru_1.struFilterPrm({
-            FilterEnable: filter[0],
-            FilterType: filter[1],
-            fSampleRateHz: filter[2],
-            fQ: filter[3],
-            fDbGain: filter[4],
-            fFreqHz: filter[5],
-        });
-    });
-    const monoEqPrm = audioConf.eq && new stru_1.struMonoEqPrm({
+    };
+    const filterprms = buildFilterPrms(audioConf && audioConf.eq && audioConf.eq.filters);
+    const monoEqPrm = audioConf && audioConf.eq && {
         Enable: Number(audioConf.eq.enable),
         FilterPrm: filterprms
+    };
+    const dots = [];
+    (audioConf && audioConf.drc && audioConf.drc.dots || []).forEach((dot, idx) => {
+        dots[idx] = { X: dot[0], Y: dot[1], W: dot[2] };
     });
-    const dots = new stru_3.struDots();
-    audioConf.drc && audioConf.drc.dots && audioConf.drc.dots.forEach((dot, index) => {
-        dots[index] = new stru_3.struDrcDot({
-            X: dot[0],
-            Y: dot[1],
-            W: dot[2]
-        });
-    });
-    const drc = audioConf.drc && new stru_3.struDrcPrm({
+    const drc = audioConf && audioConf.drc && {
         iEnable: Number(audioConf.drc.enable),
         Fs: audioConf.drc.fs,
         At: audioConf.drc.at,
@@ -135,20 +135,18 @@ const writeToBinFile = (binfile, audioConf) => {
         RmsTime: audioConf.drc.rms,
         SegNum: audioConf.drc.seg,
         Dot: dots
-    });
-    const gain = audioConf.agc && new stru_2.struGainPrm({
+    };
+    const gain = audioConf && audioConf.agc && {
         iEnable: Number(audioConf.agc.enable),
         dSampleRate: audioConf.agc.sr,
         dVolume: audioConf.agc.vol
-    });
-    const audioPrm = new stru_4.struAudioPrm({
+    };
+    const audioPrm = {
         BassBoostPrm: bassBoost,
         TrebleoostPrm: trebleoost,
         PeqPrm: monoEqPrm,
         DrcPrm: drc,
         GainPrm: gain
-    });
-    const res = capi_1.iflytekBinHandle.writeToBinFile(binfile, audioPrm.ref());
-    return res;
+    };
+    return iflytekBinHandle.writeToBinFile(binfile, audioPrm);
 };
-exports.writeToBinFile = writeToBinFile;

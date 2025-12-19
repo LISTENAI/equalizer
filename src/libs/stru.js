@@ -1,121 +1,116 @@
-"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
+import koffi from 'koffi';
+
+// Constants (keep in sync with native expectations)
+export const POINTS_X_DEFAULT = 840; // default number of points for EQ drawing
+export const DRC_POINTS_MAX = 315; // max number of points for DRC drawing
+
+// === DRC (Dynamic Range Compression) structures ===
+/**
+ * Single DRC control point
+ * @property {float} X
+ * @property {float} Y
+ * @property {float} W
+ */
+export const struDrcDot = koffi.struct('struDrcDot', {
+    X: 'float',
+    Y: 'float',
+    W: 'float'
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.struDrcDrawResult = exports.struEqDrawResult = exports.struUIDrcInfo = exports.struUIXYInfo = exports.struAudioPrm = exports.struMonoEqPrm = exports.StruFiltersPrm = exports.struFilterPrm = exports.struGainPrm = exports.struTrebleBoostPrm = exports.struBassBoostPrm = exports.struDrcPrm = exports.struDots = exports.struDrcDot = void 0;
-const ref = __importStar(require("ref-napi"));
-const StructType = require('ref-struct-di')(ref);
-const ArrayType = require('ref-array-di')(ref);
-// === drc 结构体 ===
-exports.struDrcDot = StructType({
-    X: ref.types.float,
-    Y: ref.types.float,
-    W: ref.types.float
+
+// Fixed-length array of DRC points (native expects length 7)
+export const struDots = koffi.array('struDrcDot', 7);
+
+/**
+ * Full DRC parameter structure. Field order and types must match native layout.
+ */
+export const struDrcPrm = koffi.struct('struDrcPrm', {
+    iEnable: 'int',
+    Fs: 'float',
+    At: 'float',
+    Rt: 'float',
+    Type: 'int',
+    RmsTime: 'float',
+    SegNum: 'int',
+    Dot: struDots
 });
-exports.struDots = ArrayType(exports.struDrcDot, 7); //TODO: length should be dynamically defined in variable file
-exports.struDrcPrm = StructType({
-    iEnable: ref.types.int,
-    Fs: ref.types.float,
-    At: ref.types.float,
-    Rt: ref.types.float,
-    Type: ref.types.int,
-    RmsTime: ref.types.float,
-    SegNum: ref.types.int,
-    Dot: exports.struDots
-});
+
 // === 低音增强结构体 ===
-exports.struBassBoostPrm = StructType({
-    iEnable: ref.types.int,
-    fFs: ref.types.float,
-    fDbGain: ref.types.float,
-    fFreqHz: ref.types.float,
+export const struBassBoostPrm = koffi.struct('struBassBoostPrm', {
+    iEnable: 'int',
+    fFs: 'float',
+    fDbGain: 'float',
+    fFreqHz: 'float',
 });
+
 // === 高音增强结构体 ===
-exports.struTrebleBoostPrm = StructType({
-    iEnable: ref.types.int,
-    fFs: ref.types.float,
-    fDbGain: ref.types.float,
-    fFreqHz: ref.types.float,
+export const struTrebleBoostPrm = koffi.struct('struTrebleBoostPrm', {
+    iEnable: 'int',
+    fFs: 'float',
+    fDbGain: 'float',
+    fFreqHz: 'float',
 });
+
 // === 增益输出结构体 ===
-exports.struGainPrm = StructType({
-    iEnable: ref.types.int,
-    dSampleRate: ref.types.float,
-    dVolume: ref.types.float
+export const struGainPrm = koffi.struct('struGainPrm', {
+    iEnable: 'int',
+    dSampleRate: 'float',
+    dVolume: 'float'
 });
-// === eq 结构体 ===
-exports.struFilterPrm = StructType({
-    FilterEnable: ref.types.uchar,
-    FilterType: ref.types.uchar,
-    fSampleRateHz: ref.types.float,
-    fQ: ref.types.float,
-    fDbGain: ref.types.float,
-    fFreqHz: ref.types.float
+
+// === EQ 结构体 ===
+export const struFilterPrm = koffi.struct('struFilterPrm', {
+    FilterEnable: 'uint8',
+    FilterType: 'uint8',
+    fSampleRateHz: 'float',
+    fQ: 'float',
+    fDbGain: 'float',
+    fFreqHz: 'float'
 });
-exports.StruFiltersPrm = ArrayType(exports.struFilterPrm, 10);
-exports.struMonoEqPrm = StructType({
-    Enable: ref.types.int,
-    FilterPrm: exports.StruFiltersPrm
+export const StruFiltersPrm = koffi.array('struFilterPrm', 10);
+export const struMonoEqPrm = koffi.struct('struMonoEqPrm', {
+    Enable: 'int',
+    FilterPrm: StruFiltersPrm
 });
+
 // === 下行音频 结构体 ===
-exports.struAudioPrm = StructType({
-    BassBoostPrm: exports.struBassBoostPrm,
-    TrebleoostPrm: exports.struTrebleBoostPrm,
-    PeqPrm: exports.struMonoEqPrm,
-    DrcPrm: exports.struDrcPrm,
-    GainPrm: exports.struGainPrm
+export const struAudioPrm = koffi.struct('struAudioPrm', {
+    BassBoostPrm: struBassBoostPrm,
+    TrebleBoostPrm: struTrebleBoostPrm,
+    PeqPrm: struMonoEqPrm,
+    DrcPrm: struDrcPrm,
+    GainPrm: struGainPrm
 });
-// === eq曲线图 结构体 ===
-exports.struUIXYInfo = StructType({
-    startFreq: ref.types.double,
-    endFreq: ref.types.double,
-    startGain: ref.types.double,
-    endGain: ref.types.double,
-    xNum: ref.types.int,
-    yNum: ref.types.int
+
+// === EQ 曲线图 结构体 ===
+export const struUIXYInfo = koffi.struct('struUIXYInfo', {
+    startFreq: 'double',
+    endFreq: 'double',
+    startGain: 'double',
+    endGain: 'double',
+    xNum: 'int',
+    yNum: 'int'
 });
-exports.struUIDrcInfo = StructType({
-    WidthX: ref.types.int,
-    HeightY: ref.types.int,
-    startXGain: ref.types.float,
-    endXGain: ref.types.float,
-    startYGain: ref.types.float,
-    endYGain: ref.types.float
+export const struUIDrcInfo = koffi.struct('struUIDrcInfo', {
+    WidthX: 'int',
+    HeightY: 'int',
+    startXGain: 'float',
+    endXGain: 'float',
+    startYGain: 'float',
+    endYGain: 'float'
 });
-const point = ArrayType(ref.types.double, 2);
-const points = ArrayType(point, 840);
-const drcPoints = ArrayType(point, 315);
-exports.struEqDrawResult = StructType({
-    ret: ref.types.int,
-    arr_size: ref.types.int,
+const point = koffi.array('double', 2);
+const points = koffi.array(point, 840);
+const drcPoints = koffi.array(point, 315);
+export const struEqDrawResult = koffi.struct('struEqDrawResult', {
+    ret: 'int',
+    arr_size: 'int',
     points: points
 });
-exports.struDrcDrawResult = StructType({
-    ret: ref.types.int,
-    arr_size: ref.types.int,
-    dot_size: ref.types.int,
+export const struDrcDrawResult = koffi.struct('struDrcDrawResult', {
+    ret: 'int',
+    arr_size: 'int',
+    dot_size: 'int',
     points: drcPoints,
-    fs: ref.types.float,
-    dots: exports.struDots
+    fs: 'float',
+    dots: struDots
 });
