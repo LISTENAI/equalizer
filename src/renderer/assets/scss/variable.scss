@@ -3,18 +3,19 @@
  */
 
 $primary: #0568FF;
-$primary-light-12: mix(#fff, $primary, 88%);
-$primary-light-50: mix(#fff, $primary, 50%);
-$primary-light-10: mix(#fff, $primary, 90%);
-$primary-light-7: mix(#fff, $primary, 93%);
-$primary-light-5: mix(#fff, $primary, 95%);
+@use 'sass:color';
+$primary-light-12: color.mix(#fff, $primary, 88%);
+$primary-light-50: color.mix(#fff, $primary, 50%);
+$primary-light-10: color.mix(#fff, $primary, 90%);
+$primary-light-7: color.mix(#fff, $primary, 93%);
+$primary-light-5: color.mix(#fff, $primary, 95%);
 $success: #3FBF70;
-$success-light-12: mix(#fff, $success, 88%);
-$success-light-30: mix(#fff, $success, 70%);
+$success-light-12: color.mix(#fff, $success, 88%);
+$success-light-30: color.mix(#fff, $success, 70%);
 $warning: #ffa400;
-$warning-light-12: mix(#fff, $warning, 88%);
+$warning-light-12: color.mix(#fff, $warning, 88%);
 $danger: #ff3838;
-$danger-light-12: mix(#fff, $danger, 88%);
+$danger-light-12: color.mix(#fff, $danger, 88%);
 
 $semi-black: #262626;
 

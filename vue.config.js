@@ -13,7 +13,7 @@ module.exports = {
     // css预设器配置项
     loaderOptions: {
       sass: {
-        prependData: `@import "@/assets/scss/variable";`
+        prependData: `@use "@/assets/scss/variable" as *;`
       }
     }
   },
