@@ -2,50 +2,88 @@
   "name": "LSAudio",
   "version": "1.0.3",
   "private": true,
+  "main": "./out/main/index.js",
   "scripts": {
-    "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build",
-    "lint": "vue-cli-service lint",
-    "electron:build": "vue-cli-service electron:build",
+    "dev": "electron-vite dev --watch",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "lint": "eslint .",
     "predev": "node ffmpeg/prepare.js",
-    "dev": "vue-cli-service electron:serve",
+    "electron:build": "electron-vite build && electron-builder",
     "postinstall": "electron-builder install-app-deps",
     "postuninstall": "electron-builder install-app-deps"
   },
-  "main": "background.js",
   "dependencies": {
+    "@electron-toolkit/utils": "^4.0.0",
     "axios": "^1.2.2",
     "core-js": "^3.6.5",
     "echarts": "^5.4.1",
-    "electron": "^21.4.4",
     "electron-devtools-installer": "^3.2.0",
     "element-plus": "^2.3.0",
     "fluent-ffmpeg-7": "^2.1.5",
+    "iconv-lite": "^0.7.1",
     "koffi": "^2.14.1",
     "serialport": "^12.0.0",
-    "svg-sprite-loader": "^6.0.11",
-    "vue": "^3.2.47",
+    "vue": "^3.5.26",
     "vue-router": "^4.2.0",
     "vuex": "^4.1.0"
   },
   "devDependencies": {
-    "@vue/cli-plugin-babel": "~4.5.19",
-    "@vue/cli-plugin-eslint": "~4.5.19",
-    "@vue/cli-plugin-router": "~4.5.19",
-    "@vue/cli-plugin-vuex": "~4.5.19",
-    "@vue/cli-service": "~4.5.19",
-    "@vue/eslint-config-prettier": "^6.0.0",
-    "babel-eslint": "^10.1.0",
-    "babel-plugin-component": "^1.1.1",
-    "electron-rebuild": "^3.2.9",
-    "eslint": "^6.7.2",
-    "eslint-plugin-prettier": "^3.3.1",
-    "eslint-plugin-vue": "^6.2.2",
-    "loadsh": "^0.0.4",
-    "prettier": "^2.2.1",
-    "sass": "^1.26.5",
-    "sass-loader": "^8.0.2",
-    "vue-cli-plugin-electron-builder": "^2.1.1",
-    "@vue/compiler-sfc": "^3.2.47"
+    "@vitejs/plugin-vue": "^6.0.3",
+    "@vue/eslint-config-prettier": "^10.2.0",
+    "electron": "^21.4.4",
+    "electron-builder": "^24.13.3",
+    "electron-vite": "^5.0.0",
+    "eslint": "^9.39.2",
+    "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-vue": "^10.6.2",
+    "eventemitter3": "^5.0.1",
+    "fast-glob": "^3.3.2",
+    "lodash": "^4.17.21",
+    "prettier": "^3.7.4",
+    "sass": "^1.66.1",
+    "vite": "^7.3.0",
+    "vite-plugin-svg-icons": "^2.0.1"
+  },
+  "build": {
+    "productName": "LSAudio",
+    "appId": "listenai.com",
+    "copyright": "listenai",
+    "compression": "store",
+    "directories": {},
+    "extraResources": [
+      {
+        "from": "./dlls",
+        "to": "../dlls"
+      },
+      {
+        "from": "ffmpeg/ffmpeg.exe",
+        "to": "../ffmpeg.exe"
+      }
+    ],
+    "win": {
+      "icon": "./public/LSAudio256.ico",
+      "target": [
+        "nsis",
+        "zip"
+      ]
+    },
+    "mac": {
+      "target": {
+        "target": "dir",
+        "arch": "arm64"
+      }
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "./public/LSAudio256.ico",
+      "installerHeaderIcon": "./public/LSAudio256.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "LSAudio"
+    }
   }
 }

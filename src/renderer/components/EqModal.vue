@@ -84,7 +84,7 @@
               <p class="type-label">
                 <span>{{ type.label }}</span>
                 <img
-                  :src="require('@/assets/imgs/' + type.imgUrl)"
+                  :src="type.imageUrl"
                   class="type-img"
                 />
               </p>
@@ -111,6 +111,11 @@
 import * as echarts from 'echarts';
 import _ from 'lodash';
 import { mapState } from 'vuex';
+import eqLowPassImg from '../assets/imgs/eq_LowPass.png';
+import eqHighPassImg from '../assets/imgs/eq_HighPass.png';
+import eqPeakingImg from '../assets/imgs/eq_Peaking.png';
+import eqLowShelfImg from '../assets/imgs/eq_lowShelf.png';
+import eqHighShelfImg from '../assets/imgs/eq_HighShelf.png';
 
 export default {
   name: 'EqModal',
@@ -162,27 +167,27 @@ export default {
         {
           val: 0,
           label: 'LowPass',
-          imgUrl: 'eq_LowPass.png',
+          imageUrl: eqLowPassImg,
         },
         {
           val: 1,
           label: 'HighPass',
-          imgUrl: 'eq_HighPass.png',
+          imageUrl: eqHighPassImg,
         },
         {
           val: 2,
           label: 'Peaking',
-          imgUrl: 'eq_Peaking.png',
+          imageUrl: eqPeakingImg,
         },
         {
           val: 3,
           label: 'lowShelf',
-          imgUrl: 'eq_lowShelf.png',
+          imageUrl: eqLowShelfImg,
         },
         {
           val: 4,
           label: 'HighShelf',
-          imgUrl: 'eq_HighShelf.png',
+          imageUrl: eqHighShelfImg,
         },
       ],
       bandsData: this.eqData,
@@ -298,7 +303,7 @@ export default {
         xNum: 280,
         yNum: 370,
       };
-      const res = await this.$electron.ipcRenderer.invoke(
+      const res = await window.ipcRenderer.invoke(
         'eq-draw',
         params,
         options
@@ -352,6 +357,9 @@ export default {
     },
     initChart() {
       const that = this;
+      if (this.chartDom) {
+        echarts.dispose(this.chartDom);
+      }
       this.chartDom = echarts && echarts.init(this.$refs.dom);
       const markLineArr = this.getMarkLineArr();
       const option = {
@@ -637,7 +645,7 @@ export default {
     changeTypeImg(key, item) {
       const typeObj = this.types.find((type) => item.type === type.val);
       const opacity = item.enable ? 1 : 0.5;
-      const img = typeObj?.imgUrl && require('@/assets/imgs/' + typeObj.imgUrl);
+      const img = typeObj?.imageUrl;
       img &&
         this.$refs[
           'select' + key
@@ -653,7 +661,7 @@ export default {
     changeType(e, key) {
       this.mutex = false;
       const item = this.types.find((item) => item.val === e);
-      const img = item?.imgUrl && require('@/assets/imgs/' + item.imgUrl);
+      const img = item?.imageUrl;
       this.$refs['select' + key][0].$el.children[0].children[0].setAttribute(
         'style',
         'background-image:url(' +

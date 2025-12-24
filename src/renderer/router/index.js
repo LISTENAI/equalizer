@@ -1,10 +1,12 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
 
+import Main from '@/pages/main.vue';
+
 const routes = [
   {
     path: '/',
     name: 'landing-page',
-    component: () => import('@/pages/main')
+    component: Main
   },
   {
     path: '/:pathMatch(.*)*',

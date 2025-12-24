@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     title="项目配置"
-    :visible="show"
+    v-model="show"
     width="500px"
     class="project-dialog"
     :destroy-on-close="true"
@@ -40,10 +40,12 @@
         </el-form-item>
       </el-form>
     </div>
-    <span slot="footer" class="dialog-footer">
-      <el-button type="primary" @click="saveHandle">确 定</el-button>
-      <el-button @click="() => (show = false)">取 消</el-button>
-    </span>
+    <template #footer>
+      <span class="dialog-footer">
+        <el-button type="primary" @click="saveHandle">确 定</el-button>
+        <el-button @click="() => (show = false)">取 消</el-button>
+      </span>
+    </template>
   </el-dialog>
 </template>
 <script>
@@ -87,7 +89,7 @@ export default {
   mounted() {},
   methods: {
     async selsectDict() {
-      const res = await this.$electron.ipcRenderer.invoke('open-dict');
+      const res = await window.ipcRenderer.invoke('open-dict');
       if (res) this.formData.pathStr = res;
     },
     saveHandle() {
@@ -112,7 +114,7 @@ export default {
 <style lang="scss" scoped>
 .project-dialog {
   .el-form-item {
-    margin-bottom: 10px;
+    margin-bottom: 20px;
   }
 
   .dialog-footer {

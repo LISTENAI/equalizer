@@ -129,6 +129,7 @@
 
 <script>
 import * as echarts from 'echarts';
+import _ from 'lodash';
 export default {
   props: {
     drcData: {
@@ -322,7 +323,7 @@ export default {
         startYGain: minY,
         endYGain: maxY,
       };
-      const res = await this.$electron.ipcRenderer.invoke(
+      const res = await window.ipcRenderer.invoke(
         'drc-draw',
         params,
         options

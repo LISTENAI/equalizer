@@ -1,16 +1,14 @@
 import koffi from 'koffi';
 import path from 'path';
 import * as stru from './stru';
+import { is } from '@electron-toolkit/utils';
 
-// __static is provided by electron-builder at runtime; join to the dlls dir
-let binDllPath = path.join(__static, 'dlls');
-const isDevelopment = process.env.NODE_ENV !== 'production';
-if (isDevelopment) {
-    // resolve path differences when running in dev vs packaged app
-    binDllPath = binDllPath.replace('\\public\\', '\\');
-}
-else {
-    binDllPath = binDllPath.replace('\\resources\\app.asar\\', '\\');
+// Resolve static path for native dlls, compatible with Vite/Electron build
+const staticRoot = is.dev ? process.cwd() : process.resourcesPath;
+
+let binDllPath = path.join(staticRoot, 'dlls');
+if (!is.dev) {
+  binDllPath = binDllPath.replace('\\resources\\app.asar\\', '\\');
 }
 
 const detectArchFolder = function () {

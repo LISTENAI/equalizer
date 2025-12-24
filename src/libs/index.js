@@ -1,7 +1,7 @@
 import { iflytekEqDraw, iflytekBinHandle } from './capi.js';
-import * as stru from './stru.js';
+import { POINTS_X_DEFAULT } from './stru.js';
 
-const POINTS_X_NUM = stru.Constants ? stru.Constants.POINTS_X_DEFAULT : 840; // keep original fixed resolution used by native lib
+const POINTS_X_NUM = POINTS_X_DEFAULT; // keep original fixed resolution used by native lib
 
 function buildFilterPrms(filters) {
     const filterPrms = [];

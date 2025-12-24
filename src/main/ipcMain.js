@@ -1,5 +1,5 @@
 
-import { ipcMain, BrowserWindow } from 'electron';
+import { ipcMain, BrowserWindow, shell } from 'electron';
 import drawHandle from './draw';
 import ProjectHandle from './project';
 import serialport from './serialport';
@@ -8,11 +8,11 @@ import file from './file';
 let mainWindow = null;
 function IpcMainHandle(window) {
   mainWindow = window;
-  BrowserWindow.getFocusedWindow().on('maximize', () => {
+  window.on('maximize', () => {
     let focusWindow = BrowserWindow.getFocusedWindow();
     focusWindow.webContents.send('windowChange', { isMaximized: focusWindow.isMaximized() });
   });
-  BrowserWindow.getFocusedWindow().on('unmaximize', () => {
+  window.on('unmaximize', () => {
     let focusWindow = BrowserWindow.getFocusedWindow();
     focusWindow.webContents.send('windowChange', { isMaximized: focusWindow.isMaximized() });
   });
@@ -20,17 +20,20 @@ function IpcMainHandle(window) {
     mainWindow = null;
   });
   ipcMain.on('window-min', function () {
-    BrowserWindow.getFocusedWindow().minimize();
+    window.minimize();
   });
   ipcMain.on('window-max', function () {
-    if (BrowserWindow.getFocusedWindow().isMaximized()) {
-      BrowserWindow.getFocusedWindow().restore();
+    if (window.isMaximized()) {
+      window.restore();
     } else {
-      BrowserWindow.getFocusedWindow().maximize();
+      window.maximize();
     }
   });
   ipcMain.on('window-close', function () {
-    BrowserWindow.getFocusedWindow().close();
+    window.close();
+  });
+  ipcMain.on('open-external', function (event, url) {
+    shell.openExternal(url);
   });
 
   ProjectHandle();

@@ -59,18 +59,25 @@ export const buf2Hex = (buf) => {
 };
 
 Array.prototype.writeInt = function (data) {
-  const buf = Buffer.allocUnsafe(4);
-  buf.writeInt32LE(parseInt(Number(data)), 0);
-  for (let i = 0; i < buf.length; i++) {
-    this.push(buf[i]);
+  const buffer = new ArrayBuffer(4)
+  const view = new DataView(buffer)
+
+  view.setInt32(0, Number.parseInt(data, 10), true) // true = little endian
+
+  const bytes = new Uint8Array(buffer)
+  for (let i = 0; i < bytes.length; i++) {
+    this.push(bytes[i])
   }
 };
-
 Array.prototype.writeFloat = function (data) {
-  const buf = Buffer.allocUnsafe(4);
-  buf.writeFloatLE(data, 0);
-  for (let i = 0; i < buf.length; i++) {
-    this.push(buf[i]);
+  const buffer = new ArrayBuffer(4)
+  const view = new DataView(buffer)
+
+  view.setFloat32(0, Number(data), true)
+
+  const bytes = new Uint8Array(buffer)
+  for (let i = 0; i < bytes.length; i++) {
+    this.push(bytes[i])
   }
 };
 

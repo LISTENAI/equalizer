@@ -1,6 +1,6 @@
 <template>
   <div class="top-bar flex">
-    <img class="logo" :src="require('@/assets/imgs/lsAudio.png')" />
+    <img class="logo" :src="logoUrl" />
     <div class="top-menu flex">
       <div v-for="(menu, index) in menus" :key="index" class="top-menu-item">
         <span
@@ -46,7 +46,7 @@
     <el-dialog
       width="466px"
       class="confirm-dialog"
-      :visible="confirmVisible"
+      v-model="confirmVisible"
       :show-close="false"
     >
       <p class="desc">
@@ -57,22 +57,25 @@
             : '未命名 - 1'
         }}”所做的更改？如果不保存，更改的内容将会丢失
       </p>
-      <span slot="footer" class="dialog-footer">
-        <el-button type="primary" @click="closeHandle(true, true)"
-          >保存</el-button
-        >
-        <el-button @click="() => closeHandle(false, true)">不保存</el-button>
-        <el-button @click="() => closeHandle(false, false)">取 消</el-button>
-      </span>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button type="primary" @click="closeHandle(true, true)"
+            >保存</el-button
+          >
+          <el-button @click="() => closeHandle(false, true)">不保存</el-button>
+          <el-button @click="() => closeHandle(false, false)">取 消</el-button>
+        </span>
+      </template>
     </el-dialog>
   </div>
 </template>
 
 <script>
-import ProjectModal from './CreateProjectModal';
+import ProjectModal from './CreateProjectModal.vue';
 import { mapState } from 'vuex';
-const LogoImg = require('@/assets/imgs/lsAudio.png');
 import defaultConfig from '../utils/config';
+import logoImg from '../assets/imgs/lsAudio.png';
+import _ from 'lodash';
 export default {
   name: 'TopBar',
   components: { ProjectModal },
@@ -117,10 +120,11 @@ export default {
       isOpen: false,
       creating: false,
       opening: false,
+      logoUrl: logoImg,
     };
   },
   created() {
-    this.version = process.env.VUE_APP_VERSION;
+    this.version = window.appInfo.version;
   },
   computed: {
     ...mapState({
@@ -134,7 +138,7 @@ export default {
     this.originParams = _.cloneDeep(this.params);
     window.addEventListener('keydown', this.handleEvent);
     //保存打开新建项目之后 都会给渲染进程发送最新的项目信息
-    this.$electron.ipcRenderer.on(
+    window.ipcRenderer.on(
       'projectInfo',
       (_e, res) => {
         const { code, data, msg } = res;
@@ -146,7 +150,7 @@ export default {
       },
       []
     );
-    this.$electron.ipcRenderer.on(
+    window.ipcRenderer.on(
       'windowChange',
       (_e, res) => {
         const { isMaximized } = res;
@@ -160,18 +164,18 @@ export default {
     //保存项目 把params都保存到config。json 更新manifest.json的version和modified
     max() {
       this.isMax = !this.isMax;
-      this.$electron.ipcRenderer.send('window-max');
+      window.ipcRenderer.send('window-max');
     },
     min() {
       this.isMax = false;
-      this.$electron.ipcRenderer.send('window-min');
+      window.ipcRenderer.send('window-min');
     },
     close() {
       this.confirmVisibleType = 'close';
       if (this.params && Object.keys(this.params).length !== 0) {
         this.confirmVisible = true;
       } else {
-        this.$electron.ipcRenderer.send('window-close');
+        window.ipcRenderer.send('window-close');
       }
     },
     async closeHandle(isSave, isClose) {
@@ -212,7 +216,7 @@ export default {
           }, 600);
         }
         // isOpen && this.toOpen();
-        // isCloseWin && this.$electron.ipcRenderer.send('window-close');
+        // isCloseWin && window.ipcRenderer.send('window-close');
         return;
       }
       if (!isSave && isClose) {
@@ -226,7 +230,7 @@ export default {
           }, 600);
         }
         // isOpen && this.toOpen();
-        isCloseWin && this.$electron.ipcRenderer.send('window-close');
+        isCloseWin && window.ipcRenderer.send('window-close');
         return;
       }
       if (!isClose) {
@@ -241,7 +245,7 @@ export default {
     getInfoHtml() {
       return `
         <div class="info-content">
-          <img src=${LogoImg} alt="" class="logo" />
+          <img src=${this.logoUrl} alt="" class="logo" />
           <p>LSAudio</p>
           <p>${this.version}</p>
         </div>
@@ -260,7 +264,7 @@ export default {
     },
     async toOpen() {
       this.opening = true;
-      const res = await this.$electron.ipcRenderer.invoke('open-project');
+      const res = await window.ipcRenderer.invoke('open-project');
       const { code, data, msg } = res;
       this.opening = false;
       if (code === 0) {
@@ -335,7 +339,7 @@ export default {
       const project = Object.assign({}, this.project, {
         configJson: finalParams,
       });
-      const res = await this.$electron.ipcRenderer.invoke(
+      const res = await window.ipcRenderer.invoke(
         'save-project',
         project
       );
@@ -349,7 +353,7 @@ export default {
         this.$store.dispatch('saveParams', _.cloneDeep(data.configJson));
         this.originParams = _.cloneDeep(data.configJson);
         if (this.isCose) {
-          this.$electron.ipcRenderer.send('window-close');
+          window.ipcRenderer.send('window-close');
         }
       } else {
         if (msg === '项目不存在') {
@@ -398,7 +402,7 @@ export default {
           this.projectModalType === '新建' ? saveParamsObj : finalParams,
       });
       console.log('saveHandle', this.isSave, this.projectModalType, params);
-      this.$electron.ipcRenderer
+      window.ipcRenderer
         .invoke('create-project', params)
         .then((res) => {
           const { code, data, msg } = res;
@@ -411,7 +415,7 @@ export default {
             this.originParams = _.cloneDeep(data.configJson);
             this.confirmVisible = false;
             if (this.isCose) {
-              this.$electron.ipcRenderer.send('window-close');
+              window.ipcRenderer.send('window-close');
             }
           } else if (code === -1) {
             this.$message.error(msg);

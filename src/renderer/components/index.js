@@ -2,7 +2,8 @@
  * 注册全局组件
  */
 
-import SvgIcon from './SvgIcon';
+import SvgIcon from './SvgIcon.vue';
+import 'virtual:svg-icons-register';
 
 const components = [SvgIcon];
 
@@ -11,9 +12,5 @@ export default {
     components.map(component => {
       app.component(component.name, component);
     });
-    const req = require.context('../assets/svg', false, /\.svg$/);
-    const requireAll = requireContext =>
-      requireContext.keys().map(requireContext);
-    requireAll(req);
   }
 };

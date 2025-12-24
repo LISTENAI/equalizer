@@ -1,63 +1,84 @@
-'use strict'
+import { is } from '@electron-toolkit/utils';
+import { app, BrowserWindow } from 'electron';
+import path from 'path';
+import { IpcMainHandle } from './ipcMain';
 
-import { app, BrowserWindow } from 'electron'
-import * as path from 'path'
-import { format as formatUrl } from 'url'
+const isDevelopment = process.env.NODE_ENV !== 'production';
 
-const isDevelopment = process.env.NODE_ENV !== 'production'
-
-// global reference to mainWindow (necessary to prevent window from being garbage collected)
-let mainWindow
-
-function createMainWindow () {
-  const window = new BrowserWindow()
-
-  if (isDevelopment) {
-    window.webContents.openDevTools()
+async function createWindow() {
+  try {
+    // Create the browser window.
+    const win = new BrowserWindow({
+      height: 600,
+      width: 1100,
+      minHeight: 600,
+      minWidth: 1100,
+      frame: false,
+      show: false,
+      useContentSize: true,
+      webPreferences: {
+        preload: path.join(__dirname, '../preload/index.js'),
+        nodeIntegration: false,
+        contextIsolation: true,
+      },
+    });
+    win.once('ready-to-show', () => {
+      win.show();
+    });
+    IpcMainHandle(win);
+    if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+      await win.loadURL(process.env['ELECTRON_RENDERER_URL']);
+      win.webContents.openDevTools();
+    } else {
+      await win.loadFile(path.join(__dirname, '../renderer/index.html'));
+    }
+  } catch (error) {
+    console.log(error);
   }
-
-  if (isDevelopment) {
-    window.loadURL(`http://localhost:${process.env.ELECTRON_WEBPACK_WDS_PORT}`)
-  } else {
-    window.loadURL(
-      formatUrl({
-        pathname: path.join(__dirname, 'index.html'),
-        protocol: 'file',
-        slashes: true
-      })
-    )
-  }
-
-  window.on('closed', () => {
-    mainWindow = null
-  })
-
-  window.webContents.on('devtools-opened', () => {
-    window.focus()
-    setImmediate(() => {
-      window.focus()
-    })
-  })
-
-  return window
 }
 
-// quit application when all windows are closed
+// Quit when all windows are closed.
 app.on('window-all-closed', () => {
-  // on macOS it is common for applications to stay open until the user explicitly quits
+  // On macOS it is common for applications and their menu bar
+  // to stay active until the user quits explicitly with Cmd + Q
   if (process.platform !== 'darwin') {
-    app.quit()
+    app.quit();
   }
-})
+});
 
 app.on('activate', () => {
-  // on macOS it is common to re-create a window even after all windows have been closed
-  if (mainWindow === null) {
-    mainWindow = createMainWindow()
-  }
-})
+  // On macOS it's common to re-create a window in the app when the
+  // dock icon is clicked and there are no other windows open.
+  if (BrowserWindow.getAllWindows().length === 0) createWindow();
+});
 
-// create main BrowserWindow when electron is ready
-app.on('ready', () => {
-  mainWindow = createMainWindow()
-})
+// This method will be called when Electron has finished
+// initialization and is ready to create browser windows.
+// Some APIs can only be used after this event occurs.
+app.on('ready', async () => {
+  // if (isDevelopment && !process.env.IS_TEST) {
+  //   // Install Vue Devtools
+  //   try {
+  //     await installExtension(VUEJS_DEVTOOLS);
+  //   } catch (e) {
+  //     console.error('Vue Devtools failed to install:', e.toString());
+  //   }
+  // }
+  createWindow();
+});
+// app.allowRendererProcessReuse = false;
+
+// Exit cleanly on request from parent process in development mode.
+if (isDevelopment) {
+  if (process.platform === 'win32') {
+    process.on('message', (data) => {
+      if (data === 'graceful-exit') {
+        app.quit();
+      }
+    });
+  } else {
+    process.on('SIGTERM', () => {
+      app.quit();
+    });
+  }
+}

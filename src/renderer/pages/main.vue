@@ -63,9 +63,9 @@
       <div class="progress flex">
         <div class="step text">输入</div>
         <div class="step flex" v-for="item in options" :key="item.text">
-          <img :src="require('@/assets/imgs/' + arrowImgUrl)" class="arrow" />
+          <img :src="arrowImgUrl" class="arrow" />
           <div class="flex box">
-            <img :src="require('@/assets/imgs/' + item.imageUrl)" />
+            <img :src="item.imageUrl" />
             <p class="text">{{ item.text }}</p>
             <el-button :disabled="item.enable" @click="() => opreateHandle(item)">设置</el-button>
             <!-- || (!Object.keys(project).length && !connected) -->
@@ -75,15 +75,15 @@
 
         <div class="step flex arrow-part">
           <div class="flex">
-            <img :src="require('@/assets/imgs/' + arrowImgUrl)" class="arrow" />
+            <img :src="arrowImgUrl" class="arrow" />
             <span class="single-text">L</span>
-            <img :src="require('@/assets/imgs/' + soundImgUrl)" class="sound-img" />
+            <img :src="soundImgUrl" class="sound-img" />
           </div>
           <div class="text">输出</div>
           <div class="flex">
-            <img :src="require('@/assets/imgs/' + arrowImgUrl)" class="arrow" />
+            <img :src="arrowImgUrl" class="arrow" />
             <span class="single-text">R</span>
-            <img :src="require('@/assets/imgs/' + soundImgUrl)" class="sound-img" />
+            <img :src="soundImgUrl" class="sound-img" />
           </div>
         </div>
       </div>
@@ -105,6 +105,14 @@ import { SerialPortProxy, getList } from '../utils/serialPortProxy';
 import { checkConnect, setParams, getParams, activeEqParams, synthTts, getPcmFrame } from '../utils/index';
 import { mapState } from 'vuex';
 import defaultConfig from '../utils/config';
+import arrowImgUrl from '../assets/imgs/arrow.png';
+import soundImgUrl from '../assets/imgs/output.png';
+import lowImg from '../assets/imgs/low.png';
+import highImg from '../assets/imgs/high.png';
+import eqImg from '../assets/imgs/eq.png';
+import drcImg from '../assets/imgs/drc.png';
+import outImg from '../assets/imgs/out.png';
+import _ from 'lodash';
 const TYPES = ['eq', 'bass_boost', 'treble_boost', 'drc', 'agc'];
 export default {
   name: 'main-page',
@@ -145,37 +153,37 @@ export default {
       writing: false,
       connected: false,
       connecting: false,
-      arrowImgUrl: 'arrow.png',
-      soundImgUrl: 'output.png',
+      arrowImgUrl,
+      soundImgUrl,
       options: [
         {
           type: 'bass_boost',
           text: '低音增强',
-          imageUrl: 'low.png',
+          imageUrl: lowImg,
           enable: true,
         },
         {
           type: 'treble_boost',
           text: '高音增强',
-          imageUrl: 'high.png',
+          imageUrl: highImg,
           enable: true,
         },
         {
           type: 'eq',
           text: 'EQ均衡器',
-          imageUrl: 'eq.png',
+          imageUrl: eqImg,
           enable: true,
         },
         {
           type: 'drc',
           text: 'DRC',
-          imageUrl: 'drc.png',
+          imageUrl: drcImg,
           enable: true,
         },
         {
           type: 'agc',
           text: '输出增益',
-          imageUrl: 'out.png',
+          imageUrl: outImg,
           enable: true,
         },
       ],
@@ -318,6 +326,15 @@ export default {
     }),
   },
   watch: {
+    project: {
+      handler(v) {
+        const nextParams = v?.configJson || {};
+        // store params via mutation to avoid direct state mutation warnings
+        this.$store.dispatch('saveParams', _.cloneDeep(nextParams));
+      },
+      deep: true,
+      immediate: true,
+    },
     connect: {
       handler(v) {
         this.connected = v;
@@ -385,12 +402,12 @@ export default {
         await this.changeConnectHandle(true, sampleRate);
       }
     },
-    async receiveParams(args) {
+    receiveParams(args) {
       if (args[this.eName]) {
         this.eDone = true;
       }
-      const newParams = Object.assign(this.params, args);
-      console.log(newParams);
+      // avoid mutating store state directly; work on a deep copy then dispatch
+      const newParams = _.cloneDeep({ ...this.params, ...args });
       this.$store.dispatch('saveParams', newParams);
     },
     async receiveData(e, res) {
@@ -482,10 +499,8 @@ export default {
       this.coms = res;
       this.comsLoading = false;
     },
-    open(link) {
-      this.$electron.shell.openExternal(link);
-    },
     clearTimeout() {
+      console.log('clear timeout');
       this.timeOutid && clearTimeout(this.timeOutid);
       this.timeOutid = null;
     },
@@ -559,6 +574,8 @@ export default {
                 closeOnClickModal: false,
                 confirmButtonText: '确定',
                 type: 'warning',
+              }).then(async () => {
+                await SerialPortProxy.close();
               });
             }
           } else {
@@ -649,11 +666,13 @@ export default {
       this.clearTimeout();
     },
     changeBypass(item) {
-      const params = JSON.parse(JSON.stringify(this.params));
+      const params = _.cloneDeep(this.params);
       if (params[item.type]) {
         params[item.type].enable = !item.enable;
       } else {
-        params[item.type] = { enable: !item.enable };
+        params[item.type] = {
+          enable: !item.enable,
+        };
       }
       this.$store.dispatch('saveParams', params);
     },
@@ -807,7 +826,7 @@ export default {
       this.voiceData[type] = modalData;
     },
     async chooseAudioFile() {
-      const res = await this.$electron.ipcRenderer.invoke('open-file', {
+      const res = await window.ipcRenderer.invoke('open-file', {
         filters: [
           {
             name: '音频',
@@ -881,8 +900,7 @@ export default {
         data.fs = this.fs;
       }
       this.parseData(type, data);
-      const newParams = JSON.parse(JSON.stringify(this.params));
-      newParams[type] = data;
+      const newParams = _.cloneDeep({ ...this.params, [type]: data });
       console.log(newParams);
       this.$store.dispatch('saveParams', newParams);
     },
@@ -952,73 +970,77 @@ export default {
       }, 400);
       this.timeId = timeId;
     },
-    async getAllParams() {
-      const dataTypes = JSON.parse(JSON.stringify(TYPES));
-      if (!this.connected || this.loading || this.writing) return;
-      this.loading = true;
-      // this.clearInterval();
-      // this.clearTimeout();
-      const timeOutid = setTimeout(() => {
-        this.clearInterval();
-        this.loading = false;
-        this.eName = '';
-        this.eDone = false;
-        this.$confirm('获取超时，请重试', '', {
-          showCancelButton: false,
-          showClose: false,
-          closeOnClickModal: false,
-          confirmButtonText: '确定',
-          type: 'warning',
-        }).then(() => {
-          return;
-        });
-      }, 15000);
-      this.timeOutid = timeOutid;
-      let timeId = setInterval(async () => {
-        if (dataTypes.length === 0) {
+    getAllParams() {
+      return new Promise((resolve, reject) => {
+        const dataTypes = JSON.parse(JSON.stringify(TYPES));
+        if (!this.connected || this.loading || this.writing) return;
+        this.loading = true;
+        // this.clearInterval();
+        // this.clearTimeout();
+        const timeOutid = setTimeout(() => {
           this.clearInterval();
-          this.clearTimeout();
           this.loading = false;
           this.eName = '';
           this.eDone = false;
-          // 设置页面的采样率为获取低音增强的采样率
-          this.$store.dispatch('changeFsReset', false);
-          this.params?.drc?.fs &&
-            this.$store.dispatch('changeRate', parseInt(this.params?.drc?.fs));
-          this.$message.success('获取参数成功');
-          console.log('所有参数');
-          console.log(this.params);
-          return;
-        } else {
-          const type = dataTypes[0];
-          if (this.eName && this.eName === type) {
-            if (this.eDone) {
-              console.log(type, this.eName, this.eDone);
-              dataTypes.shift();
-              this.eName = '';
-              this.eDone = false;
-            }
-          } else {
-            this.eName = type;
+          this.$confirm('获取超时，请重试', '', {
+            showCancelButton: false,
+            showClose: false,
+            closeOnClickModal: false,
+            confirmButtonText: '确定',
+            type: 'warning',
+          });
+        }, 15000);
+        this.timeOutid = timeOutid;
+        let timeId = setInterval(async () => {
+          if (dataTypes.length === 0) {
+            this.clearInterval();
+            this.clearTimeout();
+            this.loading = false;
+            this.eName = '';
             this.eDone = false;
-            await this.getData(type);
+            // 设置页面的采样率为获取低音增强的采样率
+            this.$store.dispatch('changeFsReset', false);
+            this.params?.drc?.fs &&
+              this.$store.dispatch('changeRate', parseInt(this.params?.drc?.fs));
+            this.$message.success('获取参数成功');
+            console.log('所有参数');
+            console.log(this.params);
+            resolve();
+          } else {
+            const type = dataTypes[0];
+            if (this.eName && this.eName === type) {
+              if (this.eDone) {
+                console.log(type, this.eName, this.eDone);
+                dataTypes.shift();
+                this.eName = '';
+                this.eDone = false;
+              }
+            } else {
+              this.eName = type;
+              this.eDone = false;
+              await this.getData(type);
+            }
           }
-        }
-      }, 400);
-      this.timeId = timeId;
+        }, 400);
+        this.timeId = timeId;
+      });
     },
     async exportBinFile() {
       if (Object.keys(this.params).length === 0) {
         return;
       }
       const finalParams = this.mergeParams();
-      const pathStr = await this.$electron.ipcRenderer.invoke('open-dict');
+      const buffer = new Uint8Array(finalParams.length * 4);
+      finalParams.forEach((item, index) => {
+        buffer[index] = item;
+      });
+      const pathStr = await window.ipcRenderer.invoke('open-dict');
       console.log('导出', finalParams);
       if (pathStr) {
         const binPath = this.project?.manifestJson?.name
           ? this.project?.manifestJson?.name + '.bin'
           : '未命名-1.bin';
-        const res = await this.$electron.ipcRenderer.invoke(
+        const res = await window.ipcRenderer.invoke(
           'write-bin',
           pathStr,
           binPath,

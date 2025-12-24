@@ -183,9 +183,7 @@ function isAvailableFrame(buffer) {
   }
   if (checksum % 256 !== 0) {
     console.error(
-      `帧校验 ${buffer[4]} 失败，结果： ${checksum % 256}，长度: ${
-        buffer.length
-      }`
+      `Frame checksum ${buffer[4]} failed, result: ${checksum % 256}, length: ${buffer.length}`
     );
     return false;
   }
@@ -327,11 +325,12 @@ function parseDrc(buf) {
   return data;
 }
 function dispatchFrame(frame) {
+  // console.log('dispatchFrame', frame.command.toString(16));
   try {
     switch (frame.command) {
       case 0xf1: // 每次命令的响应
         const result = Buffer.from(frame.data).readUInt8(0);
-        console.log('命令结果', result);
+        console.log('Command result', result);
         break;
       case 0x01: // 采样率返回
         if (frame.data.length >= 4) {
@@ -416,16 +415,16 @@ function dispatchFrame(frame) {
         const status = frame.data[0];
         switch (status) {
           case 0x11:
-            console.log('系统状态: 播放开始');
+            console.log('System status: playback started');
             break;
           case 0x12:
-            console.log('系统状态: 播放开始');
+            console.log('System status: playback started');
             break;
           case 0xf2:
-            console.log('系统状态: 系统错误');
+            console.log('System status: system error');
             break;
           default:
-            console.log('系统状态:', '0x' + status.toString(16));
+            console.log('System status:', '0x' + status.toString(16));
             break;
         }
         break;
@@ -464,6 +463,10 @@ function writeAudio(data) {
 }
 
 export default () => {
+  ipcMain.handle('sp-get-list', async () => {
+    const list = await SerialPort.list();
+    send('sp-get-list-result', list);
+  });
   ipcMain.handle('sp-open', (e, data) => {
     if (handlingPort != null) {
       send('sp-open-result', {
@@ -484,7 +487,7 @@ export default () => {
       let result = resolveBuffer(cacheData);
       while (result) {
         if (result.index !== 0) {
-          console.warn(`存在${result.index}字节数据被丢弃`);
+          console.warn(`${result.index} bytes were discarded`);
         }
         const frame = parseToFrame(result.frameBuffer);
         try {
