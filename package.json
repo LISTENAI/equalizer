@@ -25,8 +25,7 @@
     "koffi": "^2.14.1",
     "serialport": "^12.0.0",
     "vue": "^3.5.26",
-    "vue-router": "^4.2.0",
-    "vuex": "^4.1.0"
+    "vue-router": "^4.2.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.3",
@@ -40,6 +39,7 @@
     "eventemitter3": "^5.0.1",
     "fast-glob": "^3.3.2",
     "lodash": "^4.17.21",
+    "pinia": "^3.0.4",
     "prettier": "^3.7.4",
     "sass": "^1.66.1",
     "vite": "^7.3.0",

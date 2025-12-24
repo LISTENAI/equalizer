@@ -110,7 +110,8 @@
 <script>
 import * as echarts from 'echarts';
 import _ from 'lodash';
-import { mapState } from 'vuex';
+import { mapState } from 'pinia';
+import { useProjectStore } from '../store/modules/Project';
 import eqLowPassImg from '../assets/imgs/eq_LowPass.png';
 import eqHighPassImg from '../assets/imgs/eq_HighPass.png';
 import eqPeakingImg from '../assets/imgs/eq_Peaking.png';
@@ -234,8 +235,8 @@ export default {
     },
   },
   computed: {
-    ...mapState({
-      rate: (state) => state.Project.rate,
+    ...mapState(useProjectStore, {
+      rate: 'rate',
     }),
   },
   mounted() {

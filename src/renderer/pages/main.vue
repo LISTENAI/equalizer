@@ -103,7 +103,8 @@ import EQModal from 'components/EqModal.vue';
 import DRCModal from 'components/DRCModal.vue';
 import { SerialPortProxy, getList } from '../utils/serialPortProxy';
 import { checkConnect, setParams, getParams, activeEqParams, synthTts, getPcmFrame } from '../utils/index';
-import { mapState } from 'vuex';
+import { mapState, mapActions } from 'pinia';
+import { useProjectStore } from '../store/modules/Project';
 import defaultConfig from '../utils/config';
 import arrowImgUrl from '../assets/imgs/arrow.png';
 import soundImgUrl from '../assets/imgs/output.png';
@@ -316,13 +317,13 @@ export default {
   },
 
   computed: {
-    ...mapState({
-      project: (state) => state.Project.project,
-      params: (state) => state.Project.params,
-      reset: (state) => state.Project.reset,
-      rate: (state) => state.Project.rate,
-      fsMutex: (state) => state.Project.fsMutex,
-      connect: (state) => state.Project.connect,
+    ...mapState(useProjectStore, {
+      project: 'project',
+      params: 'params',
+      reset: 'reset',
+      rate: 'rate',
+      fsMutex: 'fsMutex',
+      connect: 'connect',
     }),
   },
   watch: {
@@ -330,7 +331,7 @@ export default {
       handler(v) {
         const nextParams = v?.configJson || {};
         // store params via mutation to avoid direct state mutation warnings
-        this.$store.dispatch('saveParams', _.cloneDeep(nextParams));
+        this.saveParams(_.cloneDeep(nextParams));
       },
       deep: true,
       immediate: true,
@@ -379,17 +380,24 @@ export default {
           return obj;
         });
         if (this.fsMutex) {
-          this.$store.dispatch('saveParams', {});
+          this.saveParams({});
           this.setInitData();
         }
       },
       immediate: true,
     },
     fs(v) {
-      this.$store.dispatch('changeRate', v);
+      this.changeRate(v);
     },
   },
   methods: {
+    ...mapActions(useProjectStore, [
+      'saveParams',
+      'changeRate',
+      'changeReset',
+      'changeFsReset',
+      'changeConnect',
+    ]),
     async receiveFs(args) {
       console.log(args);
       const { sampleRate } = args;
@@ -408,7 +416,7 @@ export default {
       }
       // avoid mutating store state directly; work on a deep copy then dispatch
       const newParams = _.cloneDeep({ ...this.params, ...args });
-      this.$store.dispatch('saveParams', newParams);
+      this.saveParams(newParams);
     },
     async receiveData(e, res) {
       if (this.connected) {
@@ -452,7 +460,7 @@ export default {
       TYPES.forEach((item) => {
         this.resetModalData(item);
       });
-      this.$store.dispatch('changeReset', false);
+      this.changeReset(false);
     },
 
     async setEqParamsIndex(index) {
@@ -536,7 +544,7 @@ export default {
         if (this.connected) {
           const result = await SerialPortProxy.close();
           console.log('close result', result);
-          this.$store.dispatch('changeConnect', false);
+          this.changeConnect(false);
           this.writing = false;
           this.loading = false;
           this.clearTimeout();
@@ -552,7 +560,7 @@ export default {
             if (connectResult.code == 0) {
               // 等待返回 fs
               this.timeOutid = setTimeout(() => {
-                this.$store.dispatch('changeConnect', false);
+                this.changeConnect(false);
                 this.connecting = false;
                 this.writing = false;
                 this.loading = false;
@@ -582,7 +590,7 @@ export default {
             SerialPortProxy.close();
             this.connecting = false;
             // this.connected = false;
-            this.$store.dispatch('changeConnect', false);
+            this.changeConnect(false);
             this.writing = false;
             this.loading = false;
             this.clearTimeout();
@@ -600,7 +608,7 @@ export default {
       } catch (error) {
         this.connecting = false;
         // this.connected = false;
-        this.$store.dispatch('changeConnect', false);
+        this.changeConnect(false);
         this.writing = false;
         this.loading = false;
         this.clearTimeout();
@@ -633,7 +641,7 @@ export default {
       if (isOk) {
         if (fs && parseInt(fs) === parseInt(this.rate)) {
           this.connected = isOk;
-          this.$store.dispatch('changeConnect', isOk);
+          this.changeConnect(isOk);
 
           this.saveOpenConfig();
 
@@ -655,7 +663,7 @@ export default {
           ).then(async () => {
             await SerialPortProxy.close();
             // this.connected = false;
-            this.$store.dispatch('changeConnect', false);
+            this.changeConnect(false);
           });
         }
       } else {
@@ -674,7 +682,7 @@ export default {
           enable: !item.enable,
         };
       }
-      this.$store.dispatch('saveParams', params);
+      this.saveParams(params);
     },
     async opreateHandle(item) {
       switch (item.type) {
@@ -902,7 +910,7 @@ export default {
       this.parseData(type, data);
       const newParams = _.cloneDeep({ ...this.params, [type]: data });
       console.log(newParams);
-      this.$store.dispatch('saveParams', newParams);
+      this.saveParams(newParams);
     },
 
     //单个写入设置
@@ -999,9 +1007,9 @@ export default {
             this.eName = '';
             this.eDone = false;
             // 设置页面的采样率为获取低音增强的采样率
-            this.$store.dispatch('changeFsReset', false);
+            this.changeFsReset(false);
             this.params?.drc?.fs &&
-              this.$store.dispatch('changeRate', parseInt(this.params?.drc?.fs));
+              this.changeRate(parseInt(this.params?.drc?.fs));
             this.$message.success('获取参数成功');
             console.log('所有参数');
             console.log(this.params);
@@ -1073,7 +1081,7 @@ export default {
     },
     changeFsHandle(v) {
       if (Object.keys(this.params).length === 0) {
-        this.$store.dispatch('changeFsReset', true);
+        this.changeFsReset(true);
         this.fs = v;
         return;
       }
@@ -1087,7 +1095,7 @@ export default {
         }
       )
         .then(() => {
-          this.$store.dispatch('changeFsReset', true);
+          this.changeFsReset(true);
           this.fs = v;
         })
         .catch(() => {

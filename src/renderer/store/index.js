@@ -1,14 +1,5 @@
-import { createStore } from 'vuex'
+import { createPinia } from 'pinia';
 
-// import { createPersistedState, createSharedMutations } from 'vuex-electron'
+const store = createPinia();
 
-import modules from './modules'
-
-export default createStore({
-  modules,
-  plugins: [
-    // createPersistedState(),
-    // createSharedMutations()
-  ],
-  strict: process.env.NODE_ENV !== 'production'
-})
+export default store;

@@ -72,7 +72,8 @@
 
 <script>
 import ProjectModal from './CreateProjectModal.vue';
-import { mapState } from 'vuex';
+import { mapState, mapActions } from 'pinia';
+import { useProjectStore } from '../store/modules/Project';
 import defaultConfig from '../utils/config';
 import logoImg from '../assets/imgs/lsAudio.png';
 import _ from 'lodash';
@@ -127,11 +128,11 @@ export default {
     this.version = window.appInfo.version;
   },
   computed: {
-    ...mapState({
-      project: (state) => state.Project.project,
-      params: (state) => state.Project.params,
-      rate: (state) => state.Project.rate,
-      connect: (state) => state.Project.connect,
+    ...mapState(useProjectStore, {
+      project: 'project',
+      params: 'params',
+      rate: 'rate',
+      connect: 'connect',
     }),
   },
   mounted() {
@@ -159,6 +160,14 @@ export default {
     )
   },
   methods: {
+    ...mapActions(useProjectStore, [
+      'saveProject',
+      'saveParams',
+      'changeReset',
+      'changeFsReset',
+      'changeRate',
+      'changeConnect',
+    ]),
     // 新建项目之后 打开项目，参数都为默认值
     //打开项目之后，使用默认值进行操作
     //保存项目 把params都保存到config。json 更新manifest.json的version和modified
@@ -292,15 +301,15 @@ export default {
             return;
           }
         }
-        this.$store.dispatch('changeReset', true);
-        this.$store.dispatch('saveProject', _.cloneDeep(data));
-        this.$store.dispatch('saveParams', _.cloneDeep(data.configJson));
+        this.changeReset(true);
+        this.saveProject(_.cloneDeep(data));
+        this.saveParams(_.cloneDeep(data.configJson));
         this.originParams = _.cloneDeep(data.configJson);
-        this.$store.dispatch('changeFsReset', false);
-        this.$store.dispatch('changeRate', (fs && parseInt(fs)) || 48000);
+        this.changeFsReset(false);
+        this.changeRate((fs && parseInt(fs)) || 48000);
       } else {
         this.$message.error(msg);
-        this.$store.dispatch('saveProject', {});
+        this.saveProject({});
       }
       this.opening = false;
     },
@@ -348,9 +357,9 @@ export default {
       if (code === 0) {
         this.$message.success(`保存成功`);
         this.confirmVisible = false;
-        this.$store.dispatch('saveProject', _.cloneDeep(data));
+        this.saveProject(_.cloneDeep(data));
         // console.log('更新params2', data.configJson);
-        this.$store.dispatch('saveParams', _.cloneDeep(data.configJson));
+        this.saveParams(_.cloneDeep(data.configJson));
         this.originParams = _.cloneDeep(data.configJson);
         if (this.isCose) {
           window.ipcRenderer.send('window-close');
@@ -361,7 +370,7 @@ export default {
           this.projectModalVisible = true;
         }
         this.$message.error(msg);
-        this.$store.dispatch('saveProject', {});
+        this.saveProject({});
       }
       this.creating = false;
     },
@@ -409,9 +418,9 @@ export default {
           this.creating = false;
           if (code === 0) {
             this.$message.success(`${this.projectModalType}成功`);
-            this.$store.dispatch('saveProject', _.cloneDeep(data));
+            this.saveProject(_.cloneDeep(data));
             // console.log('更新params1', data.configJson);
-            this.$store.dispatch('saveParams', _.cloneDeep(data.configJson));
+            this.saveParams(_.cloneDeep(data.configJson));
             this.originParams = _.cloneDeep(data.configJson);
             this.confirmVisible = false;
             if (this.isCose) {
@@ -419,7 +428,7 @@ export default {
             }
           } else if (code === -1) {
             this.$message.error(msg);
-            this.$store.dispatch('saveProject', {});
+            this.saveProject({});
           } else {
             //-2 保存项目名字冲突取消保存
             return;
