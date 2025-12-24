@@ -4,6 +4,7 @@
     v-model="show"
     width="600px"
     class="low-dialog"
+    :show-close="false"
     :destroy-on-close="true"
     :close-on-click-modal="false"
     @close="beforeCloseHandle"

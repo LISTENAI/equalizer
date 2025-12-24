@@ -1,7 +1,10 @@
 import { defineConfig } from 'electron-vite';
 import { resolve } from 'path';
 import vue from '@vitejs/plugin-vue';
-import { createSvgIconsPlugin } from 'vite-plugin-svg-icons';
+import Components from 'unplugin-vue-components/vite';
+import Icons from 'unplugin-icons/vite';
+import IconsResolver from 'unplugin-icons/resolver';
+import { FileSystemIconLoader } from 'unplugin-icons/loaders';
 import pkg from './package.json';
 
 export default defineConfig({
@@ -28,9 +31,21 @@ export default defineConfig({
     },
     plugins: [
       vue(),
-      createSvgIconsPlugin({
-        iconDirs: [resolve(__dirname, 'src/renderer/assets/svg')],
-        symbolId: 'icon-[name]',
+      Components({
+        resolvers: [
+          IconsResolver({
+            prefix: 'icon',
+            customCollections: ['app'],
+          }),
+        ],
+      }),
+      Icons({
+        compiler: 'vue3',
+        customCollections: {
+          app: FileSystemIconLoader(
+            resolve(__dirname, 'src/renderer/assets/svg')
+          ),
+        },
       }),
     ],
     css: {

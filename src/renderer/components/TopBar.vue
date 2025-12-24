@@ -29,13 +29,14 @@
     </div>
     <div class="operate-bar flex">
       <div class="icon" @click="min">
-        <svg-icon icon-class="win_min"></svg-icon>
+        <IconAppWinMin />
       </div>
       <div class="icon" @click="max">
-        <svg-icon :icon-class="isMax ? 'win_resize' : 'win_max'"></svg-icon>
+        <IconAppWinResize v-if="isMax" />
+        <IconAppWinMax v-else />
       </div>
       <div class="icon close" @click="close">
-        <svg-icon icon-class="r_cross"></svg-icon>
+        <IconAppRCross />
       </div>
     </div>
     <ProjectModal
@@ -555,9 +556,14 @@ export default {
     .icon {
       width: 30px;
       height: 30px;
-      text-align: center;
-      line-height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       cursor: pointer;
+      :deep(svg) {
+        width: 16px;
+        height: 16px;
+      }
       &:hover {
         background: rgba(255, 255, 255, 0.05);
       }

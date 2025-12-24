@@ -4,6 +4,7 @@
     v-model="show"
     width="750px"
     top="50px"
+    :show-close="false"
     class="drc-dialog"
     :destroy-on-close="true"
     :close-on-click-modal="false"

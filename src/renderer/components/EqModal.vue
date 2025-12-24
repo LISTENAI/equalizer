@@ -5,6 +5,7 @@
     width="880px"
     top="40px"
     class="eq-dialog"
+    :show-close="false"
     :destroy-on-close="true"
     :close-on-click-modal="false"
     @close="beforeCloseHandle"

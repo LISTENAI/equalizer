@@ -13,8 +13,9 @@
           {{ connected && !connecting ? '断开' : '连接'
           }}{{ connecting ? '中' : '' }}</el-button>
         <span class="flex">
-          <svg-icon v-if="connecting" icon-class="r_connecting" class="icon" />
-          <svg-icon v-else :icon-class="connected ? 'r_connected' : 'r_disconnected'" class="icon" />
+          <IconAppRConnecting v-if="connecting" class="icon" />
+          <IconAppRConnected v-else-if="connected" class="icon" />
+          <IconAppRDisconnected v-else class="icon" />
           <span v-if="!connecting"> {{ connected ? '已' : '未' }}连接</span>
         </span>
       </div>
@@ -25,16 +26,16 @@
           </el-option>
         </el-select>
         <div class="opt-btn flex" :class="!connected || loading || writing ? 'disabled' : ''" @click="getAllParams">
-          <svg-icon icon-class="get" class="icon" />
+          <IconAppGet class="icon" />
           <span>获取参数</span>
         </div>
         <div class="opt-btn flex margin" v-loading="writing" :class="!connected || loading || writing ? 'disabled' : ''"
           @click="saveAllParamsHandle" element-loading-spinner="el-icon-loading">
-          <svg-icon icon-class="write" class="icon" />
+          <IconAppWrite class="icon" />
           <span>{{ writing ? '写入中' : '写入参数' }}</span>
         </div>
         <div class="opt-btn flex" :class="Object.keys(params).length ? '' : 'disabled'" @click="exportBinFile">
-          <svg-icon icon-class="export" class="icon" />
+          <IconAppExport class="icon" />
           <span>导出bin文件</span>
         </div>
       </div>
