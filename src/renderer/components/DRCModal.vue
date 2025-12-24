@@ -747,7 +747,7 @@ export default {
 </script>
 <style lang="scss" scoped>
 .drc-dialog {
-  ::v-deep.el-dialog__body {
+  :deep(.el-dialog__body) {
     padding: 14px 16px !important;
   }
   .flex {
@@ -801,7 +801,7 @@ export default {
       .el-radio {
         margin-right: 16px;
       }
-      ::v-deep.el-radio__label {
+      :deep(.el-radio__label) {
         font-size: 13px;
       }
     }
