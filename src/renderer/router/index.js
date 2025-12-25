@@ -1,18 +1,22 @@
-import Vue from 'vue';
-import Router from 'vue-router';
+import { createRouter, createWebHashHistory } from 'vue-router';
 
-Vue.use(Router);
+import Main from '@/pages/main.vue';
 
-export default new Router({
-  routes: [
-    {
-      path: '/',
-      name: 'landing-page',
-      component: require('@/pages/main').default
-    },
-    {
-      path: '*',
-      redirect: '/'
-    }
-  ]
+const routes = [
+  {
+    path: '/',
+    name: 'landing-page',
+    component: Main
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/'
+  }
+];
+
+const router = createRouter({
+  history: createWebHashHistory(),
+  routes
 });
+
+export default router;

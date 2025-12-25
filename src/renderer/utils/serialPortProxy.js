@@ -1,6 +1,7 @@
-import { ipcRenderer } from 'electron';
-import { EventEmitter } from 'events';
-import { SerialPort } from 'serialport';
+import { EventEmitter } from 'eventemitter3';
+
+const { ipcRenderer } = window;
+
 class Action {
   static OpenSerial = 'sp-open';
   static CloseSerial = 'sp-close';
@@ -18,6 +19,7 @@ class _SerialPortProxy {
       this.emitter.emit('sp-sample-rate', args);
     });
     ipcRenderer.addListener('sp-eq-params', (e, args) => {
+      console.log('sp-eq-params', args);
       this.emitter.emit('sp-eq-params', args);
     });
     ipcRenderer.addListener('sp-update-audio-state', (e, args) => {
@@ -115,5 +117,10 @@ class _SerialPortProxy {
 export const SerialPortProxy = new _SerialPortProxy();
 
 export async function getList() {
-  return await SerialPort.list();
+  return new Promise((resolve) => {
+    ipcRenderer.once('sp-get-list-result', (e, data) => {
+      resolve(data);
+    });
+    ipcRenderer.invoke('sp-get-list');
+  });
 }

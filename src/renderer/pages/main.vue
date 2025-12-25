@@ -1,40 +1,41 @@
 <template>
   <div class="main-page">
     <div class="top-banner flex">
-      <div class="left flex">
-        <el-select v-model="com" placeholder="请选择" size="middle" :loading="comsLoading" @visible-change="getComs"
+      <div class="left flex" style="gap: 8px">
+        <el-select v-model="com" placeholder="请选择" size="default" :loading="comsLoading" @visible-change="getComs"
           :disabled="connected || connecting">
           <el-option v-for="item in coms" :key="item.path" :label="item.path" :value="item.path">
           </el-option>
         </el-select>
-        <el-autocomplete v-model="baudrate" :fetch-suggestions="queryBaudrate" placeholder="波特率" size="middle"
+        <el-autocomplete v-model="baudrate" :fetch-suggestions="queryBaudrate" placeholder="波特率" size="default"
           :disabled="connected || connecting" :trigger-on-focus="true" @select="handleSelect"></el-autocomplete>
-        <el-button size="mini" @click="connectHandle" :disabled="connecting || !com || !baudrate" :loading="connecting">
+        <el-button size="small" @click="connectHandle" :disabled="connecting || !com || !baudrate" :loading="connecting">
           {{ connected && !connecting ? '断开' : '连接'
           }}{{ connecting ? '中' : '' }}</el-button>
         <span class="flex">
-          <svg-icon v-if="connecting" icon-class="r_connecting" class="icon" />
-          <svg-icon v-else :icon-class="connected ? 'r_connected' : 'r_disconnected'" class="icon" />
+          <IconAppRConnecting v-if="connecting" class="icon" />
+          <IconAppRConnected v-else-if="connected" class="icon" />
+          <IconAppRDisconnected v-else class="icon" />
           <span v-if="!connecting"> {{ connected ? '已' : '未' }}连接</span>
         </span>
       </div>
       <div class="right flex">
-        <el-select :value="fs" placeholder="请选择" size="middle" @change="changeFsHandle"
+        <el-select v-model="fs" placeholder="请选择" size="default" @change="changeFsHandle"
           :disabled="connected || connecting">
           <el-option v-for="item in SampleRates" :key="item.value" :label="item.label" :value="item.value">
           </el-option>
         </el-select>
         <div class="opt-btn flex" :class="!connected || loading || writing ? 'disabled' : ''" @click="getAllParams">
-          <svg-icon icon-class="get" class="icon" />
+          <IconAppGet class="icon" />
           <span>获取参数</span>
         </div>
         <div class="opt-btn flex margin" v-loading="writing" :class="!connected || loading || writing ? 'disabled' : ''"
           @click="saveAllParamsHandle" element-loading-spinner="el-icon-loading">
-          <svg-icon icon-class="write" class="icon" />
+          <IconAppWrite class="icon" />
           <span>{{ writing ? '写入中' : '写入参数' }}</span>
         </div>
         <div class="opt-btn flex" :class="Object.keys(params).length ? '' : 'disabled'" @click="exportBinFile">
-          <svg-icon icon-class="export" class="icon" />
+          <IconAppExport class="icon" />
           <span>导出bin文件</span>
         </div>
       </div>
@@ -44,17 +45,17 @@
 
     <div class="listen-card flex">
       <div>均衡器参数组</div>
-      <el-select :value="activeEqParamIndex" placeholder="请选择" size="middle" style="width: 100px;"
+      <el-select v-model="activeEqParamIndex" placeholder="请选择" size="default" style="width: 100px;"
         :disabled="!connected || (loading || writing) || decoding" @change="changeEqParamsIndex">
         <el-option v-for="item in eqParams" :key="item" :label="item" :value="item">
         </el-option>
       </el-select>
-      <el-button size="mini" :disabled="!connected || decoding || (loading || writing)" @click="chooseAudioFile">
+      <el-button size="small" :disabled="!connected || decoding || (loading || writing)" @click="chooseAudioFile">
         测试播放音频
       </el-button>
-      <el-button size="mini" :disabled="!decoding || (loading || writing)" @click="stopAudioPlay">停止播放音频</el-button>
-      <el-input v-model="ttsText" style="width: 240px;" size="middle" placeholder="输入合成文本"></el-input>
-      <el-button size="mini" :disabled="!connected || (loading || writing) || decoding" @click="sendTts">
+      <el-button size="small" :disabled="!decoding || (loading || writing)" @click="stopAudioPlay">停止播放音频</el-button>
+      <el-input v-model="ttsText" style="width: 240px;" size="default" placeholder="输入合成文本"></el-input>
+      <el-button size="small" :disabled="!connected || (loading || writing) || decoding" @click="sendTts">
         测试合成文本
       </el-button>
     </div>
@@ -63,9 +64,9 @@
       <div class="progress flex">
         <div class="step text">输入</div>
         <div class="step flex" v-for="item in options" :key="item.text">
-          <img :src="require('@/assets/imgs/' + arrowImgUrl)" class="arrow" />
+          <img :src="arrowImgUrl" class="arrow" />
           <div class="flex box">
-            <img :src="require('@/assets/imgs/' + item.imageUrl)" />
+            <img :src="item.imageUrl" />
             <p class="text">{{ item.text }}</p>
             <el-button :disabled="item.enable" @click="() => opreateHandle(item)">设置</el-button>
             <!-- || (!Object.keys(project).length && !connected) -->
@@ -75,15 +76,15 @@
 
         <div class="step flex arrow-part">
           <div class="flex">
-            <img :src="require('@/assets/imgs/' + arrowImgUrl)" class="arrow" />
+            <img :src="arrowImgUrl" class="arrow" />
             <span class="single-text">L</span>
-            <img :src="require('@/assets/imgs/' + soundImgUrl)" class="sound-img" />
+            <img :src="soundImgUrl" class="sound-img" />
           </div>
           <div class="text">输出</div>
           <div class="flex">
-            <img :src="require('@/assets/imgs/' + arrowImgUrl)" class="arrow" />
+            <img :src="arrowImgUrl" class="arrow" />
             <span class="single-text">R</span>
-            <img :src="require('@/assets/imgs/' + soundImgUrl)" class="sound-img" />
+            <img :src="soundImgUrl" class="sound-img" />
           </div>
         </div>
       </div>
@@ -103,8 +104,17 @@ import EQModal from 'components/EqModal.vue';
 import DRCModal from 'components/DRCModal.vue';
 import { SerialPortProxy, getList } from '../utils/serialPortProxy';
 import { checkConnect, setParams, getParams, activeEqParams, synthTts, getPcmFrame } from '../utils/index';
-import { mapState } from 'vuex';
+import { mapState, mapActions } from 'pinia';
+import { useProjectStore } from '../store/modules/Project';
 import defaultConfig from '../utils/config';
+import arrowImgUrl from '../assets/imgs/arrow.png';
+import soundImgUrl from '../assets/imgs/output.png';
+import lowImg from '../assets/imgs/low.png';
+import highImg from '../assets/imgs/high.png';
+import eqImg from '../assets/imgs/eq.png';
+import drcImg from '../assets/imgs/drc.png';
+import outImg from '../assets/imgs/out.png';
+import _ from 'lodash';
 const TYPES = ['eq', 'bass_boost', 'treble_boost', 'drc', 'agc'];
 export default {
   name: 'main-page',
@@ -145,37 +155,37 @@ export default {
       writing: false,
       connected: false,
       connecting: false,
-      arrowImgUrl: 'arrow.png',
-      soundImgUrl: 'output.png',
+      arrowImgUrl,
+      soundImgUrl,
       options: [
         {
           type: 'bass_boost',
           text: '低音增强',
-          imageUrl: 'low.png',
+          imageUrl: lowImg,
           enable: true,
         },
         {
           type: 'treble_boost',
           text: '高音增强',
-          imageUrl: 'high.png',
+          imageUrl: highImg,
           enable: true,
         },
         {
           type: 'eq',
           text: 'EQ均衡器',
-          imageUrl: 'eq.png',
+          imageUrl: eqImg,
           enable: true,
         },
         {
           type: 'drc',
           text: 'DRC',
-          imageUrl: 'drc.png',
+          imageUrl: drcImg,
           enable: true,
         },
         {
           type: 'agc',
           text: '输出增益',
-          imageUrl: 'out.png',
+          imageUrl: outImg,
           enable: true,
         },
       ],
@@ -308,16 +318,25 @@ export default {
   },
 
   computed: {
-    ...mapState({
-      project: (state) => state.Project.project,
-      params: (state) => state.Project.params,
-      reset: (state) => state.Project.reset,
-      rate: (state) => state.Project.rate,
-      fsMutex: (state) => state.Project.fsMutex,
-      connect: (state) => state.Project.connect,
+    ...mapState(useProjectStore, {
+      project: 'project',
+      params: 'params',
+      reset: 'reset',
+      rate: 'rate',
+      fsMutex: 'fsMutex',
+      connect: 'connect',
     }),
   },
   watch: {
+    project: {
+      handler(v) {
+        const nextParams = v?.configJson || {};
+        // store params via mutation to avoid direct state mutation warnings
+        this.saveParams(_.cloneDeep(nextParams));
+      },
+      deep: true,
+      immediate: true,
+    },
     connect: {
       handler(v) {
         this.connected = v;
@@ -362,17 +381,24 @@ export default {
           return obj;
         });
         if (this.fsMutex) {
-          this.$store.dispatch('saveParams', {});
+          this.saveParams({});
           this.setInitData();
         }
       },
       immediate: true,
     },
     fs(v) {
-      this.$store.dispatch('changeRate', v);
+      this.changeRate(v);
     },
   },
   methods: {
+    ...mapActions(useProjectStore, [
+      'saveParams',
+      'changeRate',
+      'changeReset',
+      'changeFsReset',
+      'changeConnect',
+    ]),
     async receiveFs(args) {
       console.log(args);
       const { sampleRate } = args;
@@ -385,13 +411,13 @@ export default {
         await this.changeConnectHandle(true, sampleRate);
       }
     },
-    async receiveParams(args) {
+    receiveParams(args) {
       if (args[this.eName]) {
         this.eDone = true;
       }
-      const newParams = Object.assign(this.params, args);
-      console.log(newParams);
-      this.$store.dispatch('saveParams', newParams);
+      // avoid mutating store state directly; work on a deep copy then dispatch
+      const newParams = _.cloneDeep({ ...this.params, ...args });
+      this.saveParams(newParams);
     },
     async receiveData(e, res) {
       if (this.connected) {
@@ -435,7 +461,7 @@ export default {
       TYPES.forEach((item) => {
         this.resetModalData(item);
       });
-      this.$store.dispatch('changeReset', false);
+      this.changeReset(false);
     },
 
     async setEqParamsIndex(index) {
@@ -482,10 +508,8 @@ export default {
       this.coms = res;
       this.comsLoading = false;
     },
-    open(link) {
-      this.$electron.shell.openExternal(link);
-    },
     clearTimeout() {
+      console.log('clear timeout');
       this.timeOutid && clearTimeout(this.timeOutid);
       this.timeOutid = null;
     },
@@ -521,7 +545,7 @@ export default {
         if (this.connected) {
           const result = await SerialPortProxy.close();
           console.log('close result', result);
-          this.$store.dispatch('changeConnect', false);
+          this.changeConnect(false);
           this.writing = false;
           this.loading = false;
           this.clearTimeout();
@@ -537,7 +561,7 @@ export default {
             if (connectResult.code == 0) {
               // 等待返回 fs
               this.timeOutid = setTimeout(() => {
-                this.$store.dispatch('changeConnect', false);
+                this.changeConnect(false);
                 this.connecting = false;
                 this.writing = false;
                 this.loading = false;
@@ -559,13 +583,15 @@ export default {
                 closeOnClickModal: false,
                 confirmButtonText: '确定',
                 type: 'warning',
+              }).then(async () => {
+                await SerialPortProxy.close();
               });
             }
           } else {
             SerialPortProxy.close();
             this.connecting = false;
             // this.connected = false;
-            this.$store.dispatch('changeConnect', false);
+            this.changeConnect(false);
             this.writing = false;
             this.loading = false;
             this.clearTimeout();
@@ -583,7 +609,7 @@ export default {
       } catch (error) {
         this.connecting = false;
         // this.connected = false;
-        this.$store.dispatch('changeConnect', false);
+        this.changeConnect(false);
         this.writing = false;
         this.loading = false;
         this.clearTimeout();
@@ -616,7 +642,7 @@ export default {
       if (isOk) {
         if (fs && parseInt(fs) === parseInt(this.rate)) {
           this.connected = isOk;
-          this.$store.dispatch('changeConnect', isOk);
+          this.changeConnect(isOk);
 
           this.saveOpenConfig();
 
@@ -638,7 +664,7 @@ export default {
           ).then(async () => {
             await SerialPortProxy.close();
             // this.connected = false;
-            this.$store.dispatch('changeConnect', false);
+            this.changeConnect(false);
           });
         }
       } else {
@@ -649,13 +675,15 @@ export default {
       this.clearTimeout();
     },
     changeBypass(item) {
-      const params = JSON.parse(JSON.stringify(this.params));
+      const params = _.cloneDeep(this.params);
       if (params[item.type]) {
         params[item.type].enable = !item.enable;
       } else {
-        params[item.type] = { enable: !item.enable };
+        params[item.type] = {
+          enable: !item.enable,
+        };
       }
-      this.$store.dispatch('saveParams', params);
+      this.saveParams(params);
     },
     async opreateHandle(item) {
       switch (item.type) {
@@ -807,7 +835,7 @@ export default {
       this.voiceData[type] = modalData;
     },
     async chooseAudioFile() {
-      const res = await this.$electron.ipcRenderer.invoke('open-file', {
+      const res = await window.ipcRenderer.invoke('open-file', {
         filters: [
           {
             name: '音频',
@@ -871,7 +899,7 @@ export default {
       });
       if (voiceItem) {
         voiceItem.enable = val;
-        this.$set(this.options, index, voiceItem);
+        this.options.splice(index, 1, voiceItem);
       }
     },
     async saveHandle(type, data) {
@@ -881,10 +909,9 @@ export default {
         data.fs = this.fs;
       }
       this.parseData(type, data);
-      const newParams = JSON.parse(JSON.stringify(this.params));
-      newParams[type] = data;
+      const newParams = _.cloneDeep({ ...this.params, [type]: data });
       console.log(newParams);
-      this.$store.dispatch('saveParams', newParams);
+      this.saveParams(newParams);
     },
 
     //单个写入设置
@@ -952,73 +979,77 @@ export default {
       }, 400);
       this.timeId = timeId;
     },
-    async getAllParams() {
-      const dataTypes = JSON.parse(JSON.stringify(TYPES));
-      if (!this.connected || this.loading || this.writing) return;
-      this.loading = true;
-      // this.clearInterval();
-      // this.clearTimeout();
-      const timeOutid = setTimeout(() => {
-        this.clearInterval();
-        this.loading = false;
-        this.eName = '';
-        this.eDone = false;
-        this.$confirm('获取超时，请重试', '', {
-          showCancelButton: false,
-          showClose: false,
-          closeOnClickModal: false,
-          confirmButtonText: '确定',
-          type: 'warning',
-        }).then(() => {
-          return;
-        });
-      }, 15000);
-      this.timeOutid = timeOutid;
-      let timeId = setInterval(async () => {
-        if (dataTypes.length === 0) {
+    getAllParams() {
+      return new Promise((resolve, reject) => {
+        const dataTypes = JSON.parse(JSON.stringify(TYPES));
+        if (!this.connected || this.loading || this.writing) return;
+        this.loading = true;
+        // this.clearInterval();
+        // this.clearTimeout();
+        const timeOutid = setTimeout(() => {
           this.clearInterval();
-          this.clearTimeout();
           this.loading = false;
           this.eName = '';
           this.eDone = false;
-          // 设置页面的采样率为获取低音增强的采样率
-          this.$store.dispatch('changeFsReset', false);
-          this.params?.drc?.fs &&
-            this.$store.dispatch('changeRate', parseInt(this.params?.drc?.fs));
-          this.$message.success('获取参数成功');
-          console.log('所有参数');
-          console.log(this.params);
-          return;
-        } else {
-          const type = dataTypes[0];
-          if (this.eName && this.eName === type) {
-            if (this.eDone) {
-              console.log(type, this.eName, this.eDone);
-              dataTypes.shift();
-              this.eName = '';
-              this.eDone = false;
-            }
-          } else {
-            this.eName = type;
+          this.$confirm('获取超时，请重试', '', {
+            showCancelButton: false,
+            showClose: false,
+            closeOnClickModal: false,
+            confirmButtonText: '确定',
+            type: 'warning',
+          });
+        }, 15000);
+        this.timeOutid = timeOutid;
+        let timeId = setInterval(async () => {
+          if (dataTypes.length === 0) {
+            this.clearInterval();
+            this.clearTimeout();
+            this.loading = false;
+            this.eName = '';
             this.eDone = false;
-            await this.getData(type);
+            // 设置页面的采样率为获取低音增强的采样率
+            this.changeFsReset(false);
+            this.params?.drc?.fs &&
+              this.changeRate(parseInt(this.params?.drc?.fs));
+            this.$message.success('获取参数成功');
+            console.log('所有参数');
+            console.log(this.params);
+            resolve();
+          } else {
+            const type = dataTypes[0];
+            if (this.eName && this.eName === type) {
+              if (this.eDone) {
+                console.log(type, this.eName, this.eDone);
+                dataTypes.shift();
+                this.eName = '';
+                this.eDone = false;
+              }
+            } else {
+              this.eName = type;
+              this.eDone = false;
+              await this.getData(type);
+            }
           }
-        }
-      }, 400);
-      this.timeId = timeId;
+        }, 400);
+        this.timeId = timeId;
+      });
     },
     async exportBinFile() {
       if (Object.keys(this.params).length === 0) {
         return;
       }
       const finalParams = this.mergeParams();
-      const pathStr = await this.$electron.ipcRenderer.invoke('open-dict');
+      const buffer = new Uint8Array(finalParams.length * 4);
+      finalParams.forEach((item, index) => {
+        buffer[index] = item;
+      });
+      const pathStr = await window.ipcRenderer.invoke('open-dict');
       console.log('导出', finalParams);
       if (pathStr) {
         const binPath = this.project?.manifestJson?.name
           ? this.project?.manifestJson?.name + '.bin'
           : '未命名-1.bin';
-        const res = await this.$electron.ipcRenderer.invoke(
+        const res = await window.ipcRenderer.invoke(
           'write-bin',
           pathStr,
           binPath,
@@ -1051,7 +1082,7 @@ export default {
     },
     changeFsHandle(v) {
       if (Object.keys(this.params).length === 0) {
-        this.$store.dispatch('changeFsReset', true);
+        this.changeFsReset(true);
         this.fs = v;
         return;
       }
@@ -1065,7 +1096,7 @@ export default {
         }
       )
         .then(() => {
-          this.$store.dispatch('changeFsReset', true);
+          this.changeFsReset(true);
           this.fs = v;
         })
         .catch(() => {
@@ -1107,7 +1138,6 @@ export default {
 
     .el-button {
       height: 28px;
-      margin: 0 8px;
     }
 
     .left {

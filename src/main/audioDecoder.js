@@ -1,11 +1,12 @@
 import { join } from 'path';
 import ffmpeg from 'fluent-ffmpeg-7';
+import { is } from '@electron-toolkit/utils';
 
-let ffmpegPath = join(__static, 'ffmpeg.exe');
-const isDevelopment = process.env.NODE_ENV !== 'production';
-if (isDevelopment) {
-  ffmpegPath = ffmpegPath.replace('\\public\\', '\\ffmpeg\\');
-} else {
+// Resolve static path for native dlls, compatible with Vite/Electron build
+const staticRoot = is.dev ? process.cwd() : process.resourcesPath;
+
+let ffmpegPath = join(staticRoot, 'ffmpeg.exe');
+if (!is.dev) {
   ffmpegPath = ffmpegPath.replace('\\resources\\app.asar\\', '\\');
 }
 

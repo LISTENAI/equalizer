@@ -1,19 +1,10 @@
-/**
- * 注册全局组件
- */
-
-import SvgIcon from './SvgIcon';
-
-const components = [SvgIcon];
+// Global component plugin placeholder (currently none registered)
+const components = [];
 
 export default {
-  install(Vue) {
-    components.map(component => {
-      Vue.component(component.name, component);
+  install(app) {
+    components.forEach((component) => {
+      app.component(component.name, component);
     });
-    const req = require.context('../assets/svg', false, /\.svg$/);
-    const requireAll = requireContext =>
-      requireContext.keys().map(requireContext);
-    requireAll(req);
-  }
+  },
 };

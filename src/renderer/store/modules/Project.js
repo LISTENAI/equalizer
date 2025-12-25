@@ -1,57 +1,32 @@
-const state = {
-  project: {}, //项目信息
-  params: {}, //界面参数
-  reset: false,//打开新项目之后是否重置界面参数
-  rate: 48000, //默认采样率
-  fsMutex: false,//采样率修改是否重置界面参数
-  connect: false//是否连接固件
+import { defineStore } from 'pinia';
 
-};
-
-const mutations = {
-  SAVE_PROJECT(state, val) {
-    state.project = val;
+export const useProjectStore = defineStore('Project', {
+  state: () => ({
+    project: {}, //项目信息
+    params: {}, //界面参数
+    reset: false, //打开新项目之后是否重置界面参数
+    rate: 48000, //默认采样率
+    fsMutex: false, //采样率修改是否重置界面参数
+    connect: false, //是否连接固件
+  }),
+  actions: {
+    saveProject(data) {
+      this.project = data;
+    },
+    saveParams(data) {
+      this.params = data;
+    },
+    changeReset(data) {
+      this.reset = data;
+    },
+    changeFsReset(data) {
+      this.fsMutex = data;
+    },
+    changeRate(data) {
+      this.rate = data;
+    },
+    changeConnect(data) {
+      this.connect = data;
+    },
   },
-  SAVE_PARAMS(state, val) {
-    state.params = val;
-  },
-  CHANGE_RESET(state, val) {
-    state.reset = val;
-  },
-  CHANGE_FSRESET(state, val) {
-    state.fsMutex = val;
-  },
-  CHANGE_RATE(state, val) {
-    state.rate = val;
-  },
-  CHANGE_CONNECT(state, val) {
-    state.connect = val;
-  }
-};
-
-const actions = {
-  saveProject({ commit }, data) {
-    commit('SAVE_PROJECT', data);
-  },
-  saveParams({ commit }, data) {
-    commit('SAVE_PARAMS', data);
-  },
-  changeReset({ commit }, data) {
-    commit('CHANGE_RESET', data);
-  },
-  changeFsReset({ commit }, data) {
-    commit('CHANGE_FSRESET', data);
-  },
-  changeRate({ commit }, data) {
-    commit('CHANGE_RATE', data);
-  },
-  changeConnect({ commit }, data) {
-    commit('CHANGE_CONNECT', data);
-  }
-};
-
-export default {
-  state,
-  mutations,
-  actions
-};
+});
