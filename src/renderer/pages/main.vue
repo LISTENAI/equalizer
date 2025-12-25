@@ -104,8 +104,9 @@ import EQModal from 'components/EqModal.vue';
 import DRCModal from 'components/DRCModal.vue';
 import { SerialPortProxy, getList } from '../utils/serialPortProxy';
 import { checkConnect, setParams, getParams, activeEqParams, synthTts, getPcmFrame } from '../utils/index';
+import { PREF_KEYS, getPref, setPref } from '../utils/pref';
 import { mapState, mapActions } from 'pinia';
-import { useProjectStore } from '../store/modules/Project';
+import { useProjectStore, useSettingsStore } from '../store/modules';
 import defaultConfig from '../utils/config';
 import arrowImgUrl from '../assets/imgs/arrow.png';
 import soundImgUrl from '../assets/imgs/output.png';
@@ -297,11 +298,13 @@ export default {
     SerialPortProxy.on('sp-eq-params', this.receiveParams)
     SerialPortProxy.on('sp-update-audio-state', this.receiveAudioState)
 
-    if (localStorage.getItem('last_baudrate')) {
-      this.baudrate = localStorage.getItem('last_baudrate');
+    const lastBaud = getPref(PREF_KEYS.LAST_BAUDRATE);
+    if (lastBaud) {
+      this.baudrate = lastBaud;
     }
-    if (localStorage.getItem('last_sampleRate')) {
-      const fs = localStorage.getItem('last_sampleRate');
+    const lastRate = getPref(PREF_KEYS.LAST_SAMPLE_RATE);
+    if (lastRate) {
+      const fs = lastRate;
       const selected = this.SampleRates.find(item => item.value == fs);
       if (selected) {
         this.fs = selected.value;
@@ -325,6 +328,9 @@ export default {
       rate: 'rate',
       fsMutex: 'fsMutex',
       connect: 'connect',
+    }),
+    ...mapState(useSettingsStore, {
+      autoFetchParams: 'autoFetchParams',
     }),
   },
   watch: {
@@ -471,7 +477,9 @@ export default {
       try {
         console.log('enable eq params index -->', index);
         await this.writeSerialPortHandle(activeEqParams(index));
-        await this.getAllParams();
+        if (this.autoFetchParams) {
+          await this.getAllParams();
+        }
       } catch (error) {
         console.error(error);
       }
@@ -633,8 +641,8 @@ export default {
       }
     },
     saveOpenConfig() {
-      localStorage.setItem('last_baudrate', this.baudrate);
-      localStorage.setItem('last_sampleRate', this.fs);
+      setPref(PREF_KEYS.LAST_BAUDRATE, this.baudrate);
+      setPref(PREF_KEYS.LAST_SAMPLE_RATE, this.fs);
     },
     async changeConnectHandle(isOk, fs) {
       //固件上报连接成功，判断固件和界面的采样率是否一致

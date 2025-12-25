@@ -2,7 +2,14 @@
   <div class="top-bar flex">
     <img class="logo" :src="logoUrl" />
     <div class="top-menu flex">
-      <div v-for="(menu, index) in menus" :key="index" class="top-menu-item">
+      <div
+        v-for="(menu, index) in menus"
+        :key="index"
+        class="top-menu-item"
+        :class="{ open: activeMenuIndex === index }"
+        @mouseenter="activeMenuIndex = index"
+        @mouseleave="activeMenuIndex = null"
+      >
         <span
           @click="
             () => {
@@ -15,9 +22,15 @@
           <li
             v-for="(child, index) in menu.children"
             :key="index"
-            @click="child.cb(child.data)"
+            @click="handleChildClick(child)"
           >
-            {{ child.name }}
+            <span>{{ child.name }}</span>
+            <img
+              v-if="child.checkable"
+              class="menu-check"
+              :src="checkIcon"
+              :style="{ opacity: child.checked && child.checked() ? 1 : 0 }"
+            />
           </li>
         </ul>
       </div>
@@ -74,9 +87,10 @@
 <script>
 import ProjectModal from './CreateProjectModal.vue';
 import { mapState, mapActions } from 'pinia';
-import { useProjectStore } from '../store/modules/Project';
+import { useProjectStore, useSettingsStore } from '../store/modules';
 import defaultConfig from '../utils/config';
 import logoImg from '../assets/imgs/lsAudio.png';
+import checkIcon from '../assets/svg/r_check.svg';
 import _ from 'lodash';
 export default {
   name: 'TopBar',
@@ -113,8 +127,20 @@ export default {
           cb: null,
         },
         {
-          label: '关于',
-          cb: this.showInfo,
+          label: '设置',
+          children: [
+            {
+              name: '连接后自动获取参数',
+              cb: this.toggleAutoFetchParams,
+              checkable: true,
+              checked: () => this.autoFetchParams,
+            },
+            {
+              name: '关于',
+              cb: this.showInfo,
+            },
+          ],
+          cb: null,
         },
       ],
       isMax: false,
@@ -123,6 +149,8 @@ export default {
       creating: false,
       opening: false,
       logoUrl: logoImg,
+      checkIcon,
+      activeMenuIndex: null,
     };
   },
   created() {
@@ -134,6 +162,9 @@ export default {
       params: 'params',
       rate: 'rate',
       connect: 'connect',
+    }),
+    ...mapState(useSettingsStore, {
+      autoFetchParams: 'autoFetchParams',
     }),
   },
   mounted() {
@@ -169,6 +200,7 @@ export default {
       'changeRate',
       'changeConnect',
     ]),
+    ...mapActions(useSettingsStore, ['toggleAutoFetchParams', 'setAutoFetchParams']),
     // 新建项目之后 打开项目，参数都为默认值
     //打开项目之后，使用默认值进行操作
     //保存项目 把params都保存到config。json 更新manifest.json的version和modified
@@ -251,6 +283,10 @@ export default {
     },
     menuCick(menu) {
       console.log(menu);
+    },
+    handleChildClick(child) {
+      child?.cb && child.cb(child.data);
+      this.activeMenuIndex = null;
     },
     getInfoHtml() {
       return `
@@ -500,13 +536,14 @@ export default {
       -webkit-app-region: no-drag;
       &-child {
         position: absolute;
-        left: 10px;
-        top: 29px;
+        left: 0px;
+        top: 30px;
         display: none;
-        width: 144px;
+        width: auto;
+        min-width: 144px;
         background-color: $grey7;
         box-shadow: 0px 3px 9px 0px rgba(0, 0, 0, 0.75);
-        z-index: 9999;
+        z-index: 1;
         border-bottom: 0px;
         &::before {
           position: absolute;
@@ -530,6 +567,10 @@ export default {
           height: 28px;
           line-height: 28px;
           padding: 0 12px;
+          display: flex;
+          gap: 8px;
+          align-items: center;
+          white-space: nowrap;
 
           &:hover {
             background: rgba(255, 255, 255, 0.05);
@@ -571,6 +612,11 @@ export default {
         background-color: $danger;
       }
     }
+  }
+  .menu-check {
+    margin-left: auto;
+    width: 16px;
+    text-align: center;
   }
 }
 </style>
