@@ -9,6 +9,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     IconAppExport: typeof import('~icons/app/export')['default']
     IconAppGet: typeof import('~icons/app/get')['default']
+    IconAppImport: typeof import('~icons/app/import')['default']
     IconAppRConnected: typeof import('~icons/app/r-connected')['default']
     IconAppRConnecting: typeof import('~icons/app/r-connecting')['default']
     IconAppRCross: typeof import('~icons/app/r-cross')['default']

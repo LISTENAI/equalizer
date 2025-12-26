@@ -131,14 +131,14 @@ export default function getDefaultConfig(fs) {
         "bass_boost": {
             "enable": false,
             "fs": fs,
-            "gain": "0.000",
-            "freq": "200.000"
+            "gain": 0.000,
+            "freq": 200.000
         },
         "treble_boost": {
             "enable": false,
             "fs": fs,
-            "gain": "0.000",
-            "freq": "1000.000"
+            "gain": 0.000,
+            "freq": 1000.000
         }
     };
 }

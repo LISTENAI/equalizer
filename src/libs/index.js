@@ -1,5 +1,6 @@
+import koffi from 'koffi';
 import { iflytekEqDraw, iflytekBinHandle } from './capi.js';
-import { POINTS_X_DEFAULT } from './stru.js';
+import { POINTS_X_DEFAULT, struAudioPrm } from './stru.js';
 
 const POINTS_X_NUM = POINTS_X_DEFAULT; // keep original fixed resolution used by native lib
 
@@ -149,4 +150,67 @@ export const writeToBinFile = (binfile, audioConf) => {
         GainPrm: gain
     };
     return iflytekBinHandle.writeToBinFile(binfile, audioPrm);
+};
+
+const parseAudioPrm = (audioPrm) => {
+    const filters = (audioPrm?.PeqPrm?.FilterPrm || []).map((filter) => ([
+        filter.FilterEnable,
+        filter.FilterType,
+        filter.fSampleRateHz,
+        filter.fQ,
+        filter.fDbGain,
+        filter.fFreqHz,
+    ]));
+
+    const dotsRaw = audioPrm?.DrcPrm?.Dot || [];
+    const dotCount = ((audioPrm?.DrcPrm?.SegNum || 0) + 1) || dotsRaw.length;
+    const dots = [];
+    for (let i = 0; i < Math.min(dotCount, dotsRaw.length); i++) {
+        const dot = dotsRaw[i];
+        dots.push([dot.X, dot.Y, dot.W]);
+    }
+
+    return {
+        bass_boost: {
+            enable: Boolean(audioPrm?.BassBoostPrm?.iEnable),
+            fs: audioPrm?.BassBoostPrm?.fFs,
+            gain: audioPrm?.BassBoostPrm?.fDbGain,
+            freq: audioPrm?.BassBoostPrm?.fFreqHz,
+        },
+        treble_boost: {
+            enable: Boolean(audioPrm?.TrebleoostPrm?.iEnable),
+            fs: audioPrm?.TrebleoostPrm?.fFs,
+            gain: audioPrm?.TrebleoostPrm?.fDbGain,
+            freq: audioPrm?.TrebleoostPrm?.fFreqHz,
+        },
+        eq: {
+            enable: Boolean(audioPrm?.PeqPrm?.Enable),
+            filters,
+        },
+        drc: {
+            enable: Boolean(audioPrm?.DrcPrm?.iEnable),
+            fs: audioPrm?.DrcPrm?.Fs,
+            at: audioPrm?.DrcPrm?.At,
+            rt: audioPrm?.DrcPrm?.Rt,
+            mode: audioPrm?.DrcPrm?.Type,
+            rms: audioPrm?.DrcPrm?.RmsTime,
+            seg: audioPrm?.DrcPrm?.SegNum,
+            dots,
+        },
+        agc: {
+            enable: Boolean(audioPrm?.GainPrm?.iEnable),
+            sr: audioPrm?.GainPrm?.dSampleRate,
+            vol: audioPrm?.GainPrm?.dVolume,
+        },
+    };
+};
+
+export const readFromBinFile = (binfile) => {
+    const audioPrmPtr = koffi.alloc(struAudioPrm, koffi.sizeof(struAudioPrm));
+    const ret = iflytekBinHandle.readFromBinFile(binfile, audioPrmPtr);
+    if (ret !== 0) {
+        return null;
+    }
+    const audioPrm = koffi.decode(audioPrmPtr, struAudioPrm);
+    return parseAudioPrm(audioPrm);
 };

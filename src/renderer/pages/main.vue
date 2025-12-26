@@ -29,14 +29,18 @@
           <IconAppGet class="icon" />
           <span>获取参数</span>
         </div>
-        <div class="opt-btn flex margin" v-loading="writing" :class="!connected || loading || writing ? 'disabled' : ''"
+        <div class="opt-btn flex" v-loading="writing" :class="!connected || loading || writing ? 'disabled' : ''"
           @click="saveAllParamsHandle" element-loading-spinner="el-icon-loading">
           <IconAppWrite class="icon" />
           <span>{{ writing ? '写入中' : '写入参数' }}</span>
         </div>
         <div class="opt-btn flex" :class="Object.keys(params).length ? '' : 'disabled'" @click="exportBinFile">
           <IconAppExport class="icon" />
-          <span>导出bin文件</span>
+          <span>导出bin</span>
+        </div>
+        <div class="opt-btn flex" @click="importBinFile">
+          <IconAppImport class="icon" />
+          <span>导入bin</span>
         </div>
       </div>
     </div>
@@ -437,6 +441,32 @@ export default {
           await this.writeSerialPortHandle(getPcmFrame(data, 0xf1));
         }
       }
+    },
+    async importBinFile() {
+      const res = await window.ipcRenderer.invoke('open-file', {
+        properties: ['openFile'],
+        filters: [
+          {
+            name: 'Bin',
+            extensions: ['bin'],
+          },
+        ],
+      });
+      const filePath = res?.data?.[0];
+      if (!filePath) return;
+      const result = await window.ipcRenderer.invoke('read-bin', filePath);
+      if (!result) {
+        this.$message.error('导入失败');
+        return;
+      }
+      const params = _.cloneDeep(result);
+      const fsFromBin = params?.drc?.fs || params?.eq?.filters?.[0]?.[2] || params?.agc?.sr || this.fs;
+      if (fsFromBin) {
+        this.fs = fsFromBin;
+      }
+      console.log('导入参数', params);
+      this.saveParams(params);
+      this.$message.success('导入bin成功');
     },
     receiveAudioState(args) {
       const { isPlaying } = args;
@@ -1048,8 +1078,8 @@ export default {
       }
       const finalParams = this.mergeParams();
       const buffer = new Uint8Array(finalParams.length * 4);
-      finalParams.forEach((item, index) => {
-        buffer[index] = item;
+      Object.keys(finalParams).forEach((key, index) => {
+        buffer[index] = finalParams[key];
       });
       const pathStr = await window.ipcRenderer.invoke('open-dict');
       console.log('导出', finalParams);
@@ -1057,17 +1087,22 @@ export default {
         const binPath = this.project?.manifestJson?.name
           ? this.project?.manifestJson?.name + '.bin'
           : '未命名-1.bin';
-        const res = await window.ipcRenderer.invoke(
-          'write-bin',
-          pathStr,
-          binPath,
-          finalParams
-        );
-        if (res === 0) {
-          this.$message.success(`${binPath}导出成功`);
-        } else {
-          this.$message.error('导出失败');
-        }
+          try {
+            const res = await window.ipcRenderer.invoke(
+              'write-bin',
+              pathStr,
+              binPath,
+              finalParams
+            );
+            if (res === 0) {
+              this.$message.success(`${binPath}导出成功`);
+            } else {
+              this.$message.error('导出失败');
+            }
+          } catch (e) {
+            console.error('导出失败', e);
+            this.$message.error('导出失败：' + (e.message || '未知错误'));
+          }
       }
     },
     changeEqParamsIndex(v) {
@@ -1160,9 +1195,10 @@ export default {
     }
 
     .right {
+      gap: 8px;
+
       .el-select {
         width: 200px;
-        margin-right: 32px;
       }
 
       .opt-btn {

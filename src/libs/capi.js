@@ -31,7 +31,10 @@ const eqDrawDll = path.join(binDllPath, archFolder, 'eqdrawDLL.dll');
 console.log('native dlls ->', binDll, eqDrawDll);
 
 const lib = koffi.load(binDll);
-export const iflytekBinHandle = lib.func('int writeToBinFile(const char*, struDrcPrm*)');
+export const iflytekBinHandle = {
+    writeToBinFile: lib.func('int writeToBinFile(const char*, struAudioPrm*)'),
+    readFromBinFile: lib.func('int readFromBinFile(const char*, _Out_ struAudioPrm*)'),
+};
 
 const eqLib = koffi.load(eqDrawDll);
 const nativeEqDrawPoints = eqLib.func('struEqDrawResult* eqDrawPoints(struMonoEqPrm*, struUIXYInfo*)')
