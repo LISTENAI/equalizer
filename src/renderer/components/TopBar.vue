@@ -127,6 +127,22 @@ export default {
           cb: null,
         },
         {
+          label: '串口',
+          children: [
+            {
+              name: '发送数据',
+              cb: () => {
+                // TODO: 实现串口发送数据功能
+                console.log('打开串口发送数据对话框');
+              },
+            },
+            {
+              name: '导出文件',
+              cb: this.exportSerialFile,
+            }
+          ],
+        },
+        {
           label: '设置',
           children: [
             {
@@ -287,6 +303,47 @@ export default {
     handleChildClick(child) {
       child?.cb && child.cb(child.data);
       this.activeMenuIndex = null;
+    },
+    async exportSerialFile() {
+      if (!this.connect) {
+        this.$message.warning('请先连接串口');
+        return;
+      }
+      try {
+        const directory = await window.ipcRenderer.invoke('open-dict');
+        if (!directory) return;
+        const baseName =
+          this.project?.manifestJson?.name && this.project?.manifestJson?.name.trim()
+            ? this.project.manifestJson.name.trim()
+            : 'serial_data';
+        const fileName = `${baseName}-${Date.now()}.bin`;
+        const needsSlash =
+          directory.endsWith('/') || directory.endsWith('\\') ? '' : '\\';
+        const filePath = `${directory}${needsSlash}${fileName}`;
+        const result = await new Promise((resolve) => {
+          const eventName = 'sp-export-cache-result';
+          const handler = (_e, data) => {
+            resolve(data);
+            window.ipcRenderer.removeListener(eventName, handler);
+          };
+          window.ipcRenderer.addListener(eventName, handler);
+          window.ipcRenderer.invoke('sp-export-cache', { filePath });
+        });
+        if (result?.code === 0) {
+          const size =
+            typeof result.bytes === 'number' && result.bytes >= 0
+              ? result.bytes
+              : 0;
+          this.$message.success(
+            `导出成功，文件：${fileName}（${size} 字节）`
+          );
+        } else {
+          this.$message.error(result?.message || '导出失败');
+        }
+      } catch (error) {
+        console.error(error);
+        this.$message.error(error?.message || '导出失败');
+      }
     },
     getInfoHtml() {
       return `

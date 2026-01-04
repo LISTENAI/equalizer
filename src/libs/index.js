@@ -105,18 +105,18 @@ export const drcDrawPoints = (drcData, chartConf) => {
     return data;
 };
 
-export const writeToBinFile = (binfile, audioConf) => {
+export function fromAudioParam(audioConf) {
     const bassBoost = audioConf && audioConf.bass_boost && {
         iEnable: Number(audioConf.bass_boost.enable),
-        fFs: audioConf.bass_boost.fs,
-        fDbGain: audioConf.bass_boost.gain,
-        fFreqHz: audioConf.bass_boost.freq,
+        fFs: Number(audioConf.bass_boost.fs),
+        fDbGain: Number(audioConf.bass_boost.gain),
+        fFreqHz: Number(audioConf.bass_boost.freq),
     };
     const trebleoost = audioConf && audioConf.treble_boost && {
         iEnable: Number(audioConf.treble_boost.enable),
-        fFs: audioConf.treble_boost.fs,
-        fDbGain: audioConf.treble_boost.gain,
-        fFreqHz: audioConf.treble_boost.freq,
+        fFs: Number(audioConf.treble_boost.fs),
+        fDbGain: Number(audioConf.treble_boost.gain),
+        fFreqHz: Number(audioConf.treble_boost.freq),
     };
     const filterprms = buildFilterPrms(audioConf && audioConf.eq && audioConf.eq.filters);
     const monoEqPrm = audioConf && audioConf.eq && {
@@ -142,17 +142,21 @@ export const writeToBinFile = (binfile, audioConf) => {
         dSampleRate: audioConf.agc.sr,
         dVolume: audioConf.agc.vol
     };
-    const audioPrm = {
+    return {
         BassBoostPrm: bassBoost,
         TrebleoostPrm: trebleoost,
         PeqPrm: monoEqPrm,
         DrcPrm: drc,
         GainPrm: gain
     };
+}
+
+export const writeToBinFile = (binfile, audioConf) => {
+    const audioPrm = fromAudioParam(audioConf);
     return iflytekBinHandle.writeToBinFile(binfile, audioPrm);
 };
 
-const parseAudioPrm = (audioPrm) => {
+export function parseAudioPrm(audioPrm) {
     const filters = (audioPrm?.PeqPrm?.FilterPrm || []).map((filter) => ([
         filter.FilterEnable,
         filter.FilterType,

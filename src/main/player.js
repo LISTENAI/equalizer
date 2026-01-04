@@ -3,6 +3,7 @@ import { spawn } from 'child_process';
 import { BrowserWindow } from 'electron';
 import EventEmitter, { once } from 'events';
 import { iflytekSoundEffect } from '../libs/capi';
+import { fromAudioParam } from '../libs';
 import { ffmpegPath } from './audioDecoder';
 
 const SAMPLE_RATE = 16000;
@@ -14,32 +15,6 @@ const FRAME_BYTES = FRAME_SAMPLES * PCM_BYTES;
 const CHUNK_DURATION_MS = 100;
 
 const clampInt16 = (value) => Math.max(-32768, Math.min(32767, value));
-
-function buildFilterPrms(filters = []) {
-  const filterPrms = [];
-  filters.forEach((filter, idx) => {
-    // support both object form and array form
-    const params = Array.isArray(filter)
-      ? {
-          FilterEnable: filter[0],
-          FilterType: filter[1],
-          fSampleRateHz: filter[2],
-          fQ: filter[3],
-          fDbGain: filter[4],
-          fFreqHz: filter[5],
-        }
-      : {
-          FilterEnable: filter.enable,
-          FilterType: filter.type,
-          fSampleRateHz: filter.dSampleRateHz,
-          fQ: filter.q,
-          fDbGain: filter.gain,
-          fFreqHz: filter.fc,
-        };
-    filterPrms[idx] = params;
-  });
-  return filterPrms;
-}
 
 class RingBuffer {
   constructor(maxBytes) {
@@ -99,61 +74,7 @@ export class Player {
   }
 
   setParams(audioConf) {
-    // clear buffered decoded data so new params take effect ASAP
-    this.remainder = Buffer.alloc(0);
-    const bassBoost = audioConf &&
-      audioConf.bass_boost && {
-        iEnable: Number(audioConf.bass_boost.enable),
-        fFs: audioConf.bass_boost.fs,
-        fDbGain: audioConf.bass_boost.gain,
-        fFreqHz: audioConf.bass_boost.freq,
-      };
-    const trebleoost = audioConf &&
-      audioConf.treble_boost && {
-        iEnable: Number(audioConf.treble_boost.enable),
-        fFs: audioConf.treble_boost.fs,
-        fDbGain: audioConf.treble_boost.gain,
-        fFreqHz: audioConf.treble_boost.freq,
-      };
-    const filterprms = buildFilterPrms(
-      audioConf && audioConf.eq && audioConf.eq.filters,
-    );
-    const monoEqPrm = audioConf &&
-      audioConf.eq && {
-        Enable: Number(audioConf.eq.enable),
-        FilterPrm: filterprms,
-      };
-    const dots = [];
-    ((audioConf && audioConf.drc && audioConf.drc.dots) || []).forEach(
-      (dot, idx) => {
-        dots[idx] = { X: dot[0], Y: dot[1], W: dot[2] };
-      },
-    );
-    const drc = audioConf &&
-      audioConf.drc && {
-        iEnable: Number(audioConf.drc.enable),
-        Fs: audioConf.drc.fs,
-        At: audioConf.drc.at,
-        Rt: audioConf.drc.rt,
-        Type: audioConf.drc.mode,
-        RmsTime: audioConf.drc.rms,
-        SegNum: audioConf.drc.seg,
-        Dot: dots,
-      };
-    const gain = audioConf &&
-      audioConf.agc && {
-        iEnable: Number(audioConf.agc.enable),
-        dSampleRate: audioConf.agc.sr,
-        dVolume: audioConf.agc.vol,
-      };
-    const audioPrm = {
-      BassBoostPrm: bassBoost,
-      TrebleoostPrm: trebleoost,
-      PeqPrm: monoEqPrm,
-      DrcPrm: drc,
-      GainPrm: gain,
-    };
-
+    const audioPrm = fromAudioParam(audioConf);
     console.log('Setting parameters:', audioPrm);
 
     const result = iflytekSoundEffect.audioSet(this.instance, audioPrm);
