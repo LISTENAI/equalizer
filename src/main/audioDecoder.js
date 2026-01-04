@@ -7,7 +7,7 @@ const staticRoot = is.dev ? process.cwd() : process.resourcesPath;
 
 let _ffmpegPath = join(staticRoot, 'ffmpeg', 'ffmpeg.exe');
 if (!is.dev) {
-  _ffmpegPath = _ffmpegPath.replace('\\resources\\app.asar\\', '\\');
+  _ffmpegPath = _ffmpegPath.replace('\\resources', '\\');
 }
 
 //tell the ffmpeg package where it can find the needed binaries.

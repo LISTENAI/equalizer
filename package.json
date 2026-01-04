@@ -60,7 +60,7 @@
       },
       {
         "from": "ffmpeg/ffmpeg.exe",
-        "to": "../ffmpeg.exe"
+        "to": "../ffmpeg/ffmpeg.exe"
       }
     ],
     "win": {
