@@ -37,6 +37,7 @@ export default {
 		app.config.globalProperties.$msgbox = ElMessageBox;
 		app.config.globalProperties.$alert = ElMessageBox.alert;
 		app.config.globalProperties.$confirm = ElMessageBox.confirm;
+		app.config.globalProperties.$prompt = ElMessageBox.prompt;
 		app.config.globalProperties.$message = ElMessage;
 	}
 };

@@ -91,6 +91,7 @@ import { useProjectStore, useSettingsStore } from '../store/modules';
 import defaultConfig from '../utils/config';
 import logoImg from '../assets/imgs/lsAudio.png';
 import checkIcon from '../assets/svg/r_check.svg';
+import { SerialPortProxy } from '../utils/serialPortProxy';
 import _ from 'lodash';
 export default {
   name: 'TopBar',
@@ -131,10 +132,7 @@ export default {
           children: [
             {
               name: '发送数据',
-              cb: () => {
-                // TODO: 实现串口发送数据功能
-                console.log('打开串口发送数据对话框');
-              },
+              cb: this.sendSerialData,
             },
             {
               name: '导出文件',
@@ -343,6 +341,50 @@ export default {
       } catch (error) {
         console.error(error);
         this.$message.error(error?.message || '导出失败');
+      }
+    },
+    async sendSerialData() {
+      if (!this.connect) {
+        this.$message.warning('请先连接串口');
+        return;
+      }
+      try {
+        const promptResult = await this.$prompt(
+          '请输入要发送的十六进制数据（空格分隔，例如：AA 55 01）',
+          '发送串口数据',
+          {
+            confirmButtonText: '发送',
+            cancelButtonText: '取消',
+            inputPattern: /^(?:[0-9A-Fa-f]{2})(?: (?:[0-9A-Fa-f]{2}))*$/,
+            inputErrorMessage: '仅支持两位十六进制字符（大小写均可），并用空格隔开',
+            closeOnClickModal: false,
+          }
+        ).catch((err) => {
+          if (err === 'cancel' || err === 'close') return null;
+          throw err;
+        });
+        if (!promptResult) return;
+        const raw = (promptResult.value || '').replace(/\s+/g, '');
+        if (!raw) {
+          this.$message.warning('请输入要发送的数据');
+          return;
+        }
+        if (raw.length % 2 !== 0) {
+          this.$message.warning('请输入完整的十六进制字节数据');
+          return;
+        }
+        const bytes = new Uint8Array(
+          raw.match(/.{2}/g).map((item) => parseInt(item, 16))
+        );
+        const result = await SerialPortProxy.write(bytes);
+        if (result?.code === 0) {
+          this.$message.success('发送成功');
+        } else {
+          this.$message.error(result?.message || '发送失败');
+        }
+      } catch (error) {
+        console.error(error);
+        this.$message.error(error?.message || '发送失败');
       }
     },
     getInfoHtml() {
