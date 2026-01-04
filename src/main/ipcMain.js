@@ -4,6 +4,7 @@ import drawHandle from './draw';
 import ProjectHandle from './project';
 import serialport from './serialport';
 import file from './file';
+import { playerIpc } from './player';
 
 let mainWindow = null;
 function IpcMainHandle(window) {
@@ -36,6 +37,7 @@ function IpcMainHandle(window) {
     shell.openExternal(url);
   });
 
+  playerIpc(ipcMain);
   ProjectHandle();
   drawHandle(ipcMain);
   serialport();

@@ -100,12 +100,14 @@
       @reset="resetModalData" @save="saveHandle" />
     <DRCModal v-if="drcVisible" :visible="drcVisible" :checkable="drcCheckable" :drcData="drcData" @close="closeModal"
       @reset="resetModalData" @save="saveHandle" />
+    <FloatingPlayerControl :audio-params="audioParamsForPlay" />
   </div>
 </template>
 <script>
 import VoiceModal from 'components/VoiceModal.vue';
 import EQModal from 'components/EqModal.vue';
 import DRCModal from 'components/DRCModal.vue';
+import FloatingPlayerControl from 'components/FloatingPlayerControl.vue';
 import { SerialPortProxy, getList } from '../utils/serialPortProxy';
 import { checkConnect, setParams, getParams, activeEqParams, synthTts, getPcmFrame } from '../utils/index';
 import { PREF_KEYS, getPref, setPref } from '../utils/pref';
@@ -123,7 +125,7 @@ import _ from 'lodash';
 const TYPES = ['eq', 'bass_boost', 'treble_boost', 'drc', 'agc'];
 export default {
   name: 'main-page',
-  components: { VoiceModal, EQModal, DRCModal },
+  components: { VoiceModal, EQModal, DRCModal, FloatingPlayerControl },
   data() {
     return {
       coms: [],
@@ -336,6 +338,9 @@ export default {
     ...mapState(useSettingsStore, {
       autoFetchParams: 'autoFetchParams',
     }),
+    audioParamsForPlay() {
+      return this.mergeParams();
+    },
   },
   watch: {
     project: {
@@ -373,6 +378,13 @@ export default {
         });
       },
       deep: true,
+    },
+    audioParamsForPlay: {
+      handler(val) {
+        this.syncPlayerParams(val);
+      },
+      deep: true,
+      immediate: true,
     },
     // 采样率修改会有以下影响：
     // 1：所有模块的下发fs参数
@@ -1146,13 +1158,26 @@ export default {
           return;
         });
     },
-    mergeParams() {
+    mergeParams(params) {
       //drc.dots不能进行merge ,不同段数dots长度不同
-      const dotsArr = this.params?.drc?.dots;
+      if (!params) {
+        params = this.params;
+      }
+      const dotsArr = params?.drc?.dots;
       const defaultParams = defaultConfig(this.fs);
       let finalParams = _.merge(_.cloneDeep(defaultParams), this.params);
       finalParams.drc.dots = dotsArr?.length ? dotsArr : finalParams.drc.dots;
       return finalParams;
+    },
+    async syncPlayerParams(params) {
+      try {
+        if (!params) return;
+        if (!this.fs) return; // 为空时算法库会报错
+        const final = this.mergeParams(params);
+        await window.ipcRenderer.invoke('player-set-params', JSON.stringify(final));
+      } catch (err) {
+        console.error('sync player params failed', err);
+      }
     },
   },
 };

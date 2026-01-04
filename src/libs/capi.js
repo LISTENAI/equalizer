@@ -27,8 +27,18 @@ const detectArchFolder = function () {
 const archFolder = detectArchFolder();
 const binDll = path.join(binDllPath, archFolder, 'iflytekEqDrcDrawApi.dll');
 const eqDrawDll = path.join(binDllPath, archFolder, 'eqdrawDLL.dll');
+const soundEffectDll = path.join(binDllPath, archFolder, 'SoundEffect.dll');
 
-console.log('native dlls ->', binDll, eqDrawDll);
+console.log('native dlls ->', binDll, eqDrawDll, soundEffectDll);
+
+export const IFLYTEK_ALG_ID_E =  {
+    IFLYTEK_ALG_ID_BASSBOOST: 0,
+    IFLYTEK_ALG_ID_TREBLEBOOST: 1,
+    IFLYTEK_ALG_ID_PEQ: 2,
+    IFLYTEK_ALG_ID_DRC: 3,
+    IFLYTEK_ALG_ID_GAIN: 4,
+    IFLYTEK_ALG_ID_LIMITER: 5
+};
 
 const lib = koffi.load(binDll);
 export const iflytekBinHandle = {
@@ -54,4 +64,27 @@ export const iflytekEqDraw = {
         nativeFreeDrcPoints(res);
         return parsed;
     }
+};
+
+const soundEffectLib = koffi.load(soundEffectDll);
+const nativeAudioCreate = soundEffectLib.func('int IFLYTEK_AudioCreate(_Out_ char*, _Out_ int*)');
+const nativeAudioInitial = soundEffectLib.func('int IFLYTEK_AudioInitial(_Out_ char*)');
+const nativeAudioReset = soundEffectLib.func('int IFLYTEK_AudioReset(_Out_ char*, int)');
+const nativeAudioSet = soundEffectLib.func('int IFLYTEK_AudioSet(_Out_ char*, struAudioPrm*)');
+const nativeAudioGet = soundEffectLib.func('int IFLYTEK_AudioGet(_Out_ char*, _Out_ struAudioPrm*)');
+const nativeAudioProcess = soundEffectLib.func('int IFLYTEK_AudioProcess(_Out_ char*, _Out_ int*, _Out_ int*, int)');
+const nativeAudioDelete = soundEffectLib.func('int IFLYTEK_AudioDelete(_Out_ char*)');
+const nativeAudioGetInfo = soundEffectLib.func('int IFLYTEK_AudioGetInfo(_Out_ const char**)');
+const nativeSetAlgParam = soundEffectLib.func('int IFLYTEK_SetAlgParam(_Out_ char*, int, _Out_ char*)');
+
+export const iflytekSoundEffect = {
+    audioCreate: nativeAudioCreate,
+    audioInitial: nativeAudioInitial,
+    audioReset: nativeAudioReset,
+    audioSet: nativeAudioSet,
+    audioGet: nativeAudioGet,
+    audioProcess: nativeAudioProcess,
+    audioDelete: nativeAudioDelete,
+    audioGetInfo: nativeAudioGetInfo,
+    setAlgParam: nativeSetAlgParam
 };

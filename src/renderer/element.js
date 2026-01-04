@@ -1,19 +1,20 @@
 import {
-	ElButton,
-	ElSelect,
 	ElAutocomplete,
-	ElOption,
+	ElButton,
 	ElCheckbox,
 	ElDialog,
-	ElInputNumber,
-	ElInput,
-	ElSlider,
-	ElRadio,
 	ElForm,
 	ElFormItem,
+	ElInput,
+	ElInputNumber,
 	ElLoading,
+	ElMessage,
 	ElMessageBox,
-	ElMessage
+	ElOption,
+	ElRadio,
+	ElSelect,
+	ElSlider,
+	ElTooltip
 } from 'element-plus';
 
 export default {
@@ -30,6 +31,7 @@ export default {
 		app.use(ElRadio);
 		app.use(ElForm);
 		app.use(ElFormItem);
+		app.use(ElTooltip);
 
 		app.use(ElLoading);
 		app.config.globalProperties.$msgbox = ElMessageBox;
