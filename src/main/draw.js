@@ -1,4 +1,4 @@
-import { eqDrawPoints, drcDrawPoints, writeToBinFile } from '../libs/index';
+import { eqDrawPoints, drcDrawPoints, writeToBinFile, readFromBinFile } from '../libs/index';
 import { join } from 'path';
 const iconv = require("iconv-lite");
 export default (ipcMain) => {
@@ -7,5 +7,9 @@ export default (ipcMain) => {
     ipcMain.handle('write-bin', (_e, binpath, name, audioConf) => {
         const pathstr = iconv.encode(join(binpath, name), 'GBK');
         return writeToBinFile(pathstr, audioConf);
+    });
+    ipcMain.handle('read-bin', (_e, binfile) => {
+        const pathstr = iconv.encode(binfile, 'GBK');
+        return readFromBinFile(pathstr);
     });
 };

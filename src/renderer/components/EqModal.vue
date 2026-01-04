@@ -545,7 +545,7 @@ export default {
               // 实时获取拖动的点位信息并根据此信息重新画图
               let [fc, gain] = that.chartDom.convertFromPixel(
                 'grid',
-                this.position
+                [this.x, this.y]
               );
               fc = fc < minFC ? minFC : fc;
               fc = fc >= maxFC ? maxFC : fc;

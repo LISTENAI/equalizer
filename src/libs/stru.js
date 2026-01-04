@@ -68,14 +68,14 @@ export const struFilterPrm = koffi.struct('struFilterPrm', {
 });
 export const StruFiltersPrm = koffi.array('struFilterPrm', 10);
 export const struMonoEqPrm = koffi.struct('struMonoEqPrm', {
-    Enable: 'int',
+    Enable: 'uint8',
     FilterPrm: StruFiltersPrm
 });
 
 // === 下行音频 结构体 ===
 export const struAudioPrm = koffi.struct('struAudioPrm', {
     BassBoostPrm: struBassBoostPrm,
-    TrebleBoostPrm: struTrebleBoostPrm,
+    TrebleoostPrm: struTrebleBoostPrm, // note: native struct uses TrebleoostPrm (with extra 'o')
     PeqPrm: struMonoEqPrm,
     DrcPrm: struDrcPrm,
     GainPrm: struGainPrm

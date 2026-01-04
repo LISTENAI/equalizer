@@ -29,14 +29,18 @@
           <IconAppGet class="icon" />
           <span>获取参数</span>
         </div>
-        <div class="opt-btn flex margin" v-loading="writing" :class="!connected || loading || writing ? 'disabled' : ''"
+        <div class="opt-btn flex" v-loading="writing" :class="!connected || loading || writing ? 'disabled' : ''"
           @click="saveAllParamsHandle" element-loading-spinner="el-icon-loading">
           <IconAppWrite class="icon" />
           <span>{{ writing ? '写入中' : '写入参数' }}</span>
         </div>
         <div class="opt-btn flex" :class="Object.keys(params).length ? '' : 'disabled'" @click="exportBinFile">
           <IconAppExport class="icon" />
-          <span>导出bin文件</span>
+          <span>导出bin</span>
+        </div>
+        <div class="opt-btn flex" @click="importBinFile">
+          <IconAppImport class="icon" />
+          <span>导入bin</span>
         </div>
       </div>
     </div>
@@ -96,16 +100,19 @@
       @reset="resetModalData" @save="saveHandle" />
     <DRCModal v-if="drcVisible" :visible="drcVisible" :checkable="drcCheckable" :drcData="drcData" @close="closeModal"
       @reset="resetModalData" @save="saveHandle" />
+    <FloatingPlayerControl :audio-params="audioParamsForPlay" />
   </div>
 </template>
 <script>
 import VoiceModal from 'components/VoiceModal.vue';
 import EQModal from 'components/EqModal.vue';
 import DRCModal from 'components/DRCModal.vue';
+import FloatingPlayerControl from 'components/FloatingPlayerControl.vue';
 import { SerialPortProxy, getList } from '../utils/serialPortProxy';
 import { checkConnect, setParams, getParams, activeEqParams, synthTts, getPcmFrame } from '../utils/index';
+import { PREF_KEYS, getPref, setPref } from '../utils/pref';
 import { mapState, mapActions } from 'pinia';
-import { useProjectStore } from '../store/modules/Project';
+import { useProjectStore, useSettingsStore } from '../store/modules';
 import defaultConfig from '../utils/config';
 import arrowImgUrl from '../assets/imgs/arrow.png';
 import soundImgUrl from '../assets/imgs/output.png';
@@ -118,7 +125,7 @@ import _ from 'lodash';
 const TYPES = ['eq', 'bass_boost', 'treble_boost', 'drc', 'agc'];
 export default {
   name: 'main-page',
-  components: { VoiceModal, EQModal, DRCModal },
+  components: { VoiceModal, EQModal, DRCModal, FloatingPlayerControl },
   data() {
     return {
       coms: [],
@@ -297,11 +304,13 @@ export default {
     SerialPortProxy.on('sp-eq-params', this.receiveParams)
     SerialPortProxy.on('sp-update-audio-state', this.receiveAudioState)
 
-    if (localStorage.getItem('last_baudrate')) {
-      this.baudrate = localStorage.getItem('last_baudrate');
+    const lastBaud = getPref(PREF_KEYS.LAST_BAUDRATE);
+    if (lastBaud) {
+      this.baudrate = lastBaud;
     }
-    if (localStorage.getItem('last_sampleRate')) {
-      const fs = localStorage.getItem('last_sampleRate');
+    const lastRate = getPref(PREF_KEYS.LAST_SAMPLE_RATE);
+    if (lastRate) {
+      const fs = lastRate;
       const selected = this.SampleRates.find(item => item.value == fs);
       if (selected) {
         this.fs = selected.value;
@@ -326,6 +335,12 @@ export default {
       fsMutex: 'fsMutex',
       connect: 'connect',
     }),
+    ...mapState(useSettingsStore, {
+      autoFetchParams: 'autoFetchParams',
+    }),
+    audioParamsForPlay() {
+      return this.mergeParams();
+    },
   },
   watch: {
     project: {
@@ -363,6 +378,13 @@ export default {
         });
       },
       deep: true,
+    },
+    audioParamsForPlay: {
+      handler(val) {
+        this.syncPlayerParams(val);
+      },
+      deep: true,
+      immediate: true,
     },
     // 采样率修改会有以下影响：
     // 1：所有模块的下发fs参数
@@ -432,6 +454,32 @@ export default {
         }
       }
     },
+    async importBinFile() {
+      const res = await window.ipcRenderer.invoke('open-file', {
+        properties: ['openFile'],
+        filters: [
+          {
+            name: 'Bin',
+            extensions: ['bin'],
+          },
+        ],
+      });
+      const filePath = res?.data?.[0];
+      if (!filePath) return;
+      const result = await window.ipcRenderer.invoke('read-bin', filePath);
+      if (!result) {
+        this.$message.error('导入失败');
+        return;
+      }
+      const params = _.cloneDeep(result);
+      const fsFromBin = params?.drc?.fs || params?.eq?.filters?.[0]?.[2] || params?.agc?.sr || this.fs;
+      if (fsFromBin) {
+        this.fs = fsFromBin;
+      }
+      console.log('导入参数', params);
+      this.saveParams(params);
+      this.$message.success('导入bin成功');
+    },
     receiveAudioState(args) {
       const { isPlaying } = args;
       this.decoding = isPlaying;
@@ -471,7 +519,9 @@ export default {
       try {
         console.log('enable eq params index -->', index);
         await this.writeSerialPortHandle(activeEqParams(index));
-        await this.getAllParams();
+        if (this.autoFetchParams) {
+          await this.getAllParams();
+        }
       } catch (error) {
         console.error(error);
       }
@@ -633,8 +683,8 @@ export default {
       }
     },
     saveOpenConfig() {
-      localStorage.setItem('last_baudrate', this.baudrate);
-      localStorage.setItem('last_sampleRate', this.fs);
+      setPref(PREF_KEYS.LAST_BAUDRATE, this.baudrate);
+      setPref(PREF_KEYS.LAST_SAMPLE_RATE, this.fs);
     },
     async changeConnectHandle(isOk, fs) {
       //固件上报连接成功，判断固件和界面的采样率是否一致
@@ -1040,8 +1090,8 @@ export default {
       }
       const finalParams = this.mergeParams();
       const buffer = new Uint8Array(finalParams.length * 4);
-      finalParams.forEach((item, index) => {
-        buffer[index] = item;
+      Object.keys(finalParams).forEach((key, index) => {
+        buffer[index] = finalParams[key];
       });
       const pathStr = await window.ipcRenderer.invoke('open-dict');
       console.log('导出', finalParams);
@@ -1049,17 +1099,22 @@ export default {
         const binPath = this.project?.manifestJson?.name
           ? this.project?.manifestJson?.name + '.bin'
           : '未命名-1.bin';
-        const res = await window.ipcRenderer.invoke(
-          'write-bin',
-          pathStr,
-          binPath,
-          finalParams
-        );
-        if (res === 0) {
-          this.$message.success(`${binPath}导出成功`);
-        } else {
-          this.$message.error('导出失败');
-        }
+          try {
+            const res = await window.ipcRenderer.invoke(
+              'write-bin',
+              pathStr,
+              binPath,
+              finalParams
+            );
+            if (res === 0) {
+              this.$message.success(`${binPath}导出成功`);
+            } else {
+              this.$message.error('导出失败');
+            }
+          } catch (e) {
+            console.error('导出失败', e);
+            this.$message.error('导出失败：' + (e.message || '未知错误'));
+          }
       }
     },
     changeEqParamsIndex(v) {
@@ -1103,13 +1158,26 @@ export default {
           return;
         });
     },
-    mergeParams() {
+    mergeParams(params) {
       //drc.dots不能进行merge ,不同段数dots长度不同
-      const dotsArr = this.params?.drc?.dots;
+      if (!params) {
+        params = this.params;
+      }
+      const dotsArr = params?.drc?.dots;
       const defaultParams = defaultConfig(this.fs);
       let finalParams = _.merge(_.cloneDeep(defaultParams), this.params);
       finalParams.drc.dots = dotsArr?.length ? dotsArr : finalParams.drc.dots;
       return finalParams;
+    },
+    async syncPlayerParams(params) {
+      try {
+        if (!params) return;
+        if (!this.fs) return; // 为空时算法库会报错
+        const final = this.mergeParams(params);
+        await window.ipcRenderer.invoke('player-set-params', JSON.stringify(final));
+      } catch (err) {
+        console.error('sync player params failed', err);
+      }
     },
   },
 };
@@ -1152,9 +1220,10 @@ export default {
     }
 
     .right {
+      gap: 8px;
+
       .el-select {
         width: 200px;
-        margin-right: 32px;
       }
 
       .opt-btn {

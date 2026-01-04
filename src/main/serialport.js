@@ -1,6 +1,8 @@
 import { BrowserWindow, ipcMain } from 'electron';
 import EventEmitter from 'events';
 import { createReadStream } from 'fs';
+import { mkdir, writeFile } from 'fs/promises';
+import { dirname } from 'path';
 import { SerialPort } from 'serialport';
 import { PassThrough, Readable } from 'stream';
 import { decoder } from './audioDecoder';
@@ -10,6 +12,39 @@ let handlingPortName = null;
 let handlingSampleRate = null;
 let currentDecoder = null;
 let currentReadable = null;
+let cachedSerialData = [];
+let shouldCacheSerialData = false;
+
+function startSerialDataCache() {
+  cachedSerialData = [];
+  shouldCacheSerialData = true;
+}
+
+function stopSerialDataCache() {
+  shouldCacheSerialData = false;
+}
+
+function appendSerialDataCache(data) {
+  if (!shouldCacheSerialData) return;
+  cachedSerialData.push(Buffer.from(data));
+}
+
+function getSerialCacheBuffer() {
+  return Buffer.concat(cachedSerialData);
+}
+
+async function exportSerialCacheToFile(filePath, clearAfterExport = false) {
+  if (!filePath) {
+    throw new Error('File path is required to export serial cache');
+  }
+  await mkdir(dirname(filePath), { recursive: true });
+  const buffer = getSerialCacheBuffer();
+  await writeFile(filePath, buffer);
+  if (clearAfterExport) {
+    cachedSerialData = [];
+  }
+  return buffer.length;
+}
 
 function send(eventName, args) {
   const windows = BrowserWindow.getAllWindows();
@@ -483,6 +518,7 @@ export default () => {
     });
     handlingPort = instance;
     instance.on('data', (data) => {
+      appendSerialDataCache(data);
       cacheData = Buffer.concat([cacheData, data]);
       let result = resolveBuffer(cacheData);
       while (result) {
@@ -523,6 +559,7 @@ export default () => {
           });
         }
       } else {
+        startSerialDataCache();
         send('sp-open-result', {
           code: 0,
         });
@@ -568,6 +605,7 @@ export default () => {
     }
     handlingPort.close((err) => {
       handlingPort = null;
+      stopSerialDataCache();
       if (err) {
         send('sp-close-result', {
           code: -1,
@@ -579,6 +617,23 @@ export default () => {
         });
       }
     });
+  });
+  ipcMain.handle('sp-export-cache', async (e, args) => {
+    const { filePath, clearAfterExport = false } =
+      typeof args === 'string' ? { filePath: args } : args || {};
+    try {
+      const bytes = await exportSerialCacheToFile(filePath, clearAfterExport);
+      send('sp-export-cache-result', {
+        code: 0,
+        bytes,
+        cleared: Boolean(clearAfterExport),
+      });
+    } catch (err) {
+      send('sp-export-cache-result', {
+        code: -1,
+        message: err?.message || 'Failed to export serial cache',
+      });
+    }
   });
   ipcMain.handle('sp-write', (e, data) => {
     if (handlingPort == null) {
