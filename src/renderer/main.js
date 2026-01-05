@@ -1,5 +1,4 @@
 import { createApp } from 'vue';
-import axios from 'axios';
 import App from './App.vue';
 import router from './router';
 import store from './store';
@@ -12,7 +11,6 @@ import _ from 'lodash';
 
 const app = createApp(App);
 app.config.globalProperties._ = _;
-app.config.globalProperties.$http = axios;
 
 app.use(Components);
 app.use(Element);
