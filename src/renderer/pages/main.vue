@@ -1165,7 +1165,7 @@ export default {
       }
       const dotsArr = params?.drc?.dots;
       const defaultParams = defaultConfig(this.fs);
-      let finalParams = _.merge(_.cloneDeep(defaultParams), this.params);
+      let finalParams = _.merge(_.cloneDeep(defaultParams), JSON.parse(JSON.stringify(this.params)));
       finalParams.drc.dots = dotsArr?.length ? dotsArr : finalParams.drc.dots;
       return finalParams;
     },
