@@ -245,7 +245,7 @@ export default {
             {
               type: 'vol',
               value: 0,
-              max: 0,
+              max: 24,
               min: -100,
               desc: '增益',
               unit: 'dB',
