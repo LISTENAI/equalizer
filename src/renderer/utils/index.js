@@ -97,7 +97,7 @@ export const setParams = (type, data) => {
   data_buf.push(TYPES_HEX[type]);
   switch (type) {
     case 'drc':
-      data_buf.writeInt(data.enable);
+      data_buf.writeInt(data.enable ? 1 : 0);
       data_buf.writeFloat(data.fs);
       data_buf.writeFloat(data.at);
       data_buf.writeFloat(data.rt);
@@ -111,7 +111,7 @@ export const setParams = (type, data) => {
       });
       break;
     case 'eq':
-      data_buf.writeInt(data.enable);
+      data_buf.writeInt(data.enable ? 1 : 0);
       data.filters && data.filters.forEach(filter => {
         data_buf.writeInt(filter[0]);
         data_buf.writeInt(filter[1]);
@@ -122,7 +122,7 @@ export const setParams = (type, data) => {
       });
       break;
     case 'agc':
-      data_buf.writeInt(data.enable);
+      data_buf.writeInt(data.enable ? 1 : 0);
       data_buf.writeFloat(data.sr);
       data_buf.writeFloat(data.vol);
       // data.mono_gains && data.mono_gains.forEach(gain => {
@@ -131,13 +131,13 @@ export const setParams = (type, data) => {
       // });
       break;
     case 'bass_boost':
-      data_buf.writeInt(data.enable);
+      data_buf.writeInt(data.enable ? 1 : 0);
       data_buf.writeFloat(data.fs);
       data_buf.writeFloat(data.gain);
       data_buf.writeFloat(data.freq);
       break;
     case 'treble_boost':
-      data_buf.writeInt(data.enable);
+      data_buf.writeInt(data.enable ? 1 : 0);
       data_buf.writeFloat(data.fs);
       data_buf.writeFloat(data.gain);
       data_buf.writeFloat(data.freq);
