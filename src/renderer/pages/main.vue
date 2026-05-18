@@ -122,6 +122,13 @@ import eqImg from '../assets/imgs/eq.png';
 import drcImg from '../assets/imgs/drc.png';
 import outImg from '../assets/imgs/out.png';
 import _ from 'lodash';
+
+const clonePlain = (value, fallback = {}) => {
+  if (value == null) return fallback;
+  const text = JSON.stringify(value);
+  return text ? JSON.parse(text) : fallback;
+};
+
 const TYPES = ['eq', 'bass_boost', 'treble_boost', 'drc', 'agc'];
 export default {
   name: 'main-page',
@@ -1160,12 +1167,10 @@ export default {
     },
     mergeParams(params) {
       //drc.dots不能进行merge ,不同段数dots长度不同
-      if (!params) {
-        params = this.params;
-      }
-      const dotsArr = params?.drc?.dots;
+      const sourceParams = clonePlain(params || this.params);
+      const dotsArr = sourceParams?.drc?.dots;
       const defaultParams = defaultConfig(this.fs);
-      let finalParams = _.merge(_.cloneDeep(defaultParams), JSON.parse(JSON.stringify(this.params)));
+      let finalParams = _.merge(_.cloneDeep(defaultParams), sourceParams);
       finalParams.drc.dots = dotsArr?.length ? dotsArr : finalParams.drc.dots;
       return finalParams;
     },

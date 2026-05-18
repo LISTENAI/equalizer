@@ -93,6 +93,13 @@ import logoImg from '../assets/imgs/lsAudio.png';
 import checkIcon from '../assets/svg/r_check.svg';
 import { SerialPortProxy } from '../utils/serialPortProxy';
 import _ from 'lodash';
+
+const clonePlain = (value, fallback = {}) => {
+  if (value == null) return fallback;
+  const text = JSON.stringify(value);
+  return text ? JSON.parse(text) : fallback;
+};
+
 export default {
   name: 'TopBar',
   components: { ProjectModal },
@@ -587,9 +594,10 @@ export default {
     },
     mergeParams() {
       //drc.dots不能进行merge ,不同段数dots长度不同
-      const dotsArr = this.params?.drc?.dots;
+      const sourceParams = clonePlain(this.params);
+      const dotsArr = sourceParams?.drc?.dots;
       const defaultParams = defaultConfig(this.rate);
-      let finalParams = _.merge(_.cloneDeep(defaultParams), this.params);
+      let finalParams = _.merge(_.cloneDeep(defaultParams), sourceParams);
       finalParams.drc.dots = dotsArr?.length ? dotsArr : finalParams.drc.dots;
       return finalParams;
     },
