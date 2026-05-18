@@ -1,6 +1,5 @@
-const { copyFileSync, existsSync, mkdirSync } = require('fs');
+const { existsSync } = require('fs');
 
-if (!existsSync('./dist_electron')) {
-    mkdirSync('./dist_electron')
+if (!existsSync('./ffmpeg/ffmpeg.exe')) {
+    throw new Error('Missing ./ffmpeg/ffmpeg.exe');
 }
-copyFileSync('./ffmpeg/ffmpeg.exe', './dist_electron/ffmpeg.exe');
