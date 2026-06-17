@@ -41,7 +41,7 @@
       <span class="dialog-footer">
         <div class="fl flex">
           <el-button @click="resetHandle">重置</el-button>
-          <el-checkbox v-model="enable" @change="emitAutoApply">Bypass</el-checkbox>
+          <el-checkbox v-if="isBypassable" v-model="enable" @change="emitAutoApply">Bypass</el-checkbox>
         </div>
         <el-button v-if="!autoApply" type="primary" @click="saveHandle">确 定</el-button>
         <el-button @click="beforeCloseHandle">{{ autoApply ? '关 闭' : '取 消' }}</el-button>
@@ -118,9 +118,17 @@ export default {
       console.log(this.voiceData);
     },
   },
+  computed: {
+    isBypassable() {
+      return this.detail?.bypassable !== false;
+    },
+  },
   methods: {
     buildParams() {
-      const params = { enable: !this.enable };
+      const params = {};
+      if (this.isBypassable) {
+        params.enable = !this.enable;
+      }
       if (this.detail.type === 'agc') {
         const { value } = this.detail?.item?.[0] || {};
         params.vol = value;
@@ -162,7 +170,9 @@ export default {
       this.$emit('close');
     },
     resetHandle() {
-      this.enable = false;
+      if (this.isBypassable) {
+        this.enable = false;
+      }
       this.$emit('reset', this.detail.type);
     },
   },

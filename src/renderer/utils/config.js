@@ -141,7 +141,6 @@ export default function getDefaultConfig(fs) {
             "freq": 1000.000
         },
         "howling_level": {
-            "enable": false,
             "level": 0
         }
     };

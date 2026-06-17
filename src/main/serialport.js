@@ -295,8 +295,7 @@ const parseTrebleBoost = (buf) => {
 
 const parseHowlingLevel = (buf) => {
   let data = {};
-  data.enable = Boolean(buf.readInt32LE(0));
-  data.level = buf.readInt32LE(4);
+  data.level = buf.readInt32LE(0);
   return data;
 };
 

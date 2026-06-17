@@ -611,6 +611,7 @@ export default {
       const defaultParams = defaultConfig(this.rate);
       let finalParams = _.merge(_.cloneDeep(defaultParams), sourceParams);
       finalParams.drc.dots = dotsArr?.length ? dotsArr : finalParams.drc.dots;
+      delete finalParams?.howling_level?.enable;
       return finalParams;
     },
   },

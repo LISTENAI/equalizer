@@ -144,7 +144,6 @@ export const setParams = (type, data) => {
       data_buf.writeFloat(data.freq);
       break;
     case 'howling_level':
-      data_buf.writeInt(data.enable ? 1 : 0);
       data_buf.writeInt(data.level);
       break;
     default:
@@ -399,8 +398,7 @@ const parseTrebleBoost = (buf) => {
 
 const parseHowlingLevel = (buf) => {
   let data = {};
-  data.enable = Boolean(buf.readInt32LE(0));
-  data.level = buf.readInt32LE(4);
+  data.level = buf.readInt32LE(0);
   return data;
 };
 

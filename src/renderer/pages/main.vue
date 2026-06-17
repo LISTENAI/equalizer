@@ -72,9 +72,10 @@
           <div class="flex box">
             <img :src="item.imageUrl" />
             <p class="text">{{ item.text }}</p>
-            <el-button :disabled="item.enable" @click="() => opreateHandle(item)">设置</el-button>
+            <el-button :disabled="item.bypassable !== false && item.enable" @click="() => opreateHandle(item)">设置</el-button>
             <!-- || (!Object.keys(project).length && !connected) -->
-            <el-checkbox v-model="item.enable" @change="() => changeBypass(item)">Bypass</el-checkbox>
+            <el-checkbox v-if="item.bypassable !== false" v-model="item.enable" @change="() => changeBypass(item)">Bypass</el-checkbox>
+            <span v-else class="bypass-placeholder" aria-hidden="true"></span>
           </div>
         </div>
 
@@ -192,7 +193,7 @@ export default {
           type: 'howling_level',
           text: '啸叫等级',
           imageUrl: howlingImg,
-          enable: true,
+          bypassable: false,
         },
         {
           type: 'eq',
@@ -258,6 +259,7 @@ export default {
         },
         howling_level: {
           title: '啸叫等级',
+          bypassable: false,
           item: [
             {
               type: 'level',
@@ -877,7 +879,9 @@ export default {
       this.voiceCheckable = item.enable;
     },
     parseData(type, data) {
-      this.enableVoice(type, !data.enable);
+      if (this.isTypeBypassable(type) && data) {
+        this.enableVoice(type, !data.enable);
+      }
       switch (type) {
         case 'bass_boost':
           this.parseVoiceData('bass_boost', data);
@@ -1068,12 +1072,18 @@ export default {
           voiceItem = JSON.parse(JSON.stringify(item));
         }
       });
+      if (voiceItem?.bypassable === false) return;
       if (voiceItem) {
         voiceItem.enable = val;
         this.options.splice(index, 1, voiceItem);
       }
     },
+    isTypeBypassable(type) {
+      const option = this.originOptions.find((item) => item.type === type);
+      return option?.bypassable !== false;
+    },
     syncEnableState(type, data) {
+      if (!this.isTypeBypassable(type)) return;
       const checkable = !data?.enable;
       this.enableVoice(type, checkable);
       switch (type) {
@@ -1338,6 +1348,7 @@ export default {
       const defaultParams = defaultConfig(this.fs);
       let finalParams = _.merge(_.cloneDeep(defaultParams), sourceParams);
       finalParams.drc.dots = dotsArr?.length ? dotsArr : finalParams.drc.dots;
+      delete finalParams?.howling_level?.enable;
       return finalParams;
     },
     async syncPlayerParams(params) {
@@ -1479,6 +1490,11 @@ export default {
           .el-button {
             width: 112px;
             margin: 24px 0;
+          }
+
+          .bypass-placeholder {
+            display: block;
+            height: 32px;
           }
         }
 
