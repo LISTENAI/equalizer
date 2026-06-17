@@ -4,6 +4,7 @@ const TYPES_HEX = {
   'agc': 0x03,
   'bass_boost': 0x04,
   'treble_boost': 0x05,
+  'howling_level': 0x06,
 };
 export const FilterType = {
   'LowPass': 0,
@@ -12,7 +13,7 @@ export const FilterType = {
   'LowShef': 3,
   'HighShelf': 4,
 };
-export const TYPES = ['drc', 'eq', 'agc', 'bass_boost', 'treble_boost'];
+export const TYPES = ['drc', 'eq', 'agc', 'bass_boost', 'treble_boost', 'howling_level'];
 
 const createHeader = (dataLen) => {
   //帧的总长度
@@ -141,6 +142,10 @@ export const setParams = (type, data) => {
       data_buf.writeFloat(data.fs);
       data_buf.writeFloat(data.gain);
       data_buf.writeFloat(data.freq);
+      break;
+    case 'howling_level':
+      data_buf.writeInt(data.enable ? 1 : 0);
+      data_buf.writeInt(data.level);
       break;
     default:
       break;
@@ -287,6 +292,9 @@ export const parseData = (data, bufType) => {
           case 'treble_boost':
             res_data.data = parseTrebleBoost(data_buf.subarray(4, data_buf.length - 1));
             break;
+          case 'howling_level':
+            res_data.data = parseHowlingLevel(data_buf.subarray(4, data_buf.length - 1));
+            break;
           default:
             res_data.data = {};
             break;
@@ -386,6 +394,13 @@ const parseTrebleBoost = (buf) => {
   data.fs = buf.readFloatLE(4).toFixed(3);
   data.gain = buf.readFloatLE(8).toFixed(3);
   data.freq = buf.readFloatLE(12).toFixed(3);
+  return data;
+};
+
+const parseHowlingLevel = (buf) => {
+  let data = {};
+  data.enable = Boolean(buf.readInt32LE(0));
+  data.level = buf.readInt32LE(4);
   return data;
 };
 

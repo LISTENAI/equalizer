@@ -4,15 +4,17 @@ import path from 'path';
 import { IpcMainHandle } from './ipcMain';
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
+const WINDOW_WIDTH = 1320;
+const WINDOW_HEIGHT = 640;
 
 async function createWindow() {
   try {
     // Create the browser window.
     const win = new BrowserWindow({
-      height: 600,
-      width: 1100,
-      minHeight: 600,
-      minWidth: 1100,
+      height: WINDOW_HEIGHT,
+      width: WINDOW_WIDTH,
+      minHeight: WINDOW_HEIGHT,
+      minWidth: WINDOW_WIDTH,
       frame: false,
       show: false,
       useContentSize: true,

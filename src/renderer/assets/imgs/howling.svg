@@ -1,0 +1,41 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="stroke" x1="14" y1="64" x2="114" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2289e5"/>
+      <stop offset="1" stop-color="#1D99FF"/>
+    </linearGradient>
+    <linearGradient id="fill" x1="64" y1="30" x2="64" y2="104" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2289e5" stop-opacity="0.42"/>
+      <stop offset="0.55" stop-color="#2289e5" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#2289e5" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <path d="M14 90
+           C24 89 32 89 42 89
+           C50 89 54 88 58 84
+           C61 79 63 52 66 34
+           C69 52 71 79 74 84
+           C78 88 82 89 90 89
+           C100 89 106 90 114 90
+           L114 106 L14 106 Z"
+        fill="url(#fill)"/>
+
+  <!-- 同心声波弧(以峰顶为圆心,左右对称两层) -->
+  <g stroke="url(#stroke)" stroke-width="5" stroke-linecap="round" fill="none">
+    <path d="M79.0 26.5 A15 15 0 0 0 68.6 19.2" opacity="0.95"/>
+    <path d="M87.7 21.5 A25 25 0 0 0 70.4 9.4" opacity="0.65"/>
+    <path d="M53.0 26.5 A15 15 0 0 1 63.4 19.2" opacity="0.95"/>
+    <path d="M44.3 21.5 A25 25 0 0 1 61.6 9.4" opacity="0.65"/>
+  </g>
+
+  <path d="M14 90
+           C24 89 32 89 42 89
+           C50 89 54 88 58 84
+           C61 79 63 52 66 34
+           C69 52 71 79 74 84
+           C78 88 82 89 90 89
+           C100 89 106 90 114 90"
+        stroke="url(#stroke)" stroke-width="8"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

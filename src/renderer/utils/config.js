@@ -139,6 +139,10 @@ export default function getDefaultConfig(fs) {
             "fs": fs,
             "gain": 0.000,
             "freq": 1000.000
+        },
+        "howling_level": {
+            "enable": false,
+            "level": 0
         }
     };
 }

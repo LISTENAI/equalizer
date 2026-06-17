@@ -121,6 +121,7 @@ import arrowImgUrl from '../assets/imgs/arrow.png';
 import soundImgUrl from '../assets/imgs/output.png';
 import lowImg from '../assets/imgs/low.png';
 import highImg from '../assets/imgs/high.png';
+import howlingImg from '../assets/imgs/howling.svg';
 import eqImg from '../assets/imgs/eq.png';
 import drcImg from '../assets/imgs/drc.png';
 import outImg from '../assets/imgs/out.png';
@@ -132,7 +133,7 @@ const clonePlain = (value, fallback = {}) => {
   return text ? JSON.parse(text) : fallback;
 };
 
-const TYPES = ['eq', 'bass_boost', 'treble_boost', 'drc', 'agc'];
+const TYPES = ['eq', 'bass_boost', 'treble_boost', 'howling_level', 'drc', 'agc'];
 export default {
   name: 'main-page',
   components: { VoiceModal, EQModal, DRCModal, FloatingPlayerControl },
@@ -185,6 +186,12 @@ export default {
           type: 'treble_boost',
           text: '高音增强',
           imageUrl: highImg,
+          enable: true,
+        },
+        {
+          type: 'howling_level',
+          text: '啸叫等级',
+          imageUrl: howlingImg,
           enable: true,
         },
         {
@@ -246,6 +253,19 @@ export default {
               min: 1000,
               desc: '高音增强截止频率',
               unit: 'Hz',
+            },
+          ],
+        },
+        howling_level: {
+          title: '啸叫等级',
+          item: [
+            {
+              type: 'level',
+              value: 0,
+              max: 1000,
+              min: 0,
+              desc: '啸叫等级',
+              unit: '',
             },
           ],
         },
@@ -865,6 +885,9 @@ export default {
         case 'treble_boost':
           this.parseVoiceData('treble_boost', data);
           break;
+        case 'howling_level':
+          this.parseHowlingLevelData(data);
+          break;
         case 'eq':
           this.parseEQData(data);
           break;
@@ -952,6 +975,14 @@ export default {
         modalData.item[0].sr = sr;
       }
       this.voiceData['agc'] = modalData;
+    },
+    parseHowlingLevelData(data) {
+      let modalData = JSON.parse(JSON.stringify(this.voiceType['howling_level']));
+      modalData.type = 'howling_level';
+      if (data && data.level !== undefined) {
+        modalData.item[0].value = parseInt(data.level);
+      }
+      this.voiceData['howling_level'] = modalData;
     },
     parseVoiceData(type, data) {
       let modalData = JSON.parse(JSON.stringify(this.voiceType[type]));
@@ -1061,7 +1092,7 @@ export default {
       const nextData = _.cloneDeep(data);
       if (type === 'agc') {
         nextData.sr = this.fs;
-      } else {
+      } else if (['bass_boost', 'treble_boost', 'eq', 'drc'].includes(type)) {
         nextData.fs = this.fs;
       }
       return nextData;

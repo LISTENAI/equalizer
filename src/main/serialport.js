@@ -144,7 +144,7 @@ const FRAME_HEADER_LENGTH = 6;
 const FRAME_TAG_LOW = 0x58;
 const FRAME_TAG_HIGH = 0x46;
 const FRAME_TYPE_CMD = 0xf0;
-const EQ_TYPES = ['UNKNOWN', 'drc', 'eq', 'agc', 'bass_boost', 'treble_boost'];
+const EQ_TYPES = ['UNKNOWN', 'drc', 'eq', 'agc', 'bass_boost', 'treble_boost', 'howling_level'];
 let frameCnt = 0;
 
 let cacheData = Buffer.from('');
@@ -293,6 +293,13 @@ const parseTrebleBoost = (buf) => {
   return data;
 };
 
+const parseHowlingLevel = (buf) => {
+  let data = {};
+  data.enable = Boolean(buf.readInt32LE(0));
+  data.level = buf.readInt32LE(4);
+  return data;
+};
+
 const parseAgc = (buf) => {
   let data = {};
   data.enable = Boolean(buf.readInt32LE(0 * 4));
@@ -399,6 +406,11 @@ function dispatchFrame(frame) {
               break;
             case 'treble_boost':
               params['treble_boost'] = parseTrebleBoost(
+                Buffer.from(frame.data.subarray(1))
+              );
+              break;
+            case 'howling_level':
+              params['howling_level'] = parseHowlingLevel(
                 Buffer.from(frame.data.subarray(1))
               );
               break;
