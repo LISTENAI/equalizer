@@ -19,6 +19,7 @@
             :min="item.min"
             :max="item.max"
             size="small"
+            @change="emitAutoApply"
           ></el-input-number>
           <i>{{ item.unit }}</i>
         </div>
@@ -29,6 +30,8 @@
             :min="item.min"
             :max="item.max"
             class="slider"
+            @input="emitAutoApply"
+            @change="emitAutoApply"
           ></el-slider>
           <i>{{ item.max }}{{ item.unit }}</i>
         </div>
@@ -38,10 +41,10 @@
       <span class="dialog-footer">
         <div class="fl flex">
           <el-button @click="resetHandle">重置</el-button>
-          <el-checkbox v-model="enable">Bypass</el-checkbox>
+          <el-checkbox v-model="enable" @change="emitAutoApply">Bypass</el-checkbox>
         </div>
-        <el-button type="primary" @click="saveHandle">确 定</el-button>
-        <el-button @click="beforeCloseHandle">取 消</el-button>
+        <el-button v-if="!autoApply" type="primary" @click="saveHandle">确 定</el-button>
+        <el-button @click="beforeCloseHandle">{{ autoApply ? '关 闭' : '取 消' }}</el-button>
       </span>
     </template>
 
@@ -79,6 +82,10 @@ export default {
     enableVoice: {
       type: Function,
     },
+    autoApply: {
+      type: Boolean,
+      default: false,
+    },
   },
 
   data() {
@@ -112,11 +119,10 @@ export default {
     },
   },
   methods: {
-    saveHandle() {
-      this.closeHandle();
+    buildParams() {
       const params = { enable: !this.enable };
       if (this.detail.type === 'agc') {
-        const { value } = this.detail?.item[0];
+        const { value } = this.detail?.item?.[0] || {};
         params.vol = value;
       } else {
         this.detail.item &&
@@ -124,9 +130,22 @@ export default {
             params[item.type] = parseInt(item.value);
           });
       }
+      return params;
+    },
+    emitAutoApply() {
+      if (!this.autoApply) return;
+      this.$emit('auto-apply', this.detail.type, this.buildParams());
+    },
+    saveHandle() {
+      this.closeHandle();
+      const params = this.buildParams();
       this.$emit('save', this.detail.type, params);
     },
     beforeCloseHandle() {
+      if (this.autoApply) {
+        this.closeHandle();
+        return;
+      }
       this.$confirm('是否确定关闭?', '', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',

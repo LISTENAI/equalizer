@@ -41,7 +41,7 @@
               :min="bandsData[key - 1]?.x"
               :max="bandsData[key + 1]?.x"
               size="small"
-              @change="mutex = false"
+              @change="handleBandsChange"
             ></el-input-number>
             <span>Y</span>
             <el-input-number
@@ -50,7 +50,7 @@
               :min="-100"
               :max="0"
               size="small"
-              @change="mutex = false"
+              @change="handleBandsChange"
             ></el-input-number>
             <span>W</span>
             <el-input-number
@@ -59,7 +59,7 @@
               :min="0"
               :max="20"
               size="small"
-              @change="mutex = false"
+              @change="handleBandsChange"
             ></el-input-number>
             <span>dB</span>
           </div>
@@ -73,6 +73,7 @@
               :min="0"
               :max="100"
               size="small"
+              @change="emitAutoApply"
             ></el-input-number>
             <i>ms</i>
           </div>
@@ -84,12 +85,13 @@
               :min="0"
               :max="1000"
               size="small"
+              @change="emitAutoApply"
             ></el-input-number>
             <i>ms</i>
           </div>
           <div class="list">
             <span>检测类型</span>
-            <el-select v-model="mode" size="small">
+            <el-select v-model="mode" size="small" @change="emitAutoApply">
               <el-option
                 v-for="type in types"
                 :label="type.label"
@@ -108,6 +110,7 @@
               :max="100"
               :step="1"
               size="small"
+              @change="emitAutoApply"
             ></el-input-number>
             <i>ms</i>
           </div>
@@ -119,10 +122,10 @@
       <span class="dialog-footer">
         <div class="fl flex">
           <el-button @click="resetHandle">重置</el-button>
-          <el-checkbox v-model="enable">Bypass</el-checkbox>
+          <el-checkbox v-model="enable" @change="emitAutoApply">Bypass</el-checkbox>
         </div>
-        <el-button type="primary" @click="saveHandle">确 定</el-button>
-        <el-button @click="beforeCloseHandle">取 消</el-button>
+        <el-button v-if="!autoApply" type="primary" @click="saveHandle">确 定</el-button>
+        <el-button @click="beforeCloseHandle">{{ autoApply ? '关 闭' : '取 消' }}</el-button>
       </span>
     </template>
   </el-dialog>
@@ -155,6 +158,10 @@ export default {
     },
     close: {
       type: Function,
+    },
+    autoApply: {
+      type: Boolean,
+      default: false,
     },
   },
 
@@ -626,10 +633,12 @@ export default {
               //   },
               // });
               that.dragHandle(that, bandsData);
+              that.emitAutoApply();
             },
             ondragend: function () {
               that.draging = false;
               that.renderChart();
+              that.emitAutoApply();
             },
           };
         }
@@ -670,9 +679,9 @@ export default {
       }
       return [parseInt(newPosX), parseInt(newPosY)];
     },
-    saveHandle() {
+    buildParams() {
       const { enable, bandsData, mode, at, rt, rms, fs, seg } = this;
-      const params = {
+      return {
         enable: !enable,
         fs,
         seg,
@@ -682,6 +691,13 @@ export default {
         rt: rt / 1000,
         rms: rms / 1000,
       };
+    },
+    emitAutoApply() {
+      if (!this.autoApply) return;
+      this.$emit('auto-apply', this.type, this.buildParams());
+    },
+    saveHandle() {
+      const params = this.buildParams();
       this.$emit('save', this.type, params);
       this.closeHandle();
     },
@@ -689,8 +705,13 @@ export default {
       const { bands } = this.getBandsData(this.seg);
       this.mutex = false;
       this.bandsData = _.cloneDeep(bands);
+      this.emitAutoApply();
     },
     beforeCloseHandle() {
+      if (this.autoApply) {
+        this.closeHandle();
+        return;
+      }
       this.$confirm('是否确定关闭?', '', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
@@ -711,6 +732,10 @@ export default {
       // this.$emit('reset', this.type);
       this.$emit('reset', this.type);
       this.mutex = false;
+    },
+    handleBandsChange() {
+      this.mutex = false;
+      this.emitAutoApply();
     },
     showTooltip(key) {
       if (key === undefined) {

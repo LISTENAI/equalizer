@@ -157,6 +157,12 @@ export default {
               checked: () => this.autoFetchParams,
             },
             {
+              name: '自动生效模式',
+              cb: this.toggleAutoApplyParams,
+              checkable: true,
+              checked: () => this.autoApplyParams,
+            },
+            {
               name: '关于',
               cb: this.showInfo,
             },
@@ -186,6 +192,7 @@ export default {
     }),
     ...mapState(useSettingsStore, {
       autoFetchParams: 'autoFetchParams',
+      autoApplyParams: 'autoApplyParams',
     }),
   },
   mounted() {
@@ -221,7 +228,12 @@ export default {
       'changeRate',
       'changeConnect',
     ]),
-    ...mapActions(useSettingsStore, ['toggleAutoFetchParams', 'setAutoFetchParams']),
+    ...mapActions(useSettingsStore, [
+      'toggleAutoFetchParams',
+      'setAutoFetchParams',
+      'toggleAutoApplyParams',
+      'setAutoApplyParams',
+    ]),
     // 新建项目之后 打开项目，参数都为默认值
     //打开项目之后，使用默认值进行操作
     //保存项目 把params都保存到config。json 更新manifest.json的version和modified

@@ -1,5 +1,6 @@
 export const PREF_KEYS = {
   AUTO_FETCH_PARAMS_ON_CONNECT: 'auto_fetch_params_on_connect',
+  AUTO_APPLY_PARAMS: 'auto_apply_params',
   LAST_BAUDRATE: 'last_baudrate',
   LAST_SAMPLE_RATE: 'last_sampleRate',
 };

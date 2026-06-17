@@ -44,7 +44,7 @@
             :max="boundaryVal.maxFC"
             size="small"
             :disabled="!item.enable"
-            @change="mutex = false"
+            @change="handleBandsChange"
           ></el-input-number>
           <el-input-number
             v-model="item.gain"
@@ -55,7 +55,7 @@
             :step="0.1"
             size="small"
             :disabled="!item.enable"
-            @change="mutex = false"
+            @change="handleBandsChange"
           ></el-input-number>
           <el-input-number
             v-model="item.q"
@@ -66,7 +66,7 @@
             :step="0.001"
             size="small"
             :disabled="!item.enable"
-            @change="mutex = false"
+            @change="handleBandsChange"
           ></el-input-number>
           <el-select
             v-model="item.type"
@@ -99,10 +99,10 @@
       <div class="dialog-footer">
         <div class="fl flex">
           <el-button @click="resetHandle">重置</el-button>
-          <el-checkbox v-model="enable">Bypass</el-checkbox>
+          <el-checkbox v-model="enable" @change="emitAutoApply">Bypass</el-checkbox>
         </div>
-        <el-button type="primary" @click="saveHandle">确 定</el-button>
-        <el-button @click="beforeCloseHandle">取 消</el-button>
+        <el-button v-if="!autoApply" type="primary" @click="saveHandle">确 定</el-button>
+        <el-button @click="beforeCloseHandle">{{ autoApply ? '关 闭' : '取 消' }}</el-button>
       </div>
     </template>
   </el-dialog>
@@ -146,6 +146,10 @@ export default {
     },
     close: {
       type: Function,
+    },
+    autoApply: {
+      type: Boolean,
+      default: false,
     },
   },
 
@@ -577,10 +581,12 @@ export default {
               });
 
               that.dragHandle(that, bandsData);
+              that.emitAutoApply();
             }, dataIndex),
             ondragend: function () {
               that.draging = false;
               that.renderChart();
+              that.emitAutoApply();
             },
           };
         }
@@ -609,16 +615,27 @@ export default {
     resize() {
       // this.dom.resize();
     },
-    saveHandle() {
-      this.closeHandle();
+    buildParams() {
       const data = this.bandsData.map((item) => {
         const { enable, type, dSampleRateHz, q, gain, fc } = item;
         return [enable ? 1 : 0, type, dSampleRateHz || 48000, q, gain, fc];
       });
-      const params = { enable: !this.enable, filters: data };
+      return { enable: !this.enable, filters: data };
+    },
+    emitAutoApply() {
+      if (!this.autoApply) return;
+      this.$emit('auto-apply', this.type, this.buildParams());
+    },
+    saveHandle() {
+      this.closeHandle();
+      const params = this.buildParams();
       this.$emit('save', this.type, params);
     },
     beforeCloseHandle() {
+      if (this.autoApply) {
+        this.closeHandle();
+        return;
+      }
       this.$confirm('是否确定关闭?', '', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
@@ -638,6 +655,10 @@ export default {
     resetHandle() {
       this.$emit('reset', this.type);
       this.mutex = false;
+    },
+    handleBandsChange() {
+      this.mutex = false;
+      this.emitAutoApply();
     },
     resetTypeSelect() {
       this.bandsData.map((item, index) => {
@@ -670,11 +691,13 @@ export default {
           img +
           ');color: transparent;background-position: 6px 2px;background-repeat: no-repeat;background-size: 32px 16px;'
       );
+      this.emitAutoApply();
     },
     changeenable(v, key) {
       this.mutex = false;
       this.bandsData[key].enable = v;
       this.changeTypeImg(key, this.bandsData[key]);
+      this.emitAutoApply();
     },
     showTooltip(key) {
       if (key === undefined) {

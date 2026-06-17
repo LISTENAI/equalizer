@@ -4,6 +4,7 @@ import { PREF_KEYS, getPrefBool, setPrefBool } from '../../utils/pref';
 export const useSettingsStore = defineStore('Settings', {
   state: () => ({
     autoFetchParams: getPrefBool(PREF_KEYS.AUTO_FETCH_PARAMS_ON_CONNECT, false),
+    autoApplyParams: getPrefBool(PREF_KEYS.AUTO_APPLY_PARAMS, false),
   }),
   actions: {
     setAutoFetchParams(val) {
@@ -13,6 +14,14 @@ export const useSettingsStore = defineStore('Settings', {
     },
     toggleAutoFetchParams() {
       this.setAutoFetchParams(!this.autoFetchParams);
+    },
+    setAutoApplyParams(val) {
+      const next = !!val;
+      this.autoApplyParams = next;
+      setPrefBool(PREF_KEYS.AUTO_APPLY_PARAMS, next);
+    },
+    toggleAutoApplyParams() {
+      this.setAutoApplyParams(!this.autoApplyParams);
     },
   },
 });

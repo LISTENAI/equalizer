@@ -95,11 +95,14 @@
     </div>
 
     <VoiceModal v-if="voiceVisible" :visible="voiceVisible" :checkable="voiceCheckable"
-      :voiceData="voiceData[currentModalType]" @close="closeModal" @reset="resetModalData" @save="saveHandle" />
-    <EQModal v-if="eqVisible" :visible="eqVisible" :checkable="eqCheckable" :eqData="eqData" @close="closeModal"
-      @reset="resetModalData" @save="saveHandle" />
-    <DRCModal v-if="drcVisible" :visible="drcVisible" :checkable="drcCheckable" :drcData="drcData" @close="closeModal"
-      @reset="resetModalData" @save="saveHandle" />
+      :voiceData="voiceData[currentModalType]" :autoApply="autoApplyParams" @close="closeModal"
+      @reset="handleModalReset" @save="saveHandle" @auto-apply="autoApplyHandle" />
+    <EQModal v-if="eqVisible" :visible="eqVisible" :checkable="eqCheckable" :eqData="eqData"
+      :autoApply="autoApplyParams" @close="closeModal" @reset="handleModalReset" @save="saveHandle"
+      @auto-apply="autoApplyHandle" />
+    <DRCModal v-if="drcVisible" :visible="drcVisible" :checkable="drcCheckable" :drcData="drcData"
+      :autoApply="autoApplyParams" @close="closeModal" @reset="handleModalReset" @save="saveHandle"
+      @auto-apply="autoApplyHandle" />
     <FloatingPlayerControl :audio-params="audioParamsForPlay" />
   </div>
 </template>
@@ -301,6 +304,11 @@ export default {
       timeOutid: null,
       decoding: false,
       sendFirstFrame: false,
+      autoApplyTimer: null,
+      autoApplyDueAt: 0,
+      autoApplyPending: null,
+      autoApplyWriting: false,
+      autoApplySyncSkipType: '',
     };
   },
   mounted() {
@@ -331,6 +339,7 @@ export default {
     SerialPortProxy.off('sp-sample-rate', this.receiveFs)
     SerialPortProxy.off('sp-eq-params', this.receiveParams)
     SerialPortProxy.off('sp-update-audio-state', this.receiveAudioState)
+    this.clearAutoApplyWriteQueue();
   },
 
   computed: {
@@ -344,6 +353,7 @@ export default {
     }),
     ...mapState(useSettingsStore, {
       autoFetchParams: 'autoFetchParams',
+      autoApplyParams: 'autoApplyParams',
     }),
     audioParamsForPlay() {
       return this.mergeParams();
@@ -373,6 +383,9 @@ export default {
       this.connecting = false;
       this.clearInterval();
       this.clearTimeout();
+      if (!v) {
+        this.clearAutoApplyWriteQueue();
+      }
     },
     reset(v) {
       v && this.setInitData();
@@ -380,9 +393,15 @@ export default {
     params: {
       handler(val) {
         const data = JSON.parse(JSON.stringify(val));
+        const skipType = this.autoApplySyncSkipType;
         Object.keys(data).forEach((key) => {
+          if (key === skipType) {
+            this.syncEnableState(key, data[key]);
+            return;
+          }
           this.parseData(key, data[key]);
         });
+        this.autoApplySyncSkipType = '';
       },
       deep: true,
     },
@@ -418,6 +437,11 @@ export default {
     },
     fs(v) {
       this.changeRate(v);
+    },
+    autoApplyParams(v) {
+      if (!v) {
+        this.clearAutoApplyWriteQueue();
+      }
     },
   },
   methods: {
@@ -557,6 +581,65 @@ export default {
         const message = error.message || '写入参数失败请重试'
         this.$message.error(message);
         return { code: -1, message }
+      }
+    },
+    clearAutoApplyWriteQueue() {
+      if (this.autoApplyTimer) {
+        clearTimeout(this.autoApplyTimer);
+      }
+      this.autoApplyTimer = null;
+      this.autoApplyDueAt = 0;
+      this.autoApplyPending = null;
+    },
+    scheduleAutoApplyFlush() {
+      if (!this.autoApplyPending) return;
+      if (this.autoApplyTimer) {
+        clearTimeout(this.autoApplyTimer);
+      }
+      const delay = Math.max(0, this.autoApplyDueAt - Date.now());
+      this.autoApplyTimer = setTimeout(() => {
+        this.autoApplyTimer = null;
+        this.flushAutoApplyWrite();
+      }, delay);
+    },
+    scheduleAutoApplyWrite(type, data) {
+      if (!this.connected || this.loading || this.writing) return;
+      this.autoApplyPending = {
+        type,
+        data: _.cloneDeep(data),
+      };
+      this.autoApplyDueAt = Date.now() + 300;
+      this.scheduleAutoApplyFlush();
+    },
+    async flushAutoApplyWrite() {
+      if (this.autoApplyWriting) return;
+      if (!this.autoApplyPending) return;
+      if (!this.connected || this.loading || this.writing) {
+        this.clearAutoApplyWriteQueue();
+        return;
+      }
+      if (Date.now() < this.autoApplyDueAt) {
+        this.scheduleAutoApplyFlush();
+        return;
+      }
+      const pending = this.autoApplyPending;
+      this.autoApplyPending = null;
+      this.autoApplyDueAt = 0;
+      this.autoApplyWriting = true;
+      try {
+        const params = setParams(pending.type, pending.data);
+        await this.writeSerialPortHandle(params);
+      } finally {
+        this.autoApplyWriting = false;
+        if (this.autoApplyPending) {
+          this.scheduleAutoApplyFlush();
+        }
+      }
+    },
+    async waitForAutoApplyIdle(timeout = 2000) {
+      const start = Date.now();
+      while (this.autoApplyWriting && Date.now() - start < timeout) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
       }
     },
     async getComs() {
@@ -959,16 +1042,62 @@ export default {
         this.options.splice(index, 1, voiceItem);
       }
     },
-    async saveHandle(type, data) {
-      if (type === 'agc') {
-        data.sr = this.fs;
-      } else {
-        data.fs = this.fs;
+    syncEnableState(type, data) {
+      const checkable = !data?.enable;
+      this.enableVoice(type, checkable);
+      switch (type) {
+        case 'eq':
+          this.eqCheckable = checkable;
+          break;
+        case 'drc':
+          this.drcCheckable = checkable;
+          break;
+        default:
+          this.voiceCheckable = checkable;
+          break;
       }
-      this.parseData(type, data);
-      const newParams = _.cloneDeep({ ...this.params, [type]: data });
+    },
+    prepareModalParams(type, data) {
+      const nextData = _.cloneDeep(data);
+      if (type === 'agc') {
+        nextData.sr = this.fs;
+      } else {
+        nextData.fs = this.fs;
+      }
+      return nextData;
+    },
+    commitModalParams(type, data, options = {}) {
+      const { autoWrite = false, skipModalSync = false } = options;
+      const nextData = this.prepareModalParams(type, data);
+      if (skipModalSync) {
+        this.syncEnableState(type, nextData);
+        this.autoApplySyncSkipType = type;
+      } else {
+        this.parseData(type, nextData);
+      }
+      const newParams = _.cloneDeep({ ...this.params, [type]: nextData });
       console.log(newParams);
       this.saveParams(newParams);
+      if (autoWrite) {
+        this.scheduleAutoApplyWrite(type, nextData);
+      }
+    },
+    async saveHandle(type, data) {
+      this.commitModalParams(type, data);
+    },
+    handleModalReset(type) {
+      this.resetModalData(type);
+      if (!this.autoApplyParams) return;
+      const defaults = defaultConfig(this.fs);
+      const data = _.cloneDeep(defaults[type]);
+      this.commitModalParams(type, data, { autoWrite: true });
+    },
+    autoApplyHandle(type, data) {
+      if (!this.autoApplyParams) return;
+      this.commitModalParams(type, data, {
+        autoWrite: true,
+        skipModalSync: true,
+      });
     },
 
     //单个写入设置
@@ -990,6 +1119,12 @@ export default {
     //写入所有参数
     async saveAllParamsHandle() {
       if (!this.connected || this.loading || this.writing) return;
+      this.clearAutoApplyWriteQueue();
+      await this.waitForAutoApplyIdle();
+      if (this.autoApplyWriting) {
+        this.$message.warning('自动生效写入中，请稍后重试');
+        return;
+      }
       if (Object.keys(this.params).length === 0) {
         return this.$message.error('请先设置参数');
       }
