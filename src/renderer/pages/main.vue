@@ -862,21 +862,27 @@ export default {
     },
     //打开设置 ->获取参数
     async openEQModal(item) {
-      this.eqVisible = true;
       this.currentModalType = item.type;
-      this.eqCheckable = item.enable;
+      if (!this.syncModalDataFromParams(item.type)) {
+        this.eqCheckable = item.enable;
+      }
+      this.eqVisible = true;
     },
     async openDRCModal(item) {
       this.currentModalType = item.type;
-      this.drcCheckable = item.enable;
+      if (!this.syncModalDataFromParams(item.type)) {
+        this.drcCheckable = item.enable;
+      }
       this.drcVisible = true;
       console.log(this.drcData);
     },
     async openVoiceModal(item) {
       console.log(this.voiceData);
-      this.voiceVisible = true;
       this.currentModalType = item.type;
-      this.voiceCheckable = item.enable;
+      if (!this.syncModalDataFromParams(item.type)) {
+        this.voiceCheckable = item.enable;
+      }
+      this.voiceVisible = true;
     },
     parseData(type, data) {
       if (this.isTypeBypassable(type) && data) {
@@ -1057,9 +1063,14 @@ export default {
       }
     },
     closeModal() {
+      const type = this.currentModalType;
       this.voiceVisible = false;
       this.eqVisible = false;
       this.drcVisible = false;
+      // Auto-apply skips prop sync while editing; refresh cached modal data after unmount.
+      this.$nextTick(() => {
+        this.syncModalDataFromParams(type);
+      });
     },
     //修改主页Bypass
     enableVoice(type, val) {
@@ -1097,6 +1108,12 @@ export default {
           this.voiceCheckable = checkable;
           break;
       }
+    },
+    syncModalDataFromParams(type) {
+      const data = type && this.params?.[type];
+      if (!data) return false;
+      this.parseData(type, _.cloneDeep(data));
+      return true;
     },
     prepareModalParams(type, data) {
       const nextData = _.cloneDeep(data);
