@@ -885,8 +885,8 @@ export default {
       this.voiceVisible = true;
     },
     parseData(type, data) {
-      if (this.isTypeBypassable(type) && data) {
-        this.enableVoice(type, !data.enable);
+      if (data) {
+        this.syncEnableState(type, data);
       }
       switch (type) {
         case 'bass_boost':
@@ -1105,7 +1105,9 @@ export default {
           this.drcCheckable = checkable;
           break;
         default:
-          this.voiceCheckable = checkable;
+          if (!this.voiceVisible || this.currentModalType === type) {
+            this.voiceCheckable = checkable;
+          }
           break;
       }
     },
