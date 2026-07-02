@@ -294,10 +294,22 @@ const parseTrebleBoost = (buf) => {
 };
 
 const parseHowlingLevel = (buf) => {
+  if (!buf || buf.length < 4) {
+    return null;
+  }
   let data = {};
   data.level = buf.readInt32LE(0);
   return data;
 };
+
+function sendEqParamStatus(type, supported, reason, detail = {}) {
+  send('sp-eq-param-status', {
+    type,
+    supported,
+    reason,
+    ...detail,
+  });
+}
 
 const parseAgc = (buf) => {
   let data = {};
@@ -370,8 +382,9 @@ function dispatchFrame(frame) {
   try {
     switch (frame.command) {
       case 0xf1: // 每次命令的响应
-        const result = Buffer.from(frame.data).readUInt8(0);
+        const result = frame.data.length ? Buffer.from(frame.data).readUInt8(0) : -1;
         console.log('Command result', result);
+        send('sp-command-result', { code: result });
         break;
       case 0x01: // 采样率返回
         if (frame.data.length >= 4) {
@@ -408,15 +421,30 @@ function dispatchFrame(frame) {
                 Buffer.from(frame.data.subarray(1))
               );
               break;
-            case 'howling_level':
-              params['howling_level'] = parseHowlingLevel(
-                Buffer.from(frame.data.subarray(1))
-              );
+            case 'howling_level': {
+              const payload = Buffer.from(frame.data.subarray(1));
+              try {
+                const howlingLevel = parseHowlingLevel(payload);
+                if (howlingLevel) {
+                  params['howling_level'] = howlingLevel;
+                } else {
+                  sendEqParamStatus('howling_level', false, 'invalid_payload', {
+                    length: payload.length,
+                  });
+                }
+              } catch (error) {
+                sendEqParamStatus('howling_level', false, 'parse_error', {
+                  message: error?.message,
+                });
+              }
               break;
+            }
             default:
               break;
           }
-          send('sp-eq-params', params);
+          if (Object.keys(params).length) {
+            send('sp-eq-params', params);
+          }
         }
         break;
       case 0x54: // 工作状态

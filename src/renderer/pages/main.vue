@@ -69,12 +69,23 @@
         <div class="step text">输入</div>
         <div class="step flex" v-for="item in options" :key="item.text">
           <img :src="arrowImgUrl" class="arrow" />
-          <div class="flex box">
+          <div
+            class="flex box"
+            :class="{ 'optional-unsupported': isOptionalParamUnsupported(item.type) }"
+          >
             <img :src="item.imageUrl" />
             <p class="text">{{ item.text }}</p>
-            <el-button :disabled="item.bypassable !== false && item.enable" @click="() => opreateHandle(item)">设置</el-button>
+            <el-button :disabled="isSettingDisabled(item)" @click="() => opreateHandle(item)">设置</el-button>
             <!-- || (!Object.keys(project).length && !connected) -->
             <el-checkbox v-if="item.bypassable !== false" v-model="item.enable" @change="() => changeBypass(item)">Bypass</el-checkbox>
+            <div
+              v-else-if="isOptionalParamType(item.type)"
+              class="support-status"
+              :class="optionalParamSupportClass(item.type)"
+            >
+              <span class="support-dot"></span>
+              <span>{{ optionalParamSupportText(item.type) }}</span>
+            </div>
             <span v-else class="bypass-placeholder" aria-hidden="true"></span>
           </div>
         </div>
@@ -135,6 +146,14 @@ const clonePlain = (value, fallback = {}) => {
 };
 
 const TYPES = ['eq', 'bass_boost', 'treble_boost', 'howling_level', 'drc', 'agc'];
+const OPTIONAL_PARAM_TYPES = ['howling_level'];
+const OPTIONAL_QUERY_TIMEOUT_MS = 2000;
+const PARAM_SUPPORT = {
+  UNKNOWN: 'unknown',
+  SUPPORTED: 'supported',
+  UNSUPPORTED: 'unsupported',
+};
+const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj || {}, key);
 export default {
   name: 'main-page',
   components: { VoiceModal, EQModal, DRCModal, FloatingPlayerControl },
@@ -331,6 +350,13 @@ export default {
       autoApplyPending: null,
       autoApplyWriting: false,
       autoApplySyncSkipType: '',
+      optionalParamSupport: {
+        howling_level: PARAM_SUPPORT.UNKNOWN,
+      },
+      paramFetchId: 0,
+      optionalQueryTimeoutId: null,
+      optionalQueryType: '',
+      optionalParamSkippedInFetch: {},
     };
   },
   mounted() {
@@ -339,6 +365,8 @@ export default {
     SerialPortProxy.mount();
     SerialPortProxy.on('sp-sample-rate', this.receiveFs)
     SerialPortProxy.on('sp-eq-params', this.receiveParams)
+    SerialPortProxy.on('sp-eq-param-status', this.receiveParamStatus)
+    SerialPortProxy.on('sp-command-result', this.receiveCommandResult)
     SerialPortProxy.on('sp-update-audio-state', this.receiveAudioState)
 
     const lastBaud = getPref(PREF_KEYS.LAST_BAUDRATE);
@@ -360,6 +388,8 @@ export default {
     SerialPortProxy.unmount();
     SerialPortProxy.off('sp-sample-rate', this.receiveFs)
     SerialPortProxy.off('sp-eq-params', this.receiveParams)
+    SerialPortProxy.off('sp-eq-param-status', this.receiveParamStatus)
+    SerialPortProxy.off('sp-command-result', this.receiveCommandResult)
     SerialPortProxy.off('sp-update-audio-state', this.receiveAudioState)
     this.clearAutoApplyWriteQueue();
   },
@@ -407,6 +437,10 @@ export default {
       this.clearTimeout();
       if (!v) {
         this.clearAutoApplyWriteQueue();
+        OPTIONAL_PARAM_TYPES.forEach((type) => {
+          this.setOptionalParamSupport(type, PARAM_SUPPORT.UNKNOWN);
+          this.syncOptionalParamOption(type);
+        });
       }
     },
     reset(v) {
@@ -486,13 +520,40 @@ export default {
         await this.changeConnectHandle(true, sampleRate);
       }
     },
-    receiveParams(args) {
-      if (args[this.eName]) {
+    receiveParams(args = {}) {
+      const acceptedArgs = {};
+      Object.keys(args).forEach((type) => {
+        if (this.isOptionalParamType(type)) {
+          if (!this.isActiveOptionalParamQuery(type)) {
+            console.warn('ignore stale optional param response', type);
+            return;
+          }
+          this.clearOptionalParamQueryTimeout(type);
+          this.setOptionalParamSupport(type, PARAM_SUPPORT.SUPPORTED);
+        }
+        acceptedArgs[type] = args[type];
+      });
+      if (!Object.keys(acceptedArgs).length) return;
+      if (hasOwn(acceptedArgs, this.eName)) {
         this.eDone = true;
       }
       // avoid mutating store state directly; work on a deep copy then dispatch
-      const newParams = _.cloneDeep({ ...this.params, ...args });
+      const newParams = _.cloneDeep({ ...this.params, ...acceptedArgs });
       this.saveParams(newParams);
+    },
+    receiveParamStatus(args = {}) {
+      const { type, supported, reason } = args;
+      if (!this.isOptionalParamType(type) || supported !== false) return;
+      if (!this.isActiveOptionalParamQuery(type)) return;
+      console.warn('optional param unsupported', type, reason);
+      this.markOptionalParamUnsupported(type, reason || 'status');
+    },
+    receiveCommandResult(args = {}) {
+      const { code } = args;
+      if (!this.loading || code == null || code === 0) return;
+      const type = this.eName;
+      if (!this.isOptionalParamType(type)) return;
+      this.markOptionalParamUnsupported(type, `command_result_${code}`);
     },
     async receiveData(e, res) {
       if (this.connected) {
@@ -561,6 +622,9 @@ export default {
       // console.log('重置页面参数');
       TYPES.forEach((item) => {
         this.resetModalData(item);
+      });
+      OPTIONAL_PARAM_TYPES.forEach((item) => {
+        this.syncOptionalParamOption(item);
       });
       this.changeReset(false);
     },
@@ -649,6 +713,7 @@ export default {
       this.autoApplyDueAt = 0;
       this.autoApplyWriting = true;
       try {
+        if (this.isOptionalParamUnsupported(pending.type)) return;
         const params = setParams(pending.type, pending.data);
         await this.writeSerialPortHandle(params);
       } finally {
@@ -678,6 +743,141 @@ export default {
     clearInterval() {
       this.timeId && clearInterval(this.timeId);
       this.timeId = null;
+      this.clearOptionalParamQueryTimeout();
+    },
+    isOptionalParamType(type) {
+      return OPTIONAL_PARAM_TYPES.includes(type);
+    },
+    isSettingDisabled(item) {
+      return (
+        this.isOptionalParamUnsupported(item.type) ||
+        (item.bypassable !== false && item.enable)
+      );
+    },
+    isOptionalParamUnsupported(type) {
+      return this.optionalParamSupport[type] === PARAM_SUPPORT.UNSUPPORTED;
+    },
+    optionalParamSupportText(type) {
+      if (this.isActiveOptionalParamQuery(type)) return '检测中';
+      switch (this.optionalParamSupport[type]) {
+        case PARAM_SUPPORT.SUPPORTED:
+          return '支持';
+        case PARAM_SUPPORT.UNSUPPORTED:
+          return '不支持';
+        default:
+          return '待检测';
+      }
+    },
+    optionalParamSupportClass(type) {
+      if (this.isActiveOptionalParamQuery(type)) return 'support-checking';
+      switch (this.optionalParamSupport[type]) {
+        case PARAM_SUPPORT.SUPPORTED:
+          return 'support-supported';
+        case PARAM_SUPPORT.UNSUPPORTED:
+          return 'support-unsupported';
+        default:
+          return 'support-unknown';
+      }
+    },
+    isActiveOptionalParamQuery(type) {
+      return (
+        this.loading &&
+        this.eName === type &&
+        this.optionalParamSkippedInFetch[type] !== this.paramFetchId
+      );
+    },
+    resetOptionalParamSupportForFetch() {
+      this.clearOptionalParamQueryTimeout();
+      this.optionalParamSkippedInFetch = {};
+      OPTIONAL_PARAM_TYPES.forEach((type) => {
+        this.optionalParamSupport = {
+          ...this.optionalParamSupport,
+          [type]: PARAM_SUPPORT.UNKNOWN,
+        };
+        this.syncOptionalParamOption(type);
+      });
+    },
+    setOptionalParamSupport(type, support) {
+      if (!this.isOptionalParamType(type)) return;
+      this.optionalParamSupport = {
+        ...this.optionalParamSupport,
+        [type]: support,
+      };
+      if (
+        support === PARAM_SUPPORT.SUPPORTED ||
+        support === PARAM_SUPPORT.UNSUPPORTED
+      ) {
+        this.syncOptionalParamOption(type);
+      }
+    },
+    getOptionInsertIndex(type) {
+      const targetIndex = this.originOptions.findIndex((item) => item.type === type);
+      if (targetIndex === -1) return this.options.length;
+      const index = this.options.findIndex((item) => {
+        const originIndex = this.originOptions.findIndex((origin) => origin.type === item.type);
+        return originIndex > targetIndex;
+      });
+      return index === -1 ? this.options.length : index;
+    },
+    syncOptionalParamOption(type) {
+      const optionIndex = this.options.findIndex((item) => item.type === type);
+      const originOption = this.originOptions.find((item) => item.type === type);
+      if (!originOption) return;
+      if (this.isOptionalParamUnsupported(type)) {
+        if (this.currentModalType === type) {
+          this.voiceVisible = false;
+          this.currentModalType = '';
+        }
+      }
+      if (optionIndex !== -1) return;
+      this.options.splice(
+        this.getOptionInsertIndex(type),
+        0,
+        JSON.parse(JSON.stringify(originOption))
+      );
+    },
+    clearOptionalParamQueryTimeout(type) {
+      if (type && this.optionalQueryType && this.optionalQueryType !== type) return;
+      if (this.optionalQueryTimeoutId) {
+        clearTimeout(this.optionalQueryTimeoutId);
+      }
+      this.optionalQueryTimeoutId = null;
+      this.optionalQueryType = '';
+    },
+    startOptionalParamQueryTimeout(type, fetchId) {
+      if (!this.isOptionalParamType(type)) return;
+      this.clearOptionalParamQueryTimeout();
+      this.optionalQueryType = type;
+      this.optionalQueryTimeoutId = setTimeout(() => {
+        if (
+          this.paramFetchId !== fetchId ||
+          !this.loading ||
+          this.eName !== type ||
+          this.eDone
+        ) {
+          return;
+        }
+        this.markOptionalParamUnsupported(type, 'timeout', fetchId);
+      }, OPTIONAL_QUERY_TIMEOUT_MS);
+    },
+    markOptionalParamUnsupported(type, reason, fetchId = this.paramFetchId) {
+      if (!this.isOptionalParamType(type) || this.paramFetchId !== fetchId) return;
+      this.optionalParamSkippedInFetch = {
+        ...this.optionalParamSkippedInFetch,
+        [type]: fetchId,
+      };
+      this.clearOptionalParamQueryTimeout(type);
+      this.setOptionalParamSupport(type, PARAM_SUPPORT.UNSUPPORTED);
+      this.removeParamFromStore(type);
+      if (this.eName === type) {
+        this.eDone = true;
+      }
+    },
+    removeParamFromStore(type) {
+      if (!hasOwn(this.params, type)) return;
+      const newParams = _.cloneDeep(this.params);
+      delete newParams[type];
+      this.saveParams(newParams);
     },
     async connectHandle() {
       try {
@@ -848,6 +1048,10 @@ export default {
       this.saveParams(params);
     },
     async opreateHandle(item) {
+      if (this.isOptionalParamUnsupported(item.type)) {
+        this.$message.warning('当前设备不支持啸叫等级');
+        return;
+      }
       switch (item.type) {
         case 'eq':
           await this.openEQModal(item);
@@ -1075,18 +1279,21 @@ export default {
     //修改主页Bypass
     enableVoice(type, val) {
       // console.log(type, val);
-      let index;
       let voiceItem;
-      this.originOptions.map((item, id) => {
+      this.originOptions.map((item) => {
         if (item.type === type) {
-          index = id;
           voiceItem = JSON.parse(JSON.stringify(item));
         }
       });
       if (voiceItem?.bypassable === false) return;
       if (voiceItem) {
         voiceItem.enable = val;
-        this.options.splice(index, 1, voiceItem);
+        const index = this.options.findIndex((item) => item.type === type);
+        if (index === -1) {
+          this.options.splice(this.getOptionInsertIndex(type), 0, voiceItem);
+        } else {
+          this.options.splice(index, 1, voiceItem);
+        }
       }
     },
     isTypeBypassable(type) {
@@ -1112,6 +1319,7 @@ export default {
       }
     },
     syncModalDataFromParams(type) {
+      if (this.isOptionalParamUnsupported(type)) return false;
       const data = type && this.params?.[type];
       if (!data) return false;
       this.parseData(type, _.cloneDeep(data));
@@ -1127,6 +1335,7 @@ export default {
       return nextData;
     },
     commitModalParams(type, data, options = {}) {
+      if (this.isOptionalParamUnsupported(type)) return;
       const { autoWrite = false, skipModalSync = false } = options;
       const nextData = this.prepareModalParams(type, data);
       if (skipModalSync) {
@@ -1146,6 +1355,7 @@ export default {
       this.commitModalParams(type, data);
     },
     handleModalReset(type) {
+      if (this.isOptionalParamUnsupported(type)) return;
       this.resetModalData(type);
       if (!this.autoApplyParams) return;
       const defaults = defaultConfig(this.fs);
@@ -1163,6 +1373,12 @@ export default {
     //单个写入设置
     async saveParamsHandle(type, data) {
       try {
+        if (this.isOptionalParamUnsupported(type)) {
+          if (this.eName == `save-${type}`) {
+            this.eDone = true;
+          }
+          return;
+        }
         const params = setParams(type, data);
         const result = await this.writeSerialPortHandle(params);
         if (result.code != 0) {
@@ -1235,6 +1451,9 @@ export default {
       return new Promise((resolve, reject) => {
         const dataTypes = JSON.parse(JSON.stringify(TYPES));
         if (!this.connected || this.loading || this.writing) return;
+        const fetchId = this.paramFetchId + 1;
+        this.paramFetchId = fetchId;
+        this.resetOptionalParamSupportForFetch();
         this.loading = true;
         // this.clearInterval();
         // this.clearTimeout();
@@ -1259,6 +1478,7 @@ export default {
             this.loading = false;
             this.eName = '';
             this.eDone = false;
+            this.clearOptionalParamQueryTimeout();
             // 设置页面的采样率为获取低音增强的采样率
             this.changeFsReset(false);
             this.params?.drc?.fs &&
@@ -1272,6 +1492,7 @@ export default {
             if (this.eName && this.eName === type) {
               if (this.eDone) {
                 console.log(type, this.eName, this.eDone);
+                this.clearOptionalParamQueryTimeout(type);
                 dataTypes.shift();
                 this.eName = '';
                 this.eDone = false;
@@ -1280,6 +1501,7 @@ export default {
               this.eName = type;
               this.eDone = false;
               await this.getData(type);
+              this.startOptionalParamQueryTimeout(type, fetchId);
             }
           }
         }, 400);
@@ -1368,6 +1590,11 @@ export default {
       let finalParams = _.merge(_.cloneDeep(defaultParams), sourceParams);
       finalParams.drc.dots = dotsArr?.length ? dotsArr : finalParams.drc.dots;
       delete finalParams?.howling_level?.enable;
+      OPTIONAL_PARAM_TYPES.forEach((type) => {
+        if (this.isOptionalParamUnsupported(type)) {
+          delete finalParams[type];
+        }
+      });
       return finalParams;
     },
     async syncPlayerParams(params) {
@@ -1488,10 +1715,20 @@ export default {
         }
 
         .box {
+          position: relative;
           flex-direction: column;
           background-color: $grey1;
           padding: 48px 16px;
           border-radius: 12px;
+          transition: opacity 0.2s ease, filter 0.2s ease;
+
+          &.optional-unsupported {
+            opacity: 0.76;
+
+            img {
+              filter: grayscale(1);
+            }
+          }
 
           img {
             width: 64px;
@@ -1514,6 +1751,55 @@ export default {
           .bypass-placeholder {
             display: block;
             height: 32px;
+          }
+
+          .support-status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: 112px;
+            height: 32px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.06);
+            color: #b8c0cc;
+            box-sizing: border-box;
+            font-size: 11px;
+            line-height: 30px;
+            letter-spacing: 0.5px;
+
+            .support-dot {
+              width: 6px;
+              height: 6px;
+              border-radius: 50%;
+              background: currentColor;
+              box-shadow: 0 0 8px currentColor;
+            }
+
+            &.support-supported {
+              border-color: rgba(44, 209, 143, 0.35);
+              background: rgba(44, 209, 143, 0.1);
+              color: #2cd18f;
+            }
+
+            &.support-unsupported {
+              border-color: rgba(255, 111, 111, 0.32);
+              background: rgba(255, 111, 111, 0.1);
+              color: #ff6f6f;
+            }
+
+            &.support-checking {
+              border-color: rgba(245, 184, 78, 0.35);
+              background: rgba(245, 184, 78, 0.1);
+              color: #f5b84e;
+            }
+
+            &.support-unknown {
+              border-color: rgba(143, 163, 184, 0.28);
+              background: rgba(143, 163, 184, 0.08);
+              color: #8fa3b8;
+            }
           }
         }
 

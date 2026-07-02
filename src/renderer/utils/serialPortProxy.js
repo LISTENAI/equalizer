@@ -22,6 +22,13 @@ class _SerialPortProxy {
       console.log('sp-eq-params', args);
       this.emitter.emit('sp-eq-params', args);
     });
+    ipcRenderer.addListener('sp-eq-param-status', (e, args) => {
+      console.log('sp-eq-param-status', args);
+      this.emitter.emit('sp-eq-param-status', args);
+    });
+    ipcRenderer.addListener('sp-command-result', (e, args) => {
+      this.emitter.emit('sp-command-result', args);
+    });
     ipcRenderer.addListener('sp-update-audio-state', (e, args) => {
       this.emitter.emit('sp-update-audio-state', args);
     });
@@ -30,6 +37,8 @@ class _SerialPortProxy {
     this.close();
     ipcRenderer.removeAllListeners('sp-sample-rate');
     ipcRenderer.removeAllListeners('sp-eq-params');
+    ipcRenderer.removeAllListeners('sp-eq-param-status');
+    ipcRenderer.removeAllListeners('sp-command-result');
     ipcRenderer.removeAllListeners('sp-update-audio-state');
   }
 
