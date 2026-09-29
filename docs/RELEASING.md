@@ -16,7 +16,7 @@
 
 ## 版本边界
 
-- `package.json` 是产品版本唯一来源，lockfile 根版本必须一致。界面从 Electron 读取版本；安装器和产物名由 builder 注入版本。
+- `package.json` 是产品版本唯一来源，lockfile 根版本必须一致。界面版本由构建工具注入 preload；安装器和产物名由 builder 注入版本。
 - `.lsaudio` 中的 `manifestJson.version` 是工程修订计数，不随产品发版重置。
 - C ABI/模块版本在 native 中管理；FFmpeg 的实际版本按目标记录在 `ffmpeg/manifest.json`，不能把资源合集的 b6.1.1 当成全部平台实际版本。
 - 接受标签 `vX.Y.Z` 或 `vX.Y.Z-beta.N`，保留历史标签。不覆盖已发布附件，不移动标签。修复用新版本。
@@ -34,7 +34,7 @@
 
 ## 演练与排错
 
-在 Actions 手动运行 `Release installers`（可选择分支），仅产生构建产物，不创建标签或 Release。本实现分支暂有 push 演练触发，功能合并后可移除该分支过滤项。
+在 Actions 手动运行 `Release installers`（可选择分支），仅产生构建产物，不创建标签或 Release。实现分支与 `codex/release-*` 版本分支的 push 也执行演练，便于在合并前验证安装器；均不创建 Release。
 
 本机 `npm run electron:build` 使用本机平台/架构，C 库禁止跨宿主误用；输出在 dist。`npm run electron:build -- --dir` 后运行 `npm run test:app`。`test:installers` 仅允许在可丢弃的 CI runner 执行，避免改动开发机安装。Linux 使用 `xvfb-run -a`。
 
