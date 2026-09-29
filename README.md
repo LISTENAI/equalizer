@@ -1,5 +1,9 @@
 # LSAudio 工具
 
+## Native C 源码
+
+预编译库的逐步还原、CMake 构建与原 DLL 对照测试统一维护在 [native/](native/README.md)。运行 `npm run native:test` 验证当前 C 实现，Windows x64 可运行 `npm run native:compare` 与原 DLL 现场对照。
+
 ## Project setup
 
 ```
