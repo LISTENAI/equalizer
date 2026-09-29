@@ -1,5 +1,5 @@
 
-import { ipcMain, BrowserWindow, shell } from 'electron';
+import { ipcMain, shell } from 'electron';
 import drawHandle from './draw';
 import ProjectHandle from './project';
 import serialport from './serialport';

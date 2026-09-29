@@ -1,4 +1,4 @@
-// Optional audible Windows hardware smoke test. Never run by default in CI.
+// Optional audible hardware smoke test. Never run by default in CI.
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,9 +10,11 @@ import assets from '../../ffmpeg/assets.cjs';
 import { createPcmService } from '../../src/main/audio/pcm-source.mjs';
 import { PcmPlayer } from '../../src/main/audio/playback.mjs';
 import { processDspFrame } from '../../src/main/audio/dsp-frame.mjs';
+import { verifyNativeResources } from '../../src/libs/native-runtime.mjs';
 const root = fileURLToPath(new URL('../../', import.meta.url));
-if (process.platform !== 'win32' || process.arch !== 'x64') throw new Error('This smoke test uses the original Windows x64 DSP DLL');
-const lib = koffi.load(path.join(root, 'dlls/x64/SoundEffect.dll'));
+const oracle = process.env.SOUNDEFFECT_ORACLE === '1';
+if (oracle && (process.platform !== 'win32' || process.arch !== 'x64')) throw new Error('Original DLL comparison requires Windows x64');
+const lib = koffi.load(oracle ? path.join(root, 'dlls/x64/SoundEffect.dll') : verifyNativeResources(path.join(root, 'native/build/lib')).soundeffect);
 const create = lib.func('int IFLYTEK_AudioCreate(void*,void*)'), init = lib.func('int IFLYTEK_AudioInitial(void*)'), del = lib.func('int IFLYTEK_AudioDelete(void*)');
 const api = { audioProcess: lib.func('int IFLYTEK_AudioProcess(void*,void*,void*,int)') };
 const instance = Buffer.alloc(23552), used = Buffer.alloc(4);
@@ -21,7 +23,7 @@ const directory = path.join(root, 'artifacts/audio'); await mkdir(directory, { r
 const file = path.join(directory, 'device-smoke.pcm'); const input = Buffer.alloc(6400);
 for (let i = 0; i < 3200; ++i) input.writeInt16LE(Math.round(600 * Math.sin(2 * Math.PI * 440 * i / 16000)), i * 2);
 await writeFile(file, input);
-const ffmpeg = path.join(assets.cacheDirectory(assets.getTarget()), 'ffmpeg.exe');
+const ffmpeg = path.join(assets.cacheDirectory(assets.getTarget()), process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg');
 const wave = path.join(directory, 'device-smoke.wav');
 await promisify(execFile)(ffmpeg, ['-nostdin', '-v', 'error', '-y', '-f', 's16le', '-ar', '16000', '-ac', '1', '-i', file, wave], { windowsHide: true });
 const service = createPcmService({ getFfmpegPath: () => ffmpeg });

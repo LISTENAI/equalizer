@@ -37,6 +37,7 @@ jobs:
       - run: npm run release:verify
       - run: npm run test:release
       - run: npm run native:test
+      - run: node native/tools/check-linkage.cjs
       - if: runner.os == 'Windows'
         run: npm run native:compare
       - run: npm run test:audio
