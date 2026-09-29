@@ -8,11 +8,26 @@ import assets from '../../ffmpeg/assets.cjs';
 import { resolveFfmpegPath } from '../../src/main/audio/ffmpeg-path.mjs';
 
 test('four pinned target assets include binary/archive/source checksums', () => {
+  assert.equal(assets.manifest.schemaVersion, 2);
   assert.deepEqual(Object.keys(assets.manifest.targets).sort(), ['darwin-arm64', 'darwin-x64', 'linux-x64', 'win32-x64']);
   for (const item of Object.values(assets.manifest.targets)) for (const key of ['archive', 'binary', 'license', 'readme']) {
     assert.match(item[key].sha256, /^[a-f0-9]{64}$/);
     assert.ok(item[key].url.includes('/b6.1.1/'));
   }
+});
+test('bundle release tags do not override the actual pinned platform versions', () => {
+  const cases = [
+    ['win32-x64', 'ffmpeg version 6.1.1-essentials_build-www.gyan.dev Copyright', '6.1.1'],
+    ['darwin-x64', 'ffmpeg version n6.1.1 Copyright', '6.1.1'],
+    ['darwin-arm64', 'ffmpeg version 6.0 Copyright (c) 2000-2023 the FFmpeg developers', '6.0'],
+    ['linux-x64', 'ffmpeg version 7.0.2-static https://johnvansickle.com/ffmpeg/ Copyright', '7.0.2'],
+  ];
+  for (const [target, banner, expected] of cases) assert.equal(assets.verifyVersion(banner, target), expected);
+  for (const banner of ['ffmpeg version 6.1.10 Copyright', 'ffmpeg version 6.1.1.2 Copyright', 'ffmpeg version 6.0 Copyright', 'invalid']) {
+    assert.throws(() => assets.verifyVersion(banner, 'win32-x64'), /Unexpected FFmpeg version/);
+  }
+  assert.throws(() => assets.verifyVersion('ffmpeg version 6.1.1 Copyright', 'darwin-arm64'), /Unexpected FFmpeg version/);
+  assert.throws(() => assets.verifyVersion('ffmpeg version 6.1.1 Copyright', 'linux-x64'), /Unexpected FFmpeg version/);
 });
 test('runtime paths use injected roots and target; packaged apps ignore overrides', () => {
   const root = path.resolve('fixture root 中文'), resources = path.join(root, 'resources');

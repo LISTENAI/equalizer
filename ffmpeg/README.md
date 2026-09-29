@@ -2,6 +2,15 @@
 
 应用内置 FFmpeg，用户无需安装，也不会在运行时下载。当前固定使用 `eugeneware/ffmpeg-static` 的 **b6.1.1** 发布产物，目标为 Windows x64、macOS x64/arm64、Linux x64。版本由 `manifest.json` 管理，不跟随 latest。
 
+发布标签是资源包版本，并不表示每个二进制都运行 FFmpeg 6.1.1。原生 CI 实测的版本如下，清单分别锁定版本与文件 SHA，验证时要求二者都匹配：
+
+| 平台 | 实际 FFmpeg 版本 |
+| --- | --- |
+| Windows x64 | 6.1.1 |
+| macOS x64 | 6.1.1 |
+| macOS arm64 | 6.0 |
+| Linux x64 | 7.0.2 |
+
 ## 开发、验证与打包
 
 ```sh
@@ -78,6 +87,6 @@ npm run electron:build
 
 ## 升级维护
 
-显式运行 `node ffmpeg/update-manifest.cjs <release-tag>` 生成候选清单。工具要求四平台各项资源有上游 SHA-256；缺失即失败。审查地址、散列、版本和许可变化，重新执行四平台验证及迁移对照后再提交。正常构建只读取已提交清单，永不自动改版本。
+显式运行 `node ffmpeg/update-manifest.cjs <release-tag> [versions.json]` 生成候选清单。工具要求四平台各项资源有上游 SHA-256；缺失即失败。仅在标签与二进制 SHA 均未变化时复用已有实际版本；新产物必须通过第二个参数提供已核实的版本映射，例如 `{"win32-x64":"6.1.1","darwin-x64":"6.1.1","darwin-arm64":"6.0","linux-x64":"7.0.2"}`。工具不再从发布标签猜测实际版本。审查地址、散列、版本和许可变化，重新执行四平台验证及迁移对照后再提交。正常构建只读取已提交清单，永不自动改版本。
 
 本轮不切换还原的三个 native DLL，也不改其他原生依赖的打包筛选。整个应用的 macOS/Linux 发布仍需后续 native 后端接入；FFmpeg 模块的跨平台测试与此独立。

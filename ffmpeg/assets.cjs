@@ -46,6 +46,13 @@ async function checkArchitecture(file, target) {
   if (found !== target) throw new Error(`FFmpeg architecture mismatch: expected ${target}, found ${found}`);
 }
 async function exists(file) { try { await fs.access(file); return true; } catch (error) { if (error.code === 'ENOENT') return false; throw error; } }
+function verifyVersion(banner, target) {
+  const expected = manifest.targets[target]?.version;
+  if (!expected || !/^\d+\.\d+(?:\.\d+)?$/.test(expected)) throw new Error(`Missing verified FFmpeg version for ${target}`);
+  const actual = /^ffmpeg version n?(\d+\.\d+(?:\.\d+)?)(?=$|[-\s])/.exec(banner)?.[1];
+  if (actual !== expected) throw new Error(`Unexpected FFmpeg version for ${target}: expected ${expected}, received ${banner}`);
+  return actual;
+}
 async function verifyDirectory(directory, target, { execute = target === `${process.platform}-${process.arch}` } = {}) {
   const entry = manifest.targets[target];
   if (!entry) throw new Error(`Unsupported FFmpeg target: ${target}`);
@@ -60,9 +67,9 @@ async function verifyDirectory(directory, target, { execute = target === `${proc
   if (execute) {
     const { stdout } = await exec(binary, ['-version'], { windowsHide: true, timeout: 10000, maxBuffer: 65536 });
     version = stdout.split(/\r?\n/)[0];
-    if (!new RegExp(`^ffmpeg version (?:n)?${manifest.version.replaceAll('.', '\\.')}\\b`).test(version)) throw new Error(`Unexpected FFmpeg version: ${version}`);
+    verifyVersion(version, target);
   }
-  return { target, binary, version, release: manifest.release };
+  return { target, binary, version, expectedVersion: entry.version, release: manifest.release };
 }
 async function download(asset, destination, fetchImpl) {
   const response = await fetchImpl(asset.url, { signal: AbortSignal.timeout(120000) });
@@ -115,7 +122,7 @@ async function stage({ target, destination, ...options }) {
   await fs.mkdir(destination, { recursive: true });
   for (const name of [manifest.targets[target].executable, 'LICENSE', 'README']) await fs.copyFile(path.join(path.dirname(result.binary), name), path.join(destination, name));
   if (process.platform !== 'win32') await fs.chmod(path.join(destination, manifest.targets[target].executable), 0o755);
-  await fs.writeFile(path.join(destination, 'build-info.json'), JSON.stringify({ release: manifest.release, target, sha256: manifest.targets[target].binary.sha256 }) + '\n');
+  await fs.writeFile(path.join(destination, 'build-info.json'), JSON.stringify({ release: manifest.release, target, version: manifest.targets[target].version, sha256: manifest.targets[target].binary.sha256 }) + '\n');
   return verifyDirectory(destination, target);
 }
-module.exports = { manifest, getTarget, cacheDirectory, check, checkArchitecture, verifyDirectory, prepare, stage };
+module.exports = { manifest, getTarget, cacheDirectory, check, checkArchitecture, verifyVersion, verifyDirectory, prepare, stage };

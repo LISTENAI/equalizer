@@ -96,5 +96,6 @@ test('verified caches work offline and packaging selects the requested target', 
   const bad = path.join(dir, 'cached-bad'); await mkdir(bad);
   await writeFile(path.join(bad, 'LICENSE'), 'bad');
   await assert.rejects(assets.prepare({ target, cacheRoot: path.join(dir, 'bad-import'), importDirectory: bad, offline: true }));
-  assert.ok(staged.version.includes('6.1.1'));
+  assert.equal(assets.verifyVersion(staged.version, target), assets.manifest.targets[target].version);
+  assert.equal(info.version, assets.manifest.targets[target].version);
 });
