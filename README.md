@@ -6,6 +6,8 @@
 
 ## Project setup
 
+FFmpeg 随应用内置，开发启动时会准备固定的跨平台产物。离线准备、目标架构打包和音频测试见 [FFmpeg 维护说明](ffmpeg/README.md)。
+
 ```
 npm run  install
 ```

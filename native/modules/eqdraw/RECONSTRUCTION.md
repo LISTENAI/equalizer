@@ -60,4 +60,4 @@ Windows x64 / MSVC Release 实测：442 组包装层用例（347 EQ、95 DRC，�
 1. 根据平台加载新库，并一起部署核心依赖库；macOS/Linux 的包装库使用相邻库相对搜索路径。
 2. 将 DRC FFI 声明改为真实按值结构体，加入返回 NULL 检查。
 3. 当前 `src/libs/stru.js` 的 EQ 返回数组声明是 840，而原/新 C ABI 容量均为 1024；接入时应统一容量，同时保留 UI 默认点数作为独立配置。
-4. `SoundEffect.dll` 已在相邻 soundeffect 模块还原，但应用尚未切换这三个库，也未完成 FFmpeg/打包配置的平台适配。macOS/Linux/ARM64 尚未运行验证。
+4. `SoundEffect.dll` 已在相邻 soundeffect 模块还原，但应用尚未切换这三个库。FFmpeg 已另行完成平台资源适配；其他原生依赖的打包及 macOS/Linux/ARM64 运行验证仍需继续。

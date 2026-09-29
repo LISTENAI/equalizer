@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, writeFile, rm, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
@@ -36,5 +36,14 @@ test('checksum corruption and wrong target architecture fail explicitly', async 
     await assets.check(file, createHash('sha256').update(bytes).digest('hex'));
     await assert.rejects(assets.check(file, '0'.repeat(64)), /checksum mismatch/);
     await assert.rejects(assets.prepare({ cacheRoot: dir, target: 'linux-x64', offline: true }), /cache missing/);
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+test('failed or corrupt downloads never publish a partial cache', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'lsaudio-download-'));
+  try {
+    for (const fetchImpl of [async () => new Response('failed', { status: 503 }), async () => new Response('corrupted')]) {
+      await assert.rejects(assets.prepare({ cacheRoot: dir, target: 'linux-x64', fetchImpl }), /download failed|checksum mismatch/);
+      assert.deepEqual(await readdir(path.join(dir, 'b6.1.1')), []);
+    }
   } finally { await rm(dir, { recursive: true, force: true }); }
 });

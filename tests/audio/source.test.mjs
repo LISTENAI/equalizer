@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,6 +9,7 @@ import { Readable, PassThrough } from 'node:stream';
 import { EventEmitter } from 'node:events';
 import { createPcmService, buildDecodeArgs } from '../../src/main/audio/pcm-source.mjs';
 import { pcmFrames } from '../../src/main/audio/frames.mjs';
+import { persistAudioFailure } from '../../src/main/audio/diagnostics.mjs';
 const fake = fileURLToPath(new URL('./fake-ffmpeg.cjs', import.meta.url));
 async function fixture(t, suffix = '.wav') {
   const dir = await mkdtemp(path.join(tmpdir(), 'lsaudio-source-'));
@@ -83,4 +84,15 @@ test('reblocking handles arbitrary byte boundaries and preserves short final fra
   const parts = [data.subarray(0, 1), data.subarray(1, 300), data.subarray(300, 1501), data.subarray(1501)];
   const output = []; for await (const frame of pcmFrames(Readable.from(parts), 1280)) output.push(frame);
   assert.deepEqual(output.map(b => b.length), [1280, 1280, 42]); assert.deepEqual(Buffer.concat(output), data);
+});
+test('decoder diagnostics retain a bounded stderr tail and persist an actionable failure', async t => {
+  const file = await fixture(t); let persisted; const directory = path.dirname(file);
+  const s = service(t, 'noisy-fail', { logger: record => {
+    if (record.event === 'audio-decode-failed') persisted = persistAudioFailure(directory, record);
+  } });
+  const source = s.openPcmSource(file);
+  await assert.rejects(source.ready); await assert.rejects(source.done); await persisted;
+  const record = JSON.parse(await readFile(path.join(directory, 'audio-last-error.json'), 'utf8'));
+  assert.equal(record.code, 'DECODE_FAILED'); assert.equal(record.exitCode, 2);
+  assert.equal(Buffer.byteLength(record.stderr), 16384); assert.equal(s.activeCount, 0);
 });

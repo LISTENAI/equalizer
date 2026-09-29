@@ -12,7 +12,7 @@
     <div class="control-group">
       <el-button
         size="small"
-        :disabled="selecting || isPlaying"
+        :disabled="selecting || starting || isPlaying"
         @click="handlePlay"
         >选择文件
         <template #icon
@@ -21,7 +21,7 @@
       </el-button>
       <el-button
         size="small"
-        :disabled="stopping || !isPlaying"
+        :disabled="stopping || (!isPlaying && !starting)"
         @click="handleStop"
         >停止
         <template #icon
@@ -30,7 +30,7 @@
       </el-button>
       <el-button
         size="small"
-        :disabled="!lastFilePath || isPlaying"
+        :disabled="!lastFilePath || starting || isPlaying"
         @click="handleReplay"
         >重播
         <template #icon
@@ -59,12 +59,13 @@ const props = defineProps({
 
 const selecting = ref(false);
 const stopping = ref(false);
+const starting = ref(false);
+let playbackRequest = 0;
 const isPlaying = ref(false);
 const lastFilePath = ref('');
 const description = ref(
   '选择本地音频试听当前均衡器参数<br/>' +
-  '1. 播放过程中修改均衡器参数可以实时生效<br/>' +
-  '2. 请勿选择时长过长的音频，易造成卡顿'
+  '播放过程中修改均衡器参数可以实时生效'
 );
 
 const audioFilters = [
@@ -76,6 +77,7 @@ const audioFilters = [
 
 const handlePlay = async () => {
   if (selecting.value) return;
+  const request = ++playbackRequest;
   selecting.value = true;
   try {
     if (!props.audioParams) {
@@ -87,28 +89,32 @@ const handlePlay = async () => {
     });
     const filePath = res?.data?.[0];
     if (!filePath) return;
+    starting.value = true;
     lastFilePath.value = filePath;
     const parameterResult = await window.ipcRenderer.invoke(
       'player-set-params',
       JSON.stringify(props.audioParams),
     );
+    if (request !== playbackRequest) return;
     if (parameterResult.code !== 0) throw new Error(parameterResult.message || '音频参数设置失败');
     const { code, message } = await window.ipcRenderer.invoke('player-play', {
       file: filePath,
     });
-    if (code !== 0) {
+    if (code !== 0 && request === playbackRequest) {
       throw new Error(message || '播放失败');
     }
   } catch (error) {
     console.error(error);
-    ElMessage.error(error?.message || '播放失败');
+    if (request === playbackRequest) ElMessage.error(error?.message || '播放失败');
   } finally {
     selecting.value = false;
+    if (request === playbackRequest) starting.value = false;
   }
 };
 
 const handleStop = async () => {
   if (stopping.value) return;
+  const request = ++playbackRequest;
   stopping.value = true;
   try {
     const { code, message } = await window.ipcRenderer.invoke('player-stop');
@@ -120,24 +126,30 @@ const handleStop = async () => {
     ElMessage.error(error?.message || '停止失败');
   } finally {
     stopping.value = false;
+    if (request === playbackRequest) starting.value = false;
   }
 };
 
 const handleReplay = async () => {
   if (!lastFilePath.value || isPlaying.value) return;
+  const request = ++playbackRequest;
+  starting.value = true;
   try {
     const parameterResult = await window.ipcRenderer.invoke('player-set-params', JSON.stringify(props.audioParams));
+    if (request !== playbackRequest) return;
     if (parameterResult.code !== 0) throw new Error(parameterResult.message || '音频参数设置失败');
     const { code, message } = await window.ipcRenderer.invoke('player-play', {
       file: lastFilePath.value,
       params: props.audioParams,
     });
-    if (code !== 0) {
+    if (code !== 0 && request === playbackRequest) {
       throw new Error(message || '播放失败');
     }
   } catch (error) {
     console.error(error);
-    ElMessage.error(error?.message || '播放失败');
+    if (request === playbackRequest) ElMessage.error(error?.message || '播放失败');
+  } finally {
+    if (request === playbackRequest) starting.value = false;
   }
 };
 
