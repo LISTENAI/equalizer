@@ -15,7 +15,7 @@ config.mac = { icon: './public/icon512.png', target: [{ target: 'dmg', arch: [pr
   sign: path.join(__dirname, 'adhoc-sign.cjs'), binaries: ['Contents/Resources/ffmpeg/ffmpeg'],
 };
 config.linux = { icon: './public/icon512.png', target: [{ target: 'AppImage', arch: ['x64'] }, { target: 'deb', arch: ['x64'] }],
-  artifactName: 'LSAudio-${version}-linux-${arch}.${ext}', category: 'AudioVideo',
+  artifactName: 'LSAudio-${version}-linux-x64.${ext}', category: 'AudioVideo',
   maintainer: 'ListenAI', synopsis: 'LSAudio audio device tuning client',
 };
 module.exports = config;

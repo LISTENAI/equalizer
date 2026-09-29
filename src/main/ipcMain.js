@@ -11,12 +11,10 @@ let registered = false;
 function IpcMainHandle(window) {
   mainWindow = window;
   window.on('maximize', () => {
-    let focusWindow = BrowserWindow.getFocusedWindow();
-    focusWindow.webContents.send('windowChange', { isMaximized: focusWindow.isMaximized() });
+    window.webContents.send('windowChange', { isMaximized: window.isMaximized() });
   });
   window.on('unmaximize', () => {
-    let focusWindow = BrowserWindow.getFocusedWindow();
-    focusWindow.webContents.send('windowChange', { isMaximized: focusWindow.isMaximized() });
+    window.webContents.send('windowChange', { isMaximized: window.isMaximized() });
   });
   window.on('close', () => {
     if (mainWindow === window) mainWindow = null;

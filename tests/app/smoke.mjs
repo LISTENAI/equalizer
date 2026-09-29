@@ -9,13 +9,14 @@ const pkg = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
 const directory = path.resolve(process.env.SMOKE_OUTPUT || path.join(root, 'artifacts/app-smoke', `${process.platform}-${process.arch}`, String(Date.now())));
 await mkdir(directory, { recursive: true });
 const executablePath = process.env.APP_EXECUTABLE || (process.platform === 'win32' ? path.join(root, 'dist/win-unpacked/LSAudio.exe') : process.platform === 'darwin' ? path.join(root, `dist/mac${process.arch === 'arm64' ? '-arm64' : ''}/LSAudio.app/Contents/MacOS/LSAudio`) : path.join(root, 'dist/linux-unpacked/lsaudio'));
-const application = await _electron.launch({ executablePath, args: [`--user-data-dir=${path.join(directory, 'profile')}`, ...(process.platform === 'linux' ? ['--no-sandbox'] : [])],
+const application = await _electron.launch({ executablePath, args: [`--user-data-dir=${process.env.SMOKE_PROFILE || path.join(directory, 'profile')}`, ...(process.platform === 'linux' ? ['--no-sandbox'] : [])],
   env: { ...process.env, LSAUDIO_SMOKE: '1', ELECTRON_ENABLE_LOGGING: '1' }, timeout: 60000 });
 const failures = [];
 try {
   const page = await application.firstWindow(); page.on('pageerror', error => failures.push(error.message));
   await page.getByText('均衡器参数组', { exact: true }).waitFor({ timeout: 30000 });
   assert.equal(await page.evaluate(() => window.appInfo.version), process.env.EXPECTED_APP_VERSION || pkg.version);
+  if (process.env.SMOKE_UPGRADE) assert.equal(await page.evaluate(() => localStorage.getItem('release-upgrade-pref')), 'from-1.1.4');
   const config = getDefaultConfig(16000);
   const result = await page.evaluate(async ({ config, directory }) => {
     const ipc = window.ipcRenderer;
@@ -39,6 +40,12 @@ try {
   const project = JSON.parse(await readFile(path.join(directory, '中文 工程.lsaudio'), 'utf8'));
   assert.equal(project.manifestJson.version, 2);
   assert.deepEqual(project.configJson, config);
+  await application.evaluate(({ dialog }, file) => { dialog.showOpenDialogSync = () => [file]; }, process.env.SMOKE_UPGRADE_PROJECT || path.join(directory, '中文 工程.lsaudio'));
+  const reopened = await page.evaluate(() => window.ipcRenderer.invoke('open-project'));
+  assert.equal(reopened.code, 0); assert.deepEqual(reopened.data.configJson, config);
+  await page.reload();
+  await page.getByText('均衡器参数组', { exact: true }).waitFor();
+  assert.equal(await page.evaluate(() => localStorage.getItem('release-smoke-pref')), 'preserved');
   await page.screenshot({ path: path.join(directory, 'main-window.png') });
   assert.deepEqual(failures, []);
   await writeFile(path.join(directory, 'result.json'), JSON.stringify({ platform: process.platform, arch: process.arch, version: pkg.version, passed: true, result }, null, 2));

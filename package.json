@@ -64,7 +64,6 @@
     "vue-router": "^4.2.0"
   },
   "build": {
-    "afterPack": "ffmpeg/after-pack.cjs",
     "productName": "LSAudio",
     "appId": "listenai.com",
     "copyright": "listenai",
@@ -74,49 +73,11 @@
       "zh-CN",
       "en-US"
     ],
-    "files": [
-      "out/**",
-      "package.json",
-      "!dist/**",
-      "!dist_electron/**",
-      "!ffmpeg/**",
-      "!dlls/**",
-      "!src/**",
-      "!public/**",
-      "!*.pdf",
-      "!**/*.map",
-      "!node_modules/koffi/{doc,src,vendor}/**",
-      "!node_modules/koffi/lib/native/**",
-      "!node_modules/koffi/build/koffi/{darwin_*,freebsd_*,linux_*,musl_*,openbsd_*,win32_ia32,win32_arm64}/**",
-      "!node_modules/@serialport/bindings-cpp/src/**",
-      "!node_modules/@serialport/bindings-cpp/node_modules/.bin/**",
-      "!node_modules/@serialport/bindings-cpp/node_modules/node-addon-api/**",
-      "!node_modules/@serialport/bindings-cpp/prebuilds/{android-*,darwin-*,linux-*,win32-ia32}/**",
-      "!node_modules/@echogarden/audio-io/addons/bin/{linux-*,macos-*,windows-arm64-*}"
-    ],
-    "extraResources": [
-      {
-        "from": "./dlls/x64",
-        "to": "../dlls/x64",
-        "filter": [
-          "**/*.dll"
-        ]
-      }
-    ],
     "win": {
       "icon": "./public/LSAudio256.ico",
       "target": [
         "nsis"
       ]
-    },
-    "mac": {
-      "binaries": [
-        "Resources/ffmpeg/ffmpeg"
-      ],
-      "target": {
-        "target": "dir",
-        "arch": "arm64"
-      }
     },
     "nsis": {
       "oneClick": false,

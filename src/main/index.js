@@ -1,6 +1,7 @@
 import { app, BrowserWindow, dialog } from 'electron';
 import path from 'node:path';
 import { nativeDirectory, verifyNativeResources } from '../libs/native-runtime.mjs';
+import { verifyFfmpegResource } from './audio/resources.mjs';
 
 let runtime;
 let shutdownComplete = false, shutdown;
@@ -36,6 +37,7 @@ function startupFailure(error) {
 }
 app.whenReady().then(async () => {
   verifyNativeResources(nativeDirectory({ packaged: app.isPackaged, appRoot: app.getAppPath(), resourcesPath: process.resourcesPath }));
+  verifyFfmpegResource({ packaged: app.isPackaged, appRoot: app.getAppPath(), resourcesPath: process.resourcesPath, override: process.env.FFMPEG_PATH });
   // Dynamic imports keep native-load errors inside the visible startup handler.
   const [ipc, player, serial, audio] = await Promise.all([import('./ipcMain'), import('./player'), import('./serialport'), import('./audioDecoder')]);
   runtime = { IpcMainHandle: ipc.IpcMainHandle, stopPlayer: player.stopPlayer, stopSerialAudio: serial.stopSerialAudio, closePcmSources: audio.closePcmSources };

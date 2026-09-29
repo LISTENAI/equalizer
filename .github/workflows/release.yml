@@ -50,6 +50,15 @@ jobs:
       - run: npm run test:audio
       - run: npm run test:audio:integration
       - run: npm run electron:build
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        if: runner.os == 'Windows'
+        with:
+          ref: a7f9381
+          path: .cache/upgrade-baseline
+      - name: Build original 1.1.4 upgrade baseline
+        if: runner.os == 'Windows'
+        working-directory: .cache/upgrade-baseline
+        run: npm ci && npm run electron:build -- --publish never
       - if: runner.os != 'Linux'
         run: npm run test:app && npm run test:installers
       - if: runner.os == 'Linux'

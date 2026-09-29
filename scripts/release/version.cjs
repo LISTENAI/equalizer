@@ -5,6 +5,7 @@ const pattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-beta\.([1-9]\d*))?
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim();
 function valid(version) { if (!pattern.test(version)) throw new Error('Version must be X.Y.Z or X.Y.Z-beta.N'); return version; }
 function notes(version, text = fs.readFileSync('CHANGELOG.md', 'utf8')) {
+  text = text.replace(/\r\n/g, '\n');
   const section = text.split(`## ${version}\n`)[1]?.split('\n## ')[0];
   if (!section || /待填写|TODO/.test(section)) throw new Error('Missing or unfinished release notes');
   for (const heading of ['功能变化', '修复', '兼容性', '已知问题', '平台状态']) if (!section.includes(`### ${heading}`)) throw new Error(`Missing changelog section: ${heading}`);
@@ -31,7 +32,7 @@ function prepare(version) {
   if (!semver.gt(version, pkg.version)) throw new Error('Version must increase');
   if (git('tag', '--list', `v${version}`)) throw new Error('Version tag already exists');
   const lock = JSON.parse(fs.readFileSync('package-lock.json'));
-  const old = fs.existsSync('CHANGELOG.md') ? fs.readFileSync('CHANGELOG.md', 'utf8') : '# 更新日志\n';
+  const old = fs.existsSync('CHANGELOG.md') ? fs.readFileSync('CHANGELOG.md', 'utf8').replace(/\r\n/g, '\n') : '# 更新日志\n';
   if (old.includes(`## ${version}\n`)) throw new Error('Changelog version already exists');
   pkg.version = lock.version = lock.packages[''].version = version;
   const entry = `## ${version}\n\n${['功能变化', '修复', '兼容性', '已知问题', '平台状态'].map(h => `### ${h}\n\n- 待填写`).join('\n\n')}\n\n`;
