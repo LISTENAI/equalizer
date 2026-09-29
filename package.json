@@ -13,7 +13,10 @@
     "native:test": "node native/tools/run.cjs test",
     "native:capture": "node native/tools/run.cjs capture",
     "native:compare": "node native/tools/run.cjs compare",
-    "predev": "node ffmpeg/prepare.js",
+    "predev": "node ffmpeg/manage.cjs prepare",
+    "ffmpeg:prepare": "node ffmpeg/manage.cjs prepare",
+    "ffmpeg:verify": "node ffmpeg/manage.cjs verify",
+    "test:audio": "node --test tests/audio/*.test.mjs",
     "electron:build": "electron-vite build && electron-builder",
     "postinstall": "electron-builder install-app-deps",
     "postuninstall": "electron-builder install-app-deps"
@@ -50,6 +53,7 @@
     "vue-router": "^4.2.0"
   },
   "build": {
+    "afterPack": "ffmpeg/after-pack.cjs",
     "productName": "LSAudio",
     "appId": "listenai.com",
     "copyright": "listenai",
@@ -87,10 +91,6 @@
         "filter": [
           "**/*.dll"
         ]
-      },
-      {
-        "from": "ffmpeg/ffmpeg.exe",
-        "to": "../ffmpeg/ffmpeg.exe"
       }
     ],
     "win": {
@@ -100,6 +100,7 @@
       ]
     },
     "mac": {
+      "binaries": ["Resources/ffmpeg/ffmpeg"],
       "target": {
         "target": "dir",
         "arch": "arm64"
