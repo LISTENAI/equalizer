@@ -19,9 +19,18 @@ try {
   fs.writeFileSync(manifestPath, '{'); fails(/清单缺失或损坏/);
   const metadata = JSON.parse(original); metadata.arch = process.arch === 'x64' ? 'arm64' : 'x64';
   fs.writeFileSync(manifestPath, JSON.stringify(metadata)); fails(/架构与当前客户端不匹配/);
+  metadata.arch = process.arch;
+  for (const key of Object.keys(metadata.files)) metadata.files[key] = '0'.repeat(64);
+  fs.writeFileSync(manifestPath, JSON.stringify(metadata)); fails(/原生运行库校验失败/);
 } finally { fs.writeFileSync(manifestPath, original); }
 const ffmpeg = path.join(resources, 'ffmpeg', process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg');
 const saved = `${ffmpeg}.startup-test-saved`;
+const infoPath = path.join(path.dirname(ffmpeg), 'build-info.json');
+const infoBytes = fs.readFileSync(infoPath);
+try {
+  const info = JSON.parse(infoBytes); info.sha256 = '0'.repeat(64);
+  fs.writeFileSync(infoPath, JSON.stringify(info)); fails(/FFmpeg 资源校验失败/);
+} finally { fs.writeFileSync(infoPath, infoBytes); }
 assert.equal(fs.existsSync(saved), false);
 fs.renameSync(ffmpeg, saved);
 try { fails(/FFmpeg 资源缺失/); } finally { fs.renameSync(saved, ffmpeg); }

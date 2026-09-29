@@ -61,9 +61,9 @@ jobs:
         working-directory: .cache/upgrade-baseline
         run: npm ci && npm run electron:build -- --publish never
       - if: runner.os != 'Linux'
-        run: npm run test:app && npm run test:installers
+        run: npm run test:app && node tests/app/startup-failures.mjs && npm run test:installers
       - if: runner.os == 'Linux'
-        run: xvfb-run -a npm run test:app && xvfb-run -a npm run test:installers
+        run: xvfb-run -a npm run test:app && xvfb-run -a node tests/app/startup-failures.mjs && xvfb-run -a npm run test:installers
       - run: node scripts/release/artifacts.cjs record
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
