@@ -15,3 +15,4 @@ foreach(kind RUNTIME LIBRARY ARCHIVE)
 endforeach()
 
 add_subdirectory(modules/eqdrc)
+add_subdirectory(modules/eqdraw)
