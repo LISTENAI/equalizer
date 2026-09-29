@@ -34,6 +34,8 @@ jobs:
       - if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev libfuse2 xvfb
       - run: npm ci
+      - run: npm run release:verify
+      - run: npm run test:release
       - run: npm run native:test
       - if: runner.os == 'Windows'
         run: npm run native:compare
@@ -53,3 +55,4 @@ jobs:
             artifacts/app-smoke/**/main-window.png
             native/build/Testing/Temporary/*.log
           if-no-files-found: warn
+          retention-days: 7
