@@ -16,3 +16,4 @@ endforeach()
 
 add_subdirectory(modules/eqdrc)
 add_subdirectory(modules/eqdraw)
+add_subdirectory(modules/soundeffect)

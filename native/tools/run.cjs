@@ -7,6 +7,7 @@ const artifacts = path.join(root, 'native/artifacts');
 const modules = [
   { name: 'eqdrc', original: 'iflytekEqDrcDrawApi.dll', artifactDir: artifacts },
   { name: 'eqdraw', original: 'eqdrawDLL.dll', artifactDir: path.join(artifacts, 'eqdraw') },
+  { name: 'soundeffect', original: 'SoundEffect.dll', artifactDir: path.join(artifacts, 'soundeffect') },
 ];
 function libraryName(name) { return process.platform === 'win32' ? `${name}.dll` : process.platform === 'darwin' ? `lib${name}.dylib` : `lib${name}.so`; }
 function run(command, args, timeout = 120000) {
