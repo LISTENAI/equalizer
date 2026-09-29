@@ -210,7 +210,7 @@ export function parseAudioPrm(audioPrm) {
 };
 
 export const readFromBinFile = (binfile) => {
-    const audioPrmPtr = koffi.alloc(struAudioPrm, koffi.sizeof(struAudioPrm));
+    const audioPrmPtr = Buffer.alloc(koffi.sizeof(struAudioPrm));
     const ret = iflytekBinHandle.readFromBinFile(binfile, audioPrmPtr);
     if (ret !== 0) {
         return null;

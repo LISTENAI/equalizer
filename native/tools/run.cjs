@@ -17,7 +17,10 @@ function run(command, args, timeout = 120000) {
   if (result.status !== 0) throw new Error(`${command} failed (exit ${result.status}, signal ${result.signal})`);
 }
 function configure() { run('cmake', ['--no-warn-unused-cli', '-S', 'native', '-B', 'native/build', '-DCMAKE_BUILD_TYPE=Release']); }
-function compile() { configure(); run('cmake', ['--build', 'native/build', '--config', 'Release']); }
+function compile() {
+  configure(); run('cmake', ['--build', 'native/build', '--config', 'Release']);
+  require('../resources.cjs').writeManifest(path.join(build, 'lib'));
+}
 function observe(module, library, dest, mode) { run(process.execPath, [`native/tests/${module.name}/observe.cjs`, library, dest, mode], 30000); }
 function windowsOracle() {
   if (process.platform !== 'win32' || process.arch !== 'x64') throw new Error('Oracle capture requires Windows x64. Portable tests use committed fixtures instead.');

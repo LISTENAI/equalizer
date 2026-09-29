@@ -110,7 +110,7 @@ export default {
       confirmVisible: false,
       isCose: false,
       projectModalType: '新建',
-      version: '1.0.0',
+      version: '',
       menus: [
         {
           label: '文件',
