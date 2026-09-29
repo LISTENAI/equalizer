@@ -7,7 +7,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-lifecycle
   cancel-in-progress: false
 jobs:
   build:
@@ -53,7 +53,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         if: runner.os == 'Windows'
         with:
-          ref: a7f9381
+          ref: a7f938151321cc7346512e8aab30c9993c931d54
           path: .cache/upgrade-baseline
       - name: Build original 1.1.4 upgrade baseline
         if: runner.os == 'Windows'

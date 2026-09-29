@@ -16,6 +16,26 @@ try {
   const page = await application.firstWindow(); page.on('pageerror', error => failures.push(error.message));
   await page.getByText('均衡器参数组', { exact: true }).waitFor({ timeout: 30000 });
   assert.equal(await page.evaluate(() => window.appInfo.version), process.env.EXPECTED_APP_VERSION || pkg.version);
+  const wavFile = path.join(directory, '中文 音频.wav');
+  const samples = Buffer.alloc(640);
+  for (let i = 0; i < 320; i++) samples.writeInt16LE(Math.round(1000 * Math.sin(i / 10)), i * 2);
+  const header = Buffer.alloc(44); header.write('RIFF'); header.writeUInt32LE(36 + samples.length, 4); header.write('WAVEfmt ', 8); header.writeUInt32LE(16, 16); header.writeUInt16LE(1, 20); header.writeUInt16LE(1, 22); header.writeUInt32LE(16000, 24); header.writeUInt32LE(32000, 28); header.writeUInt16LE(2, 32); header.writeUInt16LE(16, 34); header.write('data', 36); header.writeUInt32LE(samples.length, 40);
+  await writeFile(wavFile, Buffer.concat([header, samples]));
+  const decoded = await application.evaluate(async ({ app }, file) => {
+    const require = process.mainModule.require.bind(process.mainModule);
+    const fs = require('node:fs'), path = require('node:path');
+    const main = path.join(app.getAppPath(), 'out/main');
+    const audio = require(path.join(main, fs.readdirSync(main).find(name => /^audioDecoder-.*\.js$/.test(name))));
+    const source = audio.openPcmSource(file), chunks = [];
+    await source.ready;
+    for await (const chunk of source.pcm) chunks.push(chunk);
+    await source.done;
+    const cancelled = audio.openPcmSource(file);
+    cancelled.ready.catch(() => {}); cancelled.done.catch(() => {});
+    await cancelled.cancel(); await cancelled.cancel();
+    return Buffer.concat(chunks).toString('hex');
+  }, wavFile);
+  assert.equal(decoded, samples.toString('hex'));
   if (process.env.SMOKE_UPGRADE) assert.equal(await page.evaluate(() => localStorage.getItem('release-upgrade-pref')), 'from-1.1.4');
   const config = getDefaultConfig(16000);
   const result = await page.evaluate(async ({ config, directory }) => {

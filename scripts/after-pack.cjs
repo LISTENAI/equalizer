@@ -11,4 +11,5 @@ module.exports = async context => {
   const licenses = path.join(resources, 'licenses'); fs.mkdirSync(licenses, { recursive: true });
   fs.copyFileSync(path.join(__dirname, '../native/third_party/cmsis-dsp/LICENSE.txt'), path.join(licenses, 'CMSIS-DSP-LICENSE.txt'));
   fs.copyFileSync(path.join(__dirname, '../native/third_party/cmsis-dsp/UPSTREAM.md'), path.join(licenses, 'CMSIS-DSP-SOURCE.md'));
+  fs.copyFileSync(path.join(__dirname, '../docs/THIRD_PARTY.md'), path.join(licenses, 'THIRD-PARTY.md'));
 };

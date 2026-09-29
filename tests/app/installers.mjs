@@ -9,7 +9,7 @@ if (!process.env.CI) throw new Error('Installer tests run on disposable CI runne
 const root = process.cwd();
 const output = path.resolve('artifacts/installer-smoke'); mkdirSync(output, { recursive: true });
 const run = (cmd, args, options = {}) => execFileSync(cmd, args, { stdio: 'inherit', ...options });
-const smoke = exe => run(process.execPath, ['tests/app/smoke.mjs'], { env: { ...process.env, APP_EXECUTABLE: exe } });
+const smoke = exe => run(process.execPath, ['tests/app/smoke.mjs'], { env: { ...process.env, APP_EXECUTABLE: exe, APPIMAGE_EXTRACT_AND_RUN: '1', DEBUG: 'pw:browser' } });
 const files = names(version, `${process.platform}-${process.arch}`).map(n => path.resolve('dist', n));
 if (process.platform === 'darwin') {
   const mount = path.join(output, 'mounted'); mkdirSync(mount, { recursive: true });
@@ -21,10 +21,9 @@ if (process.platform === 'darwin') {
     smoke(path.join(app, 'Contents/MacOS/LSAudio'));
   } finally { run('hdiutil', ['detach', mount]); }
 } else if (process.platform === 'linux') {
-  // Extraction avoids requiring FUSE in containers; execute the shipped AppRun.
+  // Run the actual AppImage using its supported extraction mode on CI.
   run('chmod', ['+x', files[0]]);
-  run(files[0], ['--appimage-extract'], { cwd: output });
-  smoke(path.join(output, 'squashfs-root/AppRun'));
+  smoke(files[0]);
   run('sudo', ['apt-get', 'install', '-y', files[1]]);
   try { smoke('/opt/LSAudio/lsaudio'); }
   finally { run('sudo', ['dpkg', '--remove', 'lsaudio']); }

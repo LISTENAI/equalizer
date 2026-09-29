@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: publish-accepted-release
+  group: release-lifecycle
   cancel-in-progress: false
 jobs:
   publish:

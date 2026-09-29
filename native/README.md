@@ -73,7 +73,9 @@ cmake --build native/build --config Release
 ctest --test-dir native/build -C Release --output-on-failure
 ```
 
-生成的动态库统一位于 `native/build/lib/`：Windows 为 `lsaudio_<module>.dll`，macOS 为 `liblsaudio_<module>.dylib`，Linux 为 `liblsaudio_<module>.so`。eqdraw 依赖 eqdrc，部署时需一起提供；soundeffect 独立编译，不依赖原厂库或绘图库。当前已在 Windows x64 / MSVC 实测；macOS、Linux 和 ARM64 仍需在对应环境运行上述命令，不能据此宣称整个应用已经跨平台。JS 对照工具按小端布局构造输入，DRC 包装接口使用真正的按值结构体声明；C 文件编解码显式处理小端格式。
+生成的动态库统一位于 `native/build/lib/`：Windows 为 `lsaudio_<module>.dll`，macOS 为 `liblsaudio_<module>.dylib`，Linux 为 `liblsaudio_<module>.so`。eqdraw 依赖 eqdrc，部署时需一起提供；soundeffect 独立编译，不依赖原厂库或绘图库。四个平台的原生 runner 执行回归，不自动放宽容差。JS 对照工具按小端布局构造输入，DRC 包装接口使用真正的按值结构体声明；C 文件编解码显式处理小端格式。
+
+客户端默认加载上述库。开发启动前自动编译并生成散列清单，安装版从 `resources/native` 加载，不依赖工作目录。Windows 使用静态 MSVC 运行库；macOS 使用 `@loader_path`，Linux 使用 `$ORIGIN` 寻找相邻库。打包仅接受与宿主平台/架构一致的构建，原厂 DLL 不随应用分发。完整客户端及实机发布验收状态见根 README 和 [发布指南](../docs/RELEASING.md)。
 
 ## 后续模块的维护规则
 

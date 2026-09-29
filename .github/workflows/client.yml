@@ -43,9 +43,9 @@ jobs:
       - run: npm run test:audio:integration
       - run: npm run electron:build -- --dir
       - if: runner.os != 'Linux'
-        run: npm run test:app
+        run: npm run test:app && node tests/app/startup-failures.mjs
       - if: runner.os == 'Linux'
-        run: xvfb-run -a npm run test:app
+        run: xvfb-run -a npm run test:app && xvfb-run -a node tests/app/startup-failures.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:

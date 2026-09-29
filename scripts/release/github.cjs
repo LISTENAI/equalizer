@@ -31,6 +31,7 @@ function assets(directory, version, sha) {
   return expected;
 }
 function draft(tag, directory) {
+  if (!JSON.parse(gh('api', `repos/${repository}`)).private) throw new Error('This release workflow requires a private repository');
   const version = verify({ tag, master: 'refs/remotes/origin/master' });
   const sha = gh('api', `repos/${repository}/git/ref/tags/${tag}`, '--jq', '.object.sha');
   const files = assets(directory, version, sha);
@@ -75,7 +76,7 @@ function tag(version) {
   for (const pr of prs.filter(p => p.merged_at && p.base.ref === 'master' && p.merge_commit_sha === sha)) {
     const files = api(`pulls/${pr.number}/files?per_page=100`);
     const reviews = api(`pulls/${pr.number}/reviews?per_page=100`);
-    const latest = new Map(); for (const review of reviews) if (['APPROVED', 'CHANGES_REQUESTED', 'DISMISSED'].includes(review.state)) latest.set(review.user.login, review.state);
+    const latest = new Map(); for (const review of reviews) if (['APPROVED', 'CHANGES_REQUESTED', 'DISMISSED'].includes(review.state)) latest.set(review.user.login, review.state === 'APPROVED' && review.commit_id !== pr.head.sha ? 'STALE' : review.state);
     if (files.some(f => f.filename === 'CHANGELOG.md') && files.some(f => f.filename === 'package.json') && [...latest.values()].includes('APPROVED') && ![...latest.values()].includes('CHANGES_REQUESTED')) approved = true;
   }
   if (!approved) throw new Error('A reviewed and merged version PR is required');

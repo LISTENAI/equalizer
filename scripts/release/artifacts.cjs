@@ -23,8 +23,12 @@ function record(directory, output) {
     return { name, sha256: hash(file), bytes: fs.statSync(file).size };
   });
   const ffmpeg = require('../../ffmpeg/manifest.json');
+  const compilerFile = fs.readdirSync('native/build/CMakeFiles', { recursive: true }).find(name => name.endsWith('CMakeCCompiler.cmake'));
+  const compiler = fs.readFileSync(path.join('native/build/CMakeFiles', compilerFile), 'utf8');
+  const compilerId = compiler.match(/set\(CMAKE_C_COMPILER_ID "([^"]+)"\)/)?.[1];
+  const compilerVersion = compiler.match(/set\(CMAKE_C_COMPILER_VERSION "([^"]+)"\)/)?.[1];
   const manifest = { schemaVersion: 1, version, target, commit: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), runId: process.env.GITHUB_RUN_ID || 'local', runAttempt: process.env.GITHUB_RUN_ATTEMPT || '1',
-    toolchain: { node: process.version, electron: require('electron/package.json').version, builder: require('electron-builder/package.json').version, cmake: execFileSync('cmake', ['--version'], { encoding: 'utf8' }).split('\n')[0] },
+    toolchain: { node: process.version, electron: require('electron/package.json').version, builder: require('electron-builder/package.json').version, cmake: execFileSync('cmake', ['--version'], { encoding: 'utf8' }).split('\n')[0], compiler: { id: compilerId, version: compilerVersion } },
     ffmpeg: ffmpeg.targets[target], signing: process.platform === 'darwin' ? 'ad-hoc; not notarized' : 'unsigned', files };
   fs.writeFileSync(path.join(output, `manifest-${target}.json`), JSON.stringify(manifest, null, 2) + '\n');
 }
