@@ -99,27 +99,11 @@ class _SerialPortProxy {
   }
 
   playAudioFile(args) {
-    return new Promise((resolve, reject) => {
-      const resultEvent = Action.SendAudioFile + '-result';
-      const resultListener = (e, data) => {
-        resolve(data);
-        ipcRenderer.removeAllListeners(resultEvent);
-      };
-      ipcRenderer.addListener(resultEvent, resultListener);
-      ipcRenderer.invoke(Action.SendAudioFile, args);
-    });
+    return ipcRenderer.invoke(Action.SendAudioFile, args);
   }
 
   cancelAudioFile() {
-    return new Promise((resolve, reject) => {
-      const resultEvent = Action.CancelAudioFile + '-result';
-      const resultListener = (e, data) => {
-        resolve(data);
-        ipcRenderer.removeAllListeners(resultEvent);
-      };
-      ipcRenderer.addListener(resultEvent, resultListener);
-      ipcRenderer.invoke(Action.CancelAudioFile);
-    });
+    return ipcRenderer.invoke(Action.CancelAudioFile);
   }
 }
 

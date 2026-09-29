@@ -42,7 +42,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, onUnmounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import AudioFileIcon from '../assets/svg/audio_file.svg';
 import StopCircleIcon from '../assets/svg/stop_circle.svg';
@@ -88,10 +88,11 @@ const handlePlay = async () => {
     const filePath = res?.data?.[0];
     if (!filePath) return;
     lastFilePath.value = filePath;
-    await window.ipcRenderer.invoke(
+    const parameterResult = await window.ipcRenderer.invoke(
       'player-set-params',
       JSON.stringify(props.audioParams),
     );
+    if (parameterResult.code !== 0) throw new Error(parameterResult.message || '音频参数设置失败');
     const { code, message } = await window.ipcRenderer.invoke('player-play', {
       file: filePath,
     });
@@ -125,6 +126,8 @@ const handleStop = async () => {
 const handleReplay = async () => {
   if (!lastFilePath.value || isPlaying.value) return;
   try {
+    const parameterResult = await window.ipcRenderer.invoke('player-set-params', JSON.stringify(props.audioParams));
+    if (parameterResult.code !== 0) throw new Error(parameterResult.message || '音频参数设置失败');
     const { code, message } = await window.ipcRenderer.invoke('player-play', {
       file: lastFilePath.value,
       params: props.audioParams,
@@ -138,9 +141,12 @@ const handleReplay = async () => {
   }
 };
 
-window.ipcRenderer.on('player-state', (_e, payload) => {
+const onPlayerState = (_e, payload) => {
   isPlaying.value = Boolean(payload?.isPlaying);
-});
+  if (payload?.message) ElMessage.error(payload.message);
+};
+window.ipcRenderer.on('player-state', onPlayerState);
+onUnmounted(() => window.ipcRenderer.removeListener('player-state', onPlayerState));
 
 const displayName = computed(() => {
   if (!lastFilePath.value) return '';

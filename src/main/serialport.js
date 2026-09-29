@@ -1,17 +1,14 @@
 import { BrowserWindow, ipcMain } from 'electron';
 import EventEmitter from 'events';
-import { createReadStream } from 'fs';
 import { mkdir, writeFile } from 'fs/promises';
 import { dirname } from 'path';
 import { SerialPort } from 'serialport';
-import { PassThrough, Readable } from 'stream';
-import { decoder } from './audioDecoder';
+import { openPcmSource } from './audioDecoder';
+import { SerialAudioSender, waitForAudioAck } from './audio/serial-audio.mjs';
 
 let handlingPort = null;
 let handlingPortName = null;
 let handlingSampleRate = null;
-let currentDecoder = null;
-let currentReadable = null;
 let cachedSerialData = [];
 let shouldCacheSerialData = false;
 
@@ -117,9 +114,8 @@ function getPcmFrame(data, order, startFlag) {
   ]);
 }
 
-function writeData(data) {
+function writeData(data, port = handlingPort) {
   return new Promise((resolve, reject) => {
-    const port = handlingPort;
     if (port) {
       port.write(data, (err) => {
         if (err) {
@@ -377,7 +373,7 @@ function parseDrc(buf) {
   }
   return data;
 }
-function dispatchFrame(frame) {
+function dispatchFrame(frame, sourcePort = handlingPort) {
   // console.log('dispatchFrame', frame.command.toString(16));
   try {
     switch (frame.command) {
@@ -467,7 +463,7 @@ function dispatchFrame(frame) {
             const adviceSleep = Buffer.from(
               frame.data.subarray(12, 14)
             ).readUInt16LE(0);
-            emitter.emit('write-audio-finish');
+            emitter.emit('write-audio-finish', { id, length, state, port: sourcePort });
             //   console.log(
             //     'audio result. id: ',
             //     id,
@@ -514,27 +510,20 @@ function dispatchFrame(frame) {
 }
 
 const emitter = new EventEmitter();
-function writeAudio(data) {
-  return new Promise((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      reject('等待写音频结果超时');
-      emitter.removeAllListeners('write-audio-finish', listener);
-    }, 1500);
-    const listener = () => {
-      clearTimeout(timeoutId);
-      emitter.removeListener('write-audio-finish', listener);
-      resolve();
-    };
-    emitter.addListener('write-audio-finish', listener);
-    writeData(data)
-      .then(() => {})
-      .catch((err) => {
-        emitter.removeAllListeners('write-audio-finish');
-        clearTimeout(timeoutId);
-        reject(err);
-      });
-  });
-}
+const serialAudio = new SerialAudioSender({
+  openPcmSource,
+  isConnected: () => Boolean(handlingPort?.isOpen),
+  onState: state => send('sp-update-audio-state', state),
+  writeFrame: ({ data, order, flag }, signal) => {
+    const port = handlingPort;
+    if (!port?.isOpen) return Promise.reject(new Error('串口设备已断开'));
+    return waitForAudioAck({ emitter, order, signal,
+      matches: ack => ack.port === port,
+      send: () => writeData(getPcmFrame(data, order, flag), port),
+    });
+  },
+});
+export const stopSerialAudio = () => serialAudio.stop();
 
 export default () => {
   ipcMain.handle('sp-get-list', async () => {
@@ -556,6 +545,14 @@ export default () => {
       autoOpen: false,
     });
     handlingPort = instance;
+    instance.on('close', () => {
+      if (handlingPort === instance) { handlingPort = null; stopSerialDataCache(); void serialAudio.disconnect(); }
+    });
+    instance.on('error', error => {
+      console.error({ event: 'serial-port-error', message: error.message });
+      if (handlingPort === instance) { handlingPort = null; stopSerialDataCache(); void serialAudio.disconnect(); }
+      if (instance.isOpen) instance.close(() => {});
+    });
     instance.on('data', (data) => {
       appendSerialDataCache(data);
       cacheData = Buffer.concat([cacheData, data]);
@@ -566,7 +563,7 @@ export default () => {
         }
         const frame = parseToFrame(result.frameBuffer);
         try {
-          dispatchFrame(frame);
+          dispatchFrame(frame, instance);
         } catch (err) {
           console.error(err);
         }
@@ -634,7 +631,7 @@ export default () => {
       });
     }
   });
-  ipcMain.handle('sp-close', (e, data) => {
+  ipcMain.handle('sp-close', async (e, data) => {
     if (handlingPort == null) {
       send('sp-close-result', {
         code: -1,
@@ -642,6 +639,8 @@ export default () => {
       });
       return;
     }
+    await serialAudio.stop();
+    if (!handlingPort) { send('sp-close-result', { code: 0 }); return; }
     handlingPort.close((err) => {
       handlingPort = null;
       stopSerialDataCache();
@@ -695,130 +694,12 @@ export default () => {
       }
     });
   });
-  ipcMain.handle('sp-cancel-audio-file', async (e) => {
-    let handled = false;
-    if (currentDecoder) {
-      handled = true;
-      currentDecoder.kill();
-      currentDecoder = null;
-    }
-    if (currentReadable) {
-      handled = true;
-      currentReadable.close();
-      currentReadable = null;
-    }
-    if (handled) {
-      try {
-        await writeAudio(getPcmFrame([], 0, 0xf2));
-      } catch (err) {
-        console.error(err);
-      }
-      send('sp-update-audio-state', { isPlaying: false });
-    }
+  ipcMain.handle('sp-cancel-audio-file', async () => {
+    try { await serialAudio.stop(); return { code: 0 }; }
+    catch (error) { return { code: -1, message: error.message }; }
   });
-  ipcMain.handle('sp-send-audio-file', async (e, args) => {
-    const fileName = args.file;
-    const highWaterMark = 1280;
-    let first = false;
-    let order = 0;
-    if (fileName.endsWith('.pcm')) {
-      const stream = createReadStream(fileName, {
-        highWaterMark,
-      });
-      const readable = new Readable({
-        highWaterMark,
-      }).wrap(stream);
-      currentReadable = readable;
-      send('sp-update-audio-state', { isPlaying: true });
-      for await (const chunk of readable) {
-        if (currentReadable != readable) {
-          if (!readable.closed) {
-            readable.close();
-          }
-          break;
-        }
-        // await sleep(sleepMs);
-        const frame = getPcmFrame(chunk, order, !first ? 0xf0 : 0xf1);
-        first = true;
-        try {
-          await writeAudio(frame);
-        } catch (e) {
-          console.error(e);
-          break;
-        }
-        order++;
-      }
-      if (currentReadable == readable) {
-        try {
-          await writeAudio(getPcmFrame([], order, 0xf2));
-        } catch (e) {
-          console.error(e);
-        }
-        if (!readable.closed) {
-          readable.close();
-        }
-        currentReadable = null;
-        send('sp-update-audio-state', { isPlaying: false });
-      }
-    } else {
-      const pushStream = new PassThrough();
-      const readable = new Readable({
-        highWaterMark,
-      }).wrap(pushStream);
-      let current = decoder(fileName)
-        .audioCodec('pcm_s16le')
-        .audioFrequency(16000)
-        .audioChannels(1)
-        .toFormat('s16le')
-        .on('error', function (err, stdout, stderr) {
-          console.log('Cannot process audio: ' + err.message);
-        })
-        .on('stderr', function (stderrLine) {
-          // console.log('Stderr output: ' + stderrLine);
-        });
-      currentDecoder = current;
-      current.pipe(pushStream, { end: true });
-      readable.on('readable', async () => {
-        let chunk;
-        let lastAvailable = 0;
-        // const ouptut = createWriteStream("./output.pcm"); // log audio pcm
-
-        send('sp-update-audio-state', { isPlaying: true });
-
-        while (
-          null !== (chunk = readable.read(highWaterMark)) &&
-          currentDecoder == current
-        ) {
-          // console.log(`Read ${chunk.length} bytes of data...`);
-          // ouptut.write(chunk);
-          lastAvailable = chunk.length;
-
-          // await sleep(sleepMs);
-          const frame = getPcmFrame(chunk, order, !first ? 0xf0 : 0xf1);
-
-          first = true;
-          try {
-            //   console.log('write frame', frame.length);
-            //   await writeData(frame);
-            await writeAudio(frame);
-          } catch (e) {
-            console.error(e);
-            break;
-          }
-          order++;
-        }
-        if (lastAvailable == 0) return; // readable 可能会触发 2 次，这种情况下前一次无数据，要忽略
-        if (currentDecoder == current) {
-          try {
-            await writeAudio(getPcmFrame([], order, 0xf2));
-          } catch (e) {
-            console.error(e);
-          }
-          currentDecoder = null;
-
-          send('sp-update-audio-state', { isPlaying: false });
-        }
-      });
-    }
+  ipcMain.handle('sp-send-audio-file', async (_event, args) => {
+    try { await serialAudio.start(args?.file); return { code: 0 }; }
+    catch (error) { return { code: -1, message: error.message }; }
   });
 };

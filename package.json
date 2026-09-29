@@ -17,6 +17,8 @@
     "ffmpeg:prepare": "node ffmpeg/manage.cjs prepare",
     "ffmpeg:verify": "node ffmpeg/manage.cjs verify",
     "test:audio": "node --test tests/audio/*.test.mjs",
+    "test:audio:integration": "node ffmpeg/manage.cjs prepare && node --test tests/audio/integration.mjs",
+    "ffmpeg:smoke-pack": "node ffmpeg/smoke-pack.cjs",
     "electron:build": "electron-vite build && electron-builder",
     "postinstall": "electron-builder install-app-deps",
     "postuninstall": "electron-builder install-app-deps"
@@ -24,7 +26,6 @@
   "dependencies": {
     "@echogarden/audio-io": "^0.4.2",
     "@electron-toolkit/utils": "^4.0.0",
-    "fluent-ffmpeg-7": "^2.1.5",
     "iconv-lite": "^0.7.1",
     "koffi": "^2.14.1",
     "serialport": "^12.0.0"
@@ -77,7 +78,6 @@
       "!node_modules/koffi/{doc,src,vendor}/**",
       "!node_modules/koffi/lib/native/**",
       "!node_modules/koffi/build/koffi/{darwin_*,freebsd_*,linux_*,musl_*,openbsd_*,win32_ia32,win32_arm64}/**",
-      "!node_modules/fluent-ffmpeg-7/{doc,test,tools,examples}/**",
       "!node_modules/@serialport/bindings-cpp/src/**",
       "!node_modules/@serialport/bindings-cpp/node_modules/.bin/**",
       "!node_modules/@serialport/bindings-cpp/node_modules/node-addon-api/**",
@@ -100,7 +100,9 @@
       ]
     },
     "mac": {
-      "binaries": ["Resources/ffmpeg/ffmpeg"],
+      "binaries": [
+        "Resources/ffmpeg/ffmpeg"
+      ],
       "target": {
         "target": "dir",
         "arch": "arm64"

@@ -597,6 +597,7 @@ export default {
     receiveAudioState(args) {
       const { isPlaying } = args;
       this.decoding = isPlaying;
+      if (args.message) this.$message.error(args.message);
     },
     queryBaudrate(queryString, cb) {
       try {
@@ -1230,12 +1231,18 @@ export default {
         properties: ['openFile'],
       });
       const { code, data } = res;
-      if (res) {
-        SerialPortProxy.playAudioFile({ file: data[0] });
+      if (code === 0 && data?.[0]) {
+        try {
+          const result = await SerialPortProxy.playAudioFile({ file: data[0] });
+          if (result.code !== 0) this.$message.error(result.message || '音频发送失败');
+        } catch (error) { this.$message.error(error.message || '音频发送失败'); }
       }
     },
     async stopAudioPlay() {
-      SerialPortProxy.cancelAudioFile();
+      try {
+        const result = await SerialPortProxy.cancelAudioFile();
+        if (result.code !== 0) this.$message.error(result.message || '停止失败');
+      } catch (error) { this.$message.error(error.message || '停止失败'); }
     },
     async sendTts() {
       try {

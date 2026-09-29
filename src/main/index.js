@@ -2,6 +2,22 @@ import { is } from '@electron-toolkit/utils';
 import { app, BrowserWindow } from 'electron';
 import path from 'path';
 import { IpcMainHandle } from './ipcMain';
+import { stopPlayer } from './player';
+import { stopSerialAudio } from './serialport';
+import { closePcmSources } from './audioDecoder';
+
+let audioShutdownComplete = false;
+let audioShutdown;
+app.on('before-quit', event => {
+  if (audioShutdownComplete) return;
+  event.preventDefault();
+  audioShutdown ||= (async () => {
+    const results = await Promise.allSettled([stopPlayer(), stopSerialAudio(), closePcmSources()]);
+    for (const result of results) if (result.status === 'rejected') console.error({ event: 'audio-shutdown-failed', message: result.reason?.message });
+    audioShutdownComplete = true;
+    app.quit();
+  })();
+});
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 const WINDOW_WIDTH = 1320;
