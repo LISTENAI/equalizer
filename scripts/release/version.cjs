@@ -22,6 +22,8 @@ function verify({ tag, master = 'refs/remotes/github/master' } = {}) {
     const sha = git('rev-parse', `${tag}^{commit}`);
     if (sha !== git('rev-parse', 'HEAD')) throw new Error('Tag does not point to checked-out commit');
     git('merge-base', '--is-ancestor', sha, master);
+    const previous = JSON.parse(git('show', `${sha}^1:package.json`)).version;
+    if (!semver.gt(pkg.version, previous)) throw new Error('Release commit must increase the product version');
   }
   return pkg.version;
 }

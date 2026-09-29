@@ -24,6 +24,10 @@ try {
   const decoded = await application.evaluate(async ({ app }, file) => {
     const require = process.mainModule.require.bind(process.mainModule);
     const fs = require('node:fs'), path = require('node:path');
+    const audioPlatform = { win32: 'windows', darwin: 'macos', linux: 'linux' }[process.platform];
+    const backend = { win32: 'mme', darwin: 'coreaudio', linux: 'alsa' }[process.platform];
+    const addon = require(path.join(app.getAppPath(), 'node_modules/@echogarden/audio-io/addons/bin', `${audioPlatform}-${process.arch}-${backend}-output.node`));
+    if (typeof addon.createAudioOutput !== 'function') throw new Error('Packaged audio output binding did not load');
     const main = path.join(app.getAppPath(), 'out/main');
     const audio = require(path.join(main, fs.readdirSync(main).find(name => /^audioDecoder-.*\.js$/.test(name))));
     const source = audio.openPcmSource(file), chunks = [];

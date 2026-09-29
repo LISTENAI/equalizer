@@ -20,6 +20,11 @@ function assets(directory, version, sha) {
   if (JSON.stringify(fs.readdirSync(directory).sort()) !== JSON.stringify(expected)) throw new Error('Release must contain exactly five installers, checksums and build manifest');
   const manifest = JSON.parse(fs.readFileSync(path.join(directory, 'build-manifest.json')));
   if (manifest.version !== version || manifest.commit !== sha || manifest.targets?.length !== 4) throw new Error('Release manifest mismatch');
+  if (JSON.stringify(manifest.targets.map(m => m.target).sort()) !== JSON.stringify([...targets].sort())) throw new Error('Duplicate or missing build target');
+  for (const record of manifest.targets) {
+    if (record.version !== version || record.commit !== sha || record.runId !== manifest.runId || JSON.stringify(record.files.map(f => f.name).sort()) !== JSON.stringify(names(version, record.target).sort())) throw new Error('Target manifest mismatch');
+    for (const file of record.files) if (hash(path.join(directory, file.name)) !== file.sha256 || fs.statSync(path.join(directory, file.name)).size !== file.bytes) throw new Error('Target artifact mismatch');
+  }
   const checksums = fs.readFileSync(path.join(directory, 'SHA256SUMS.txt'), 'utf8').trim().split('\n');
   if (checksums.length !== 6) throw new Error('Incomplete checksums');
   const checked = new Set();
@@ -64,9 +69,12 @@ function publish(tag, directory, evidence) {
 }
 function tag(version) {
   if (verify() !== version) throw new Error('Version mismatch');
+  if (execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).trim()) throw new Error('Tag creation requires a clean checkout');
   const sha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
-  const master = api('branches/master').commit.sha;
-  if (master !== sha) throw new Error('Only the checked master head may create a release tag');
+  const previous = JSON.parse(execFileSync('git', ['show', `${sha}^1:package.json`], { encoding: 'utf8' })).version;
+  if (!require('semver').gt(version, previous)) throw new Error('Release commit must increase the product version');
+  execFileSync('git', ['fetch', 'github', 'master'], { stdio: 'inherit' });
+  execFileSync('git', ['merge-base', '--is-ancestor', sha, 'refs/remotes/github/master'], { stdio: 'inherit' });
   const checks = api(`commits/${sha}/check-runs?per_page=100`).check_runs;
   for (const name of ['client (windows-latest, win32-x64)', 'client (macos-15-intel, darwin-x64)', 'client (macos-15, darwin-arm64)', 'client (ubuntu-24.04, linux-x64)']) {
     if (!checks.some(c => c.name === name && c.status === 'completed' && c.conclusion === 'success' && c.app.slug === 'github-actions')) throw new Error(`Required check missing: ${name}`);

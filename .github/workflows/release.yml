@@ -2,7 +2,7 @@ name: Release installers
 on:
   push:
     tags: ['v*']
-    branches: ['codex/multiplatform-release']
+    branches: ['codex/multiplatform-release', 'codex/release-*']
   workflow_dispatch:
 permissions:
   contents: read
@@ -45,6 +45,7 @@ jobs:
           RELEASE_MASTER: refs/remotes/origin/master
       - run: npm run test:release
       - run: npm run native:test
+      - run: node native/tools/check-linkage.cjs
       - if: runner.os == 'Windows'
         run: npm run native:compare
       - run: npm run test:audio
