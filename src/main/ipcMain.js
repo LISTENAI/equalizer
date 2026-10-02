@@ -1,5 +1,5 @@
 
-import { ipcMain, BrowserWindow, shell } from 'electron';
+import { ipcMain, shell } from 'electron';
 import drawHandle from './draw';
 import ProjectHandle from './project';
 import serialport from './serialport';
@@ -7,31 +7,33 @@ import file from './file';
 import { playerIpc } from './player';
 
 let mainWindow = null;
+let registered = false;
 function IpcMainHandle(window) {
   mainWindow = window;
   window.on('maximize', () => {
-    let focusWindow = BrowserWindow.getFocusedWindow();
-    focusWindow.webContents.send('windowChange', { isMaximized: focusWindow.isMaximized() });
+    window.webContents.send('windowChange', { isMaximized: window.isMaximized() });
   });
   window.on('unmaximize', () => {
-    let focusWindow = BrowserWindow.getFocusedWindow();
-    focusWindow.webContents.send('windowChange', { isMaximized: focusWindow.isMaximized() });
+    window.webContents.send('windowChange', { isMaximized: window.isMaximized() });
   });
   window.on('close', () => {
-    mainWindow = null;
+    if (mainWindow === window) mainWindow = null;
   });
+  if (registered) return;
+  registered = true;
   ipcMain.on('window-min', function () {
-    window.minimize();
+    mainWindow?.minimize();
   });
   ipcMain.on('window-max', function () {
-    if (window.isMaximized()) {
-      window.restore();
+    if (!mainWindow) return;
+    if (mainWindow.isMaximized()) {
+      mainWindow.restore();
     } else {
-      window.maximize();
+      mainWindow.maximize();
     }
   });
   ipcMain.on('window-close', function () {
-    window.close();
+    mainWindow?.close();
   });
   ipcMain.on('open-external', function (event, url) {
     shell.openExternal(url);

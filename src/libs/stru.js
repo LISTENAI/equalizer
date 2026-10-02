@@ -99,7 +99,7 @@ export const struUIDrcInfo = koffi.struct('struUIDrcInfo', {
     endYGain: 'float'
 });
 const point = koffi.array('double', 2);
-const points = koffi.array(point, 840);
+const points = koffi.array(point, 1024);
 const drcPoints = koffi.array(point, 315);
 export const struEqDrawResult = koffi.struct('struEqDrawResult', {
     ret: 'int',

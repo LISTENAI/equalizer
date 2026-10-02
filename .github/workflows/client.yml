@@ -1,0 +1,59 @@
+name: Client platforms
+on:
+  push:
+    branches: [master, 'codex/**']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  client:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-latest
+            target: win32-x64
+          - runner: macos-15-intel
+            target: darwin-x64
+          - runner: macos-15
+            target: darwin-arm64
+          - runner: ubuntu-24.04
+            target: linux-x64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 35
+    env:
+      EXPECTED_TARGET: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - run: node -e "require('assert').equal(process.platform+'-'+process.arch, process.env.EXPECTED_TARGET)"
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libfuse2 xvfb
+      - run: npm ci
+      - run: npm run release:verify
+      - run: npm run test:release
+      - run: npm run native:test
+      - run: node native/tools/check-linkage.cjs
+      - if: runner.os == 'Windows'
+        run: npm run native:compare
+      - run: npm run test:audio
+      - run: npm run test:audio:integration
+      - run: npm run electron:build -- --dir
+      - if: runner.os != 'Linux'
+        run: npm run test:app && node tests/app/startup-failures.mjs
+      - if: runner.os == 'Linux'
+        run: xvfb-run -a npm run test:app && xvfb-run -a node tests/app/startup-failures.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: client-smoke-${{ matrix.target }}
+          path: |
+            artifacts/app-smoke/**/result.json
+            artifacts/app-smoke/**/main-window.png
+            native/build/Testing/Temporary/*.log
+          if-no-files-found: warn
+          retention-days: 7

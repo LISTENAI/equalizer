@@ -45,19 +45,27 @@ LSAudio 将音效参数编辑、曲线展示、音频试听和设备通信集中
 
 | 组件 | Windows x64 | macOS x64 / arm64 | Linux x64 |
 | --- | --- | --- | --- |
-| 桌面客户端 | 当前运行与打包目标 | 适配中 | 适配中 |
+| 桌面客户端 | 待发布验收 | 待发布验收 | 待发布验收 |
 | FFmpeg 与独立音频服务 | CI 验证 | CI 验证 | CI 验证 |
-| C 算法替代实现 | 已通过原 DLL 对照测试 | 待运行验证 | 待运行验证 |
+| C 算法替代实现 | 原 DLL 现场对照 | 原生 runner 回归 | 原生 runner 回归 |
 
-**当前请在 Windows x64 上运行完整客户端。** 音频 CI 覆盖资源校验、解码、流式处理与资源打包，不代表完整应用已经支持所有平台。桌面运行时仍使用原 Windows DLL，C 替代实现的接入工作正在推进。
+客户端默认使用项目维护的三个 C 动态库，原厂 DLL 仅用于 Windows 对照测试，不随安装包分发。四个平台的发布必须全部通过 CI 和验收；单项测试成功不代表正式支持。
 
 ## 快速开始
 
-当前提供源码运行与本地打包方式。
+安装包入口：[GitHub Releases](https://github.com/LISTENAI/equalizer/releases)（需要仓库访问权限）。首个预览版计划为 `1.2.0-beta.1`，验收完成前不会标为已发布。源码运行与本地打包仍可使用。
+
+### 安装应用
+
+- Windows x64：下载 `-windows-x64-setup.exe`，运行 NSIS 安装程序。未签名版本可能出现 SmartScreen 提示，请核对来源和 SHA-256。
+- macOS：按 Intel / Apple Silicon 选择 x64 / arm64 DMG，挂载后将 LSAudio 拖入应用程序。仅使用 ad-hoc 签名，未公证；如系统阻止启动，在核验来源后通过系统设置的“隐私与安全性”允许打开。
+- Linux x64：AppImage 执行 `chmod +x` 后运行；Debian/Ubuntu 可用 `sudo apt install ./LSAudio-<version>-linux-x64.deb` 安装。串口访问需要系统授予相应设备权限。
+
+每次发布提供 `SHA256SUMS.txt` 和构建清单。应用内置 FFmpeg，无需单独安装；升级通过下载安装包完成，不提供在线更新。
 
 ### 开发环境
 
-- Windows x64。
+- Windows x64、macOS x64/arm64 或 Linux x64；正式支持状态见上表。
 - Git、Node.js **22.12 或更高的 22.x 版本**及 npm，与音频 CI 使用的 Node.js 主版本一致。
 - 首次安装依赖与准备 FFmpeg 时需要联网。
 - 连接设备时，需要兼容固件和可用的串口；设备采样率应与调参界面保持一致。
@@ -69,9 +77,9 @@ npm ci
 npm run dev
 ```
 
-开发启动前会自动准备并校验本机的 FFmpeg。正式应用随包内置 FFmpeg，无需用户另行安装。离线准备、本地可执行文件覆盖和目标架构选择见 [FFmpeg 维护说明](ffmpeg/README.md)。
+开发启动前会自动编译本机 C 库并准备、校验 FFmpeg。正式应用随包内置 FFmpeg，无需用户另行安装。离线准备、本地可执行文件覆盖和目标架构选择见 [FFmpeg 维护说明](ffmpeg/README.md)。
 
-如需编译 C 算法替代实现，另需 **CMake 3.20+** 与 C11 编译器；Windows 推荐安装 Visual Studio 2022 的“使用 C++ 的桌面开发”组件。完整步骤见 [Native 开发指南](native/README.md)。
+开发与打包需要 **CMake 3.20+** 与 C11 编译器；Windows 推荐安装 Visual Studio 2022 的“使用 C++ 的桌面开发”组件。完整步骤见 [Native 开发指南](native/README.md)。
 
 ### 第一次调音
 
@@ -88,11 +96,11 @@ npm run dev
 # 编译 Electron 主进程、预加载脚本与前端
 npm run build
 
-# 在 Windows x64 上构建客户端安装包
+# 在目标平台的本机架构上构建客户端安装包
 npm run electron:build
 ```
 
-Windows 默认生成 NSIS 安装程序，产物位置以构建日志为准。打包时会按目标平台准备 FFmpeg，并附带对应的许可证与来源说明。
+产物位于 `dist/`：Windows 为 NSIS，macOS 为 DMG，Linux 为 AppImage 和 deb。打包内置 FFmpeg、C 库及第三方许可资料。版本、草稿、验收与发布操作见 [发布维护指南](docs/RELEASING.md)。
 
 ## 开发与测试
 
@@ -130,7 +138,7 @@ C 模块包括参数文件与曲线计算、绘图结果包装、实际音效处
 - **提交改动**：尽量围绕一个问题组织提交，说明行为变化，并运行与改动相关的测试。界面改动可附截图；协议或算法改动请补充回归用例。
 - **维护资源**：FFmpeg 版本更新应包含来源、散列与各平台验证结果；原 DLL 对照基准应从原库重新采集并审查差异。
 
-当前跨平台工作的重点是接入 C 算法替代实现，并完成 macOS/Linux 完整客户端的运行与打包验证。
+发布门槛包含四平台回归和实际安装产物测试；实际试听与兼容设备验收结果单独记录。参见 [更新日志](CHANGELOG.md) 和 [发布验收记录](releases/acceptance/README.md)。
 
 ## 许可证与第三方组件
 
