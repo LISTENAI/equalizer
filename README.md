@@ -53,7 +53,7 @@ LSAudio 将音效参数编辑、曲线展示、音频试听和设备通信集中
 
 ## 快速开始
 
-安装包入口：[GitHub Releases](https://github.com/LISTENAI/equalizer/releases)（需要仓库访问权限）。首个预览版计划为 `1.2.0-beta.1`，验收完成前不会标为已发布。源码运行与本地打包仍可使用。
+安装包入口：[GitHub Releases](https://github.com/LISTENAI/equalizer/releases)（发布后公开下载）。首个预览版计划为 `1.2.0-beta.1`，验收完成前不会标为已发布。源码运行与本地打包仍可使用。
 
 ### 安装应用
 
