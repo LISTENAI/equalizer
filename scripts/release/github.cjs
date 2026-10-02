@@ -9,7 +9,12 @@ function api(route) { return JSON.parse(gh('api', `repos/${repository}/${route}`
 function release(tag) {
   const result = spawnSync('gh', ['api', `repos/${repository}/releases/tags/${tag}`], { encoding: 'utf8' });
   if (result.status === 0) return JSON.parse(result.stdout);
-  if (/HTTP 404/.test(result.stderr)) return null;
+  if (/HTTP 404/.test(result.stderr)) {
+    // GitHub's tag endpoint may omit an unpublished draft. Authenticated
+    // release listings include drafts; never create a duplicate on retry.
+    const pages = JSON.parse(gh('api', `repos/${repository}/releases?per_page=100`, '--paginate', '--slurp'));
+    return pages.flat().find(item => item.tag_name === tag) || null;
+  }
   throw new Error(result.stderr);
 }
 function assertDraft(existing, sha) {
