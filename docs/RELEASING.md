@@ -1,6 +1,6 @@
 # LSAudio 发布维护
 
-仓库保持私有；Release 仅供有仓库权限的成员下载。产品标识 `listenai.com`、名称 `LSAudio` 和 Electron 用户数据目录保持不变。不接入在线更新。
+仓库保持公开；通过验收的 Release 可公开下载，草稿仍仅供维护者检查。发布任务检查仓库可见性为 public。产品标识 `listenai.com`、名称 `LSAudio` 和 Electron 用户数据目录保持不变。不接入在线更新。
 
 ## 工作流
 

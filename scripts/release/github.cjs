@@ -36,7 +36,7 @@ function assets(directory, version, sha) {
   return expected;
 }
 function draft(tag, directory) {
-  if (!JSON.parse(gh('api', `repos/${repository}`)).private) throw new Error('This release workflow requires a private repository');
+  if (JSON.parse(gh('api', `repos/${repository}`)).private) throw new Error('This release workflow requires a public repository');
   const version = verify({ tag, master: 'refs/remotes/origin/master' });
   const sha = gh('api', `repos/${repository}/git/ref/tags/${tag}`, '--jq', '.object.sha');
   const files = assets(directory, version, sha);
